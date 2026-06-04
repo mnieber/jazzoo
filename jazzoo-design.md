@@ -1,12 +1,12 @@
 # Jazzoo (🐐🐭🐆) — Design Document
 
-Jazzoo is a task runner in the spirit of `just`, with a three-tier variable namespace system, emoji sigils, and a clean module/import model. The CLI is invoked as `jazzoo` or `jz`. The tool can also be written as 🐐🐭🐆, which encodes its three namespace animals.
+Jazzoo is a task runner in the spirit of `just`, with a three-tier variable namespace system, emoji sigils, and a clean module/import model. The CLI is invoked as `jazzoo` or `jaz`. The tool can also be written as 🐐🐭🐆, which encodes its three namespace animals.
 
 ---
 
 ## 1. File Format
 
-Jazzoo files use the `.jz` extension. The default file is `jazzoo` (no extension) in the current directory, falling back to `jazzoo.jz` if not found.
+Jazzoo files use the `.jaz` extension. The default file is `jazzoo` (no extension) in the current directory, falling back to `jazzoo.jaz` if not found.
 
 ---
 
@@ -20,7 +20,7 @@ Jazzoo has three variable (and callable) namespaces, each identified by an emoji
 | 🐭    | Mouse   | Module — scoped to the defining file   |
 | 🐆    | Leopard | Local — scoped to the current callable |
 
-`🐐` variables are truly global and visible everywhere. `🐭` variables and recipes are scoped to the file they are defined in — when a recipe from module B is called by module A, `🐭` resolves against B's scope, not A's. `🐆` variables are scoped to the callable invocation and do not leak to the caller.
+`🐐` variables are truly global and visible everywhere. `🐭` variables and functions are scoped to the file they are defined in — when a function from module B is called by module A, `🐭` resolves against B's scope, not A's. `🐆` variables are scoped to the function invocation and do not leak to the caller.
 
 ---
 
@@ -47,16 +47,16 @@ In ternary expressions, a string value is falsy if its lowercased form is in `["
 
 Jazzoo provides built-in read-only variables using uppercase snake_case names. Module-scoped magic variables reflect the file they appear in:
 
-| Variable        | Scope | Value                                                   |
-| --------------- | ----- | ------------------------------------------------------- |
-| `🐭.FILE_NAME`  | 🐭    | Filename of the current module (e.g. `index.jz`)        |
-| `🐭.FILE_PATH`  | 🐭    | Absolute path of the current module file                |
-| `🐭.DIR_PATH`   | 🐭    | Absolute path of the directory containing the current module |
-| `🐐.FILE_NAME`  | 🐐    | Filename of the entry-point `.jz` file invoked by `jz`  |
-| `🐐.FILE_PATH`  | 🐐    | Absolute path of the entry-point `.jz` file             |
-| `🐐.DIR_PATH`   | 🐐    | Absolute path of the directory containing the entry-point file |
+| Variable       | Scope | Value                                                          |
+| -------------- | ----- | -------------------------------------------------------------- |
+| `🐭.FILE_NAME` | 🐭    | Filename of the current module (e.g. `index.jaz`)              |
+| `🐭.FILE_PATH` | 🐭    | Absolute path of the current module file                       |
+| `🐭.DIR_PATH`  | 🐭    | Absolute path of the directory containing the current module   |
+| `🐐.FILE_NAME` | 🐐    | Filename of the entry-point `.jaz` file invoked by `jaz`       |
+| `🐐.FILE_PATH` | 🐐    | Absolute path of the entry-point `.jaz` file                   |
+| `🐐.DIR_PATH`  | 🐐    | Absolute path of the directory containing the entry-point file |
 
-`🐐.DIR_PATH` is particularly useful for resolving project-root-relative paths regardless of where `jz` is invoked from.
+`🐐.DIR_PATH` is particularly useful for resolving project-root-relative paths regardless of where `jaz` is invoked from.
 
 ---
 
@@ -87,6 +87,7 @@ Prefix the emoji sigil with `\` to suppress substitution:
 
 ```
 echo "Running test with \🐭.tracing set to: 🐭.tracing"
+echo "Running test with \🐭.tracing set to: 🐭.tracing\.com"  # prints .com after the value of 🐭.tracing
 ```
 
 This prints the literal emoji and `.tracing` text for the escaped reference, and substitutes the unescaped one.
@@ -141,9 +142,9 @@ Path expressions can be chained: `a / b / c` is left-associative.
 
 ---
 
-## 6. Recipes
+## 6. Functions
 
-### Basic recipe
+### Basic function
 
 ```
 debug(name="me"):
@@ -161,9 +162,9 @@ build(target, mode="release"):
     cargo build --target=🐆.target --profile=🐆.mode
 ```
 
-### Recipe attributes
+### Function attributes
 
-Attributes are declared on the line before the recipe:
+Attributes are declared on the line before the function:
 
 ```
 [private]
@@ -171,9 +172,9 @@ _helper(name):
     echo "Internal helper: 🐆.name"
 ```
 
-`[private]` recipes do not appear in `jz --list` but are still callable from within `.jazz` files.
+`[private]` functions are not targets — they do not appear in `jaz --list` and cannot be invoked from the CLI, but are callable from within `.jaz` files.
 
-### Recipe dependencies
+### Function dependencies
 
 Dependencies are declared after the colon, before the body:
 
@@ -182,11 +183,11 @@ debug(name="me"): _helper(name=🐆.name)
     echo "Running debug for: 🐆.name"
 ```
 
-Dependencies run before the recipe body. Dependency arguments may reference `🐐`, `🐭`, and the recipe's own parameters — but not local `🐆` assignments, since those don't exist yet.
+Dependencies run before the function body. Dependency arguments may reference `🐐`, `🐭`, and the function's own parameters — but not local `🐆` assignments, since those don't exist yet.
 
-### Mid-recipe calls
+### Mid-body calls
 
-Recipes in the current module can be called mid-body using the `🐭` sigil:
+Functions in the current module can be called mid-body using the `🐭` sigil:
 
 ```
 debug(name="me"):
@@ -194,17 +195,17 @@ debug(name="me"):
     echo "Done"
 ```
 
-Calls to imported modules use the module alias (see section 9):
+Calls to imported modules use the module alias (see section 10):
 
 ```
     🐭.docker.build(target="myapp")
 ```
 
-All recipe calls block until completion.
+All function calls block until completion.
 
 ### Return values
 
-A recipe can return a value by setting `🐆.retval`:
+A function can return a value by setting `🐆.retval`:
 
 ```
 make-full-path(input):
@@ -221,9 +222,9 @@ Return values must be strings or booleans (booleans are auto-converted to `"true
 
 ---
 
-## 7. Local Callables
+## 7. Local Functions
 
-A recipe can define local callables scoped to `🐆`. These are structurally identical to `🐭` recipes but are only accessible within the enclosing recipe.
+A function can define local functions scoped to `🐆`. These are structurally identical to `🐭` functions but are only accessible within the enclosing function.
 
 ```
 help(who="me"):
@@ -233,13 +234,13 @@ help(who="me"):
     🐆.retval = 🐆.dump(who=🐆.who)
 ```
 
-Local callables have their own fresh `🐆` namespace — variables set inside do not leak to the parent. Parameters are passed explicitly. Local callables support the same body forms as regular recipes: shell lines, assignments, shebang blocks, and nested local callables.
+Local functions have their own fresh `🐆` namespace — variables set inside do not leak to the parent. Parameters are passed explicitly. Local functions support the same body forms as regular functions: shell lines, assignments, shebang blocks, and nested local functions.
 
 ---
 
 ## 8. Shebang Blocks
 
-A recipe or local callable body can use a shebang block to run an alternative interpreter:
+A function or local function body can use a shebang block to run an alternative interpreter:
 
 ```
 help:
@@ -270,6 +271,9 @@ info:
     with open("🐆.config") as f:
         cfg = json.load(f)
     print(cfg)
+
+    #!/usr/bin/env bash
+    echo "The 🐆.config file was used in our Python shebang block"
 ```
 
 Sweeps to:
@@ -285,9 +289,15 @@ with open("bye.json") as f:
 print(cfg)
 ```
 
+and
+
+```bash
+    echo "The bye.json file was used in our Python shebang block"
+```
+
 Because trimming determines whether a line is a Jazzoo assignment, indentation makes no difference — `🐆.x = foo` inside a Python `for` loop is still extracted. This means Jazzoo assignments inside loops or conditionals behave as static substitutions, not dynamic ones. Use Python variables for dynamic in-block logic.
 
-To assign a Python variable whose *name* comes from a Jazzoo value, use a braced reference — this is not a leading sigil so it passes through the sweep as a regular line:
+To assign a Python variable whose _name_ comes from a Jazzoo value, use a braced reference — this is not a leading sigil so it passes through the sweep as a regular line:
 
 ```python
 {{ 🐭.variable }} = "bar"   # e.g. foo = "bar"
@@ -316,7 +326,7 @@ The exit code of a shell block is used as the return value. There is no `return`
 
 ### Stdout capture
 
-After any shell line, shebang block, or recipe call completes, jazzoo sets `🐆.stdout` to its full stdout output. This makes `🐆.stdout` uniformly "the stdout of the last thing that ran."
+After any shell line, shebang block, or function call completes, jazzoo sets `🐆.stdout` to its full stdout output. This makes `🐆.stdout` uniformly "the stdout of the last thing that ran."
 
 ```
 bar:
@@ -330,7 +340,7 @@ debug(name="me"):
     echo "shell line said: 🐆.stdout"
 
     🐆.foo = 🐭.bar()
-    echo "last recipe outputted: 🐆.stdout"
+    echo "last function outputted: 🐆.stdout"
 ```
 
 `🐆.stdout` is overwritten after each such step and is not set before the first one runs.
@@ -343,52 +353,52 @@ Paths are always explicit relative or absolute — no search path resolution.
 
 ### Importing into a namespace (private)
 
-Imported recipes are always placed under a namespace alias and are private — not visible to outside importers.
+Imported functions are always placed under a namespace alias and are private — not visible to outside importers.
 
 ```
-from ./foo.jz import bar as baz                    # 🐭.baz.bar()
-from ./foo.jz import (bar, okay) as baz            # 🐭.baz.bar(), 🐭.baz.okay()
-from ./foo.jz import (bar as hello, okay) as baz   # 🐭.baz.hello(), 🐭.baz.okay()
-from ./foo.jz import * as foo                      # 🐭.foo.<all exported recipes>()
+from ./foo.jaz import bar as baz                    # 🐭.baz.bar()
+from ./foo.jaz import (bar, okay) as baz            # 🐭.baz.bar(), 🐭.baz.okay()
+from ./foo.jaz import (bar as hello, okay) as baz   # 🐭.baz.hello(), 🐭.baz.okay()
+from ./foo.jaz import * as foo                      # 🐭.foo.<all exported functions>()
 ```
 
-The trailing `as <namespace>` is mandatory. Without a tuple, the single symbol is placed under the namespace: `import bar as baz` makes the recipe callable as `🐭.baz.bar()`, not `🐭.baz()`.
+The trailing `as <namespace>` is mandatory. Without a tuple, the single symbol is placed under the namespace: `import bar as baz` makes the function callable as `🐭.baz.bar()`, not `🐭.baz()`.
 
 The imported module's `🐭` variables resolve against the imported file's scope, not the caller's. `🐐` globals are shared across all modules.
 
 ### Exporting into the module namespace (public)
 
-Exported recipes land flat in `🐭` and are public — visible to outside importers, the CLI, and `jz --list`.
+Exported functions land flat in `🐭` and become targets — visible to outside importers, the CLI, and `jaz --list`.
 
 ```
-from ./foo.jz export bar                           # 🐭.bar()
-from ./foo.jz export bar as hello                  # 🐭.hello()
-from ./foo.jz export (bar, okay)                   # 🐭.bar(), 🐭.okay()
-from ./foo.jz export (bar as hello, okay)          # 🐭.hello(), 🐭.okay()
-from ./foo.jz export *                             # 🐭.<all exported recipes from foo>()
+from ./foo.jaz export bar                           # 🐭.bar()
+from ./foo.jaz export bar as hello                  # 🐭.hello()
+from ./foo.jaz export (bar, okay)                   # 🐭.bar(), 🐭.okay()
+from ./foo.jaz export (bar as hello, okay)          # 🐭.hello(), 🐭.okay()
+from ./foo.jaz export *                             # 🐭.<all exported functions from foo>()
 ```
 
-`export *` includes only recipes that `foo.jz` itself exports — it does not transitively pull in recipes that `foo.jz` imported privately.
+`export *` includes only functions that `foo.jaz` itself exports — it does not transitively pull in functions that `foo.jaz` imported privately.
 
 ### Import/export semantics summary
 
-| Form                                    | Callable as         | CLI / `jz --list` |
-| --------------------------------------- | ------------------- | ----------------- |
-| `from ./foo.jz import bar as ns`        | `🐭.ns.bar()`       | ✗                 |
-| `from ./foo.jz import (a, b) as ns`     | `🐭.ns.a()`, `🐭.ns.b()` | ✗            |
-| `from ./foo.jz import * as ns`          | `🐭.ns.<recipe>()`  | ✗                 |
-| `from ./foo.jz export bar`              | `🐭.bar()`          | ✓                 |
-| `from ./foo.jz export bar as hello`     | `🐭.hello()`        | ✓                 |
-| `from ./foo.jz export *`               | `🐭.<recipe>()`     | ✓                 |
+| Form                                 | Callable as              | CLI / `jaz --list` |
+| ------------------------------------ | ------------------------ | ------------------ |
+| `from ./foo.jaz import bar as ns`    | `🐭.ns.bar()`            | ✗                  |
+| `from ./foo.jaz import (a, b) as ns` | `🐭.ns.a()`, `🐭.ns.b()` | ✗                  |
+| `from ./foo.jaz import * as ns`      | `🐭.ns.<function>()`     | ✗                  |
+| `from ./foo.jaz export bar`          | `🐭.bar()`               | ✓                  |
+| `from ./foo.jaz export bar as hello` | `🐭.hello()`             | ✓                  |
+| `from ./foo.jaz export *`            | `🐭.<function>()`        | ✓                  |
 
 ---
 
 ## 10. CLI
 
 ```
-jz <recipe> [arg=value ...]   # run a recipe
-jz --list                     # list available recipes
-jz --dry-run <recipe>         # show what would execute without running
+jaz <target> [arg=value ...]   # run a target
+jaz --list                     # list available targets
+jaz --dry-run <target>         # show what would execute without running
 ```
 
 ### Argument passing
@@ -396,30 +406,30 @@ jz --dry-run <recipe>         # show what would execute without running
 Arguments are always named:
 
 ```
-jz debug name=maarten
+jaz debug name=maarten
 ```
 
-As a convenience, the first declared parameter of a recipe may be passed positionally at the CLI:
+As a convenience, the first declared parameter of a target may be passed positionally at the CLI:
 
 ```
-jz build myapp        # equivalent to: jz build target=myapp
+jaz build myapp        # equivalent to: jaz build target=myapp
 ```
 
 Passing the same argument both positionally and by name is an error. If mixing positional and named, the positional argument must come first.
 
-Within `.jazz` files, all arguments must be named — positional shorthand is CLI-only.
+Within `.jaz` files, all arguments must be named — positional shorthand is CLI-only.
 
-### Default recipe
+### Default behaviour
 
-Running `jz` with no arguments lists available recipes.
+Running `jaz` with no arguments lists available targets.
 
 ---
 
 ## 11. Two-Phase Execution
 
-Jazzoo processes `.jz` files in two phases:
+Jazzoo processes `.jaz` files in two phases:
 
-**Phase 1 — Jazzoo parser (Lark/PEG):** Parses the full file structure — global/module declarations, recipe definitions, attributes, dependencies, imports, assignments, and expressions.
+**Phase 1 — Jazzoo parser (Lark/PEG):** Parses the full file structure — global/module declarations, function definitions, attributes, dependencies, imports, assignments, and expressions.
 
 **Phase 2 — Template substitution:** Before each shell line or shebang block is executed, jazzoo performs variable substitution: bare references, braced references, and escape sequences are resolved against the current namespace state.
 
@@ -427,8 +437,42 @@ Shell lines and shebang blocks are otherwise treated as opaque strings by phase 
 
 ---
 
-## 12. Open Questions
+## 12. Scope and Object Model
+
+Jazzoo's parse tree is structured as nested scopes. The entry-point `.jaz` file is the root module. Imported modules are sub-modules of the module that imports them.
+
+```python
+class Variable:
+    name: str
+    value: str
+
+class Scope:
+    variables: T.List[Variable]
+    functions: T.List[Function]
+
+class Module(Scope):
+    modules: T.List[Module]
+
+class Parameter:
+    name: str
+    default: T.Optional[str]    # None = required
+
+class Function(Scope):
+    parameters: T.List[Parameter]
+    is_target: bool              # False for [private] functions
+```
+
+Key properties:
+
+- **`Module`** is a `Scope` and can contain sub-modules (from imports) and functions.
+- **`Function`** is a `Scope` and can contain local functions (section 7), but not sub-modules.
+- **Parameters** are the static call signature. At call time, jazzoo validates the arguments against `parameters`, then populates `variables` with the resolved values. The function body only ever reads from `variables`.
+- **Targets** are functions with `is_target = True` — i.e. all functions not marked `[private]`. Only targets are callable from the CLI and visible in `jaz --list`.
+
+---
+
+## 13. Open Questions
 
 - **`set shell`**: Should jazzoo support configuring the default shell (e.g. bash vs sh vs fish)? Currently unspecified.
-- **Circular imports**: Behaviour on circular imports is undefined — likely a load-time error.
-- **Module-qualified CLI calls**: How to invoke a non-re-exported recipe directly by CLI for debugging purposes (e.g. `jz --debug docker.build`)? Currently not supported.
+- **Circular imports**: Circular imports are allowed. Modules are cached by resolved file path after first load; a circular import receives the cached partially-initialized module. Circular references used only at call time (mid-body function calls) are safe. Circular references at load time — module-level variable assignments that call into a module not yet fully initialized — are a runtime error. This is the same model as TypeScript (live bindings resolved at access time), which is more predictable than Python's approach (copied values resolved at import time, where failures depend on statement order).
+- **Module-qualified CLI calls**: How to invoke a private function directly by CLI for debugging purposes (e.g. `jaz --module docker.build`)? Currently not supported.
