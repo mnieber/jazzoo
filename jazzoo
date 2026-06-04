@@ -1,0 +1,51 @@
+# This is an example jazzoo file.
+# Invocation: `jz debug`,
+
+import './just/docker/index.just' as docker
+
+# define a global variable (goat namespace)
+# allowed characters in a namespace are letters, numbers, hyphens and underscores.
+🐐.log-level = "high"
+
+# define a module variable (mouse namespace)
+🐭.tracing = True
+
+# Show how to use variables in a recipe.
+debug(name="me"): _bar(name=🐆.level)
+    # define a local variable (leopard namespace)
+    🐆.dry-run = "--dry-run" if 🐐.log-level == "high" else ""
+    # there is usually no need to escape a variable
+    echo "Running test with log level: 🐐.log-level for user: 🐆.name"
+    # you can run a different recipe midway
+    🐭._bar(name="anonymous")
+    🐭.docker.build()
+    # usage in a shell command
+    docker compose up --log-level=🐐.log-level 🐆.dry-run
+
+[private]
+_bar(name="anonymous"):
+    echo "This is a secret recipe that won't show up in `jz --list`"
+    echo "Tracing is: 🐭.tracing, fyi"
+
+# Show escaping
+foo(name="bar", level="high"):
+    # you can escape a variable if you have to.
+    # double braces with a jazzoo namespace emoji in them are recognized as a variable reference, even inside a string
+    echo "Running test with log level={{ 🐐.log_level }}-setting for user(name=🐆.name)"
+    # you can still insert a mouse in a string if you want
+    echo "Running test with \🐭.tracing set to: 🐭.tracing"
+    # a ternary expression in a shell command must be braced.
+    echo "Running test with \🐭.tracing set to: {{ 🐭.tracing if 🐭.tracing else 'Nothing' }}"
+    # the follow line has no variable references or variable expansion, just a string with emojis in it
+    echo "Jazzoo supports the {{ \🐐.log_level }}-setting syntax"
+
+# Show Python recipe
+help:
+    #!/usr/bin/env python3
+    print("Tracing is: 🐭.tracing, fyi")
+
+# Note that only named recipe args are supported.
+# However, a CLI call may omit the name of the first arg, and call `jz foo bar` instead of `jz foo name=bar`.
+# The following cases are errors:
+# `jz foo level=low bar` (positional arg must come first)
+# `jz foo bar name=bar` (this is using the same arg as both a positional and named arg, which is not allowed)
