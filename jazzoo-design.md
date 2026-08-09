@@ -28,7 +28,7 @@ Jazzoo has three variable (and callable) namespaces, each identified by an emoji
 
 ### Global and module variables
 
-Declared at the top level of a `.jazz` file:
+Declared at the top level of a `.jaz` file:
 
 ```
 🐐.log-level = "high"
@@ -38,10 +38,12 @@ Declared at the top level of a `.jazz` file:
 ### Types
 
 All values are strings. There are no integers. Path expressions (see section 5) produce path values, which are strings that may be canonicalized — see below.
+TODO: Can values be lists, dicts and sets?
 
 ### Truthiness
 
 In ternary expressions, a string value is falsy if its lowercased form is in `["0", "false", "no", ""]`. All other strings are truthy. This allows natural use of env-var-style boolean flags.
+TODO: If values can be lists, dicts and sets then we need falsy values for those.
 
 ### Magic variables
 
@@ -136,9 +138,25 @@ The `/` operator joins two string values as path segments, producing a new strin
 🐆.out = 🐭.DIR_PATH / "build/output"
 ```
 
-Canonicalization (resolving `..`, symlinks, etc.) is applied only when the result is an absolute path. Relative results are kept as-is — a simple string join with `/`.
+Path joins are a **pure string join** — `..`, symlinks, and redundant separators are left untouched. Path expressions can be chained: `a / b / c` is left-associative. Joining never canonicalizes on its own; the only way to canonicalize is the explicit goat marker below.
 
-Path expressions can be chained: `a / b / c` is left-associative.
+#### Explicit resolution: `/ 🐐`
+
+Placing `🐐` as a path segment canonicalizes the path accumulated **to its left** — resolving `..`, `.`, symlinks, and redundant separators — at the point where it appears. It is left-associative, like `/`, and reads as "resolve everything so far":
+
+```
+🐭.config = 🐭.get_base_path() / "../config.json" / 🐐   # resolve the whole join
+🐭.config = 🐭.get_base_path() / 🐐 / "../config.json"   # resolve the prefix, then join "../config.json" as a raw string
+```
+
+Semantics:
+
+- **Left-fold trigger.** In `a / b / 🐐 / c / d`, the prefix `a / b` is canonicalized first, then `c` and `d` are joined onto the result as raw strings. A trailing `/ 🐐` resolves the entire expression.
+- **Presence is the sole trigger.** A join with no `🐐` is _always_ a pure string join and is never canonicalized, regardless of whether the result is absolute or relative.
+- **Repeatable.** `🐐` may appear more than once; each occurrence canonicalizes the path accumulated up to that point. This makes "resolve a base, append, then re-resolve" expressible: `base / 🐐 / "../x" / 🐐`.
+- **Relative prefixes resolve against CWD.** If the accumulated prefix is relative when `🐐` is applied, it is canonicalized relative to the current working directory (the directory `jaz` was invoked from), matching `pathlib.Path.resolve()`.
+
+Note that `🐐` in path position is a resolution marker, not a namespace reference — it is the one context where the bare goat sigil does not denote the global namespace.
 
 ---
 
@@ -247,6 +265,9 @@ help:
     #!/usr/bin/env python3
     print("Tracing is: 🐭.tracing, fyi")
     return "done"
+
+test:
+    🐆.result = 🐭.help()  # will contain "done"
 ```
 
 Before execution, jazzoo sweeps the shebang block top to bottom, processing each line in order:
@@ -451,6 +472,7 @@ class Scope:
     functions: T.List[Function]
 
 class Module(Scope):
+    filename: str
     modules: T.List[Module]
 
 class Parameter:
