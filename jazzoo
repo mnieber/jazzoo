@@ -42,6 +42,7 @@ foo(name="bar", level="high"):
 # Show Python recipe
 help:
     #!/usr/bin/env python3
+    🐆.dry-run = True
     print("Tracing is: 🐭.tracing, fyi")
 
 # Note that only named recipe args are supported.
