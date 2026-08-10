@@ -3,13 +3,15 @@ from jazzoo.modules.rules.get_function_by_path import get_function_by_path
 from jazzoo.modules.rules.get_targets import get_targets
 from jazzoo.runtime.utils.test_utils import save_fixture
 
-# A library module used as the export source. It exports two functions and
-# privately imports something of its own to exercise export-* non-transitivity.
+# A library module used as the export source. It exports two of its own
+# functions (bar, okay), re-exports one function from helper.jaz (some_target),
+# and privately imports another (other).
 save_fixture("""# foo.jaz
 🐐.test = 123
 🐭.test = "mouse"
 
-from ./helper.jaz import secret as _h
+from ./helper.jaz import other as _h
+from ./helper.jaz export some_target
 
 bar():
     #!/usr/bin/env bash
@@ -20,59 +22,100 @@ okay():
     echo "okay"
 """)
 
-# A second-level module that foo.jaz privately imports from. Its `secret` must
-# NOT leak through `from ./foo.jaz export *`.
+# A second-level module.
 save_fixture("""# helper.jaz
-secret():
+some_target():
     #!/usr/bin/env bash
-    echo "secret"
+    echo "some_target"
+
+other():
+    #!/usr/bin/env bash
+    echo "other"
 """)
 
 
 def test_export_single():
-    jazzoo_fn = save_fixture("""# test_export_single.jaz
-    from ./foo.jaz export bar
-    """)
-    root_module = parse_module(jazzoo_fn)
+    """When you export a function (bar) then it should be marked as a target
+    and appear in the list of targets.
+    """
+    if True:
+        # Config
+        jazzoo_fn = save_fixture("""# test_export_single.jaz
+        from ./foo.jaz export bar
+        """)
 
-    # Flat in root: 🐭.bar(), not 🐭.foo.bar().
-    fn = get_function_by_path(root_module, "bar")
-    assert fn is not None
-    assert fn.is_target is True
+        # Run
+        root_module = parse_module(jazzoo_fn)
+        fn = get_function_by_path(root_module, "bar")
 
-    # Listed: it's a direct-member target of the root module.
-    assert "bar" in [f.name for f in get_targets(root_module)]
+        # Assert
+        assert fn is not None
+        assert fn.is_target is True
+        assert "bar" in [f.name for f in get_targets(root_module)]
+
+    """This also works when using an alias"""
+    if True:
+        # Config
+        jazzoo_fn = save_fixture("""# test_export_alias.jaz
+        from ./foo.jaz export bar as hello
+        """)
+
+        # Run
+        root_module = parse_module(jazzoo_fn)
+
+        # Assert
+        assert get_function_by_path(root_module, "hello") is not None
+        assert get_function_by_path(root_module, "bar") is None
+        assert "hello" in [f.name for f in get_targets(root_module)]
 
 
-def test_export_alias():
-    jazzoo_fn = save_fixture("""# test_export_alias.jaz
-    from ./foo.jaz export bar as hello
-    """)
-    root_module = parse_module(jazzoo_fn)
+def test_reexported_function_is_a_target_of_foo():
+    """A function foo.jaz re-exports from helper.jaz becomes a target of foo."""
+    if True:
+        # Config
+        jazzoo_fn = save_fixture("""# test_reexport.jaz
+        from ./foo.jaz export some_target
+        """)
 
-    assert get_function_by_path(root_module, "hello") is not None
-    assert get_function_by_path(root_module, "bar") is None
-    assert "hello" in [f.name for f in get_targets(root_module)]
+        # Run
+        root_module = parse_module(jazzoo_fn)
+        fn = get_function_by_path(root_module, "some_target")
+
+        # Assert
+        assert fn is not None
+        assert fn.is_target is True
+        assert "some_target" in [f.name for f in get_targets(root_module)]
 
 
 def test_export_tuple():
-    jazzoo_fn = save_fixture("""# test_export_tuple.jaz
-    from ./foo.jaz export (bar, okay)
-    """)
-    root_module = parse_module(jazzoo_fn)
+    """A tuple is used when you want to export multiple functions at once."""
+    if True:
+        # Config
+        jazzoo_fn = save_fixture("""# test_export_tuple.jaz
+        from ./foo.jaz export (bar, okay)
+        """)
 
-    names = {f.name for f in get_targets(root_module)}
-    assert names == {"bar", "okay"}
+        # Run
+        root_module = parse_module(jazzoo_fn)
+
+        # Assert
+        names = {f.name for f in get_targets(root_module)}
+        assert names == {"bar", "okay"}
 
 
 def test_export_star():
-    jazzoo_fn = save_fixture("""# test_export_star.jaz
-    from ./foo.jaz export *
-    """)
-    root_module = parse_module(jazzoo_fn)
+    """You can export all target functions from a module using the `*` syntax."""
+    if True:
+        # Config
+        jazzoo_fn = save_fixture("""# test_export_star.jaz
+        from ./foo.jaz export *
+        """)
 
-    names = {f.name for f in get_targets(root_module)}
-    # export * pulls in foo's own exports only...
-    assert names == {"bar", "okay"}
-    # ...never the functions foo merely imported privately.
-    assert get_function_by_path(root_module, "secret") is None
+        # Run
+        root_module = parse_module(jazzoo_fn)
+
+        # Assert
+        names = {f.name for f in get_targets(root_module)}
+        assert names == {"bar", "okay", "some_target"}
+        # `other` was only privately imported by foo, so it does not leak.
+        assert get_function_by_path(root_module, "other") is None
