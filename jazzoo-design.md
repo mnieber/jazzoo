@@ -60,7 +60,9 @@ Jazzoo provides built-in read-only variables using uppercase snake_case names. M
 
 `🐐.DIR_PATH` is particularly useful for resolving project-root-relative paths regardless of where `jaz` is invoked from.
 
----
+### Environment variables
+
+🐐.SOME_ALL_CAPS_VALUE refers to an environment variable. 🐐.SOME_ALL_CAPS_VALUE = "foo" sets an environment variable.
 
 ## 4. Variable Substitution
 
