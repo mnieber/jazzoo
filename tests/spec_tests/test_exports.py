@@ -119,3 +119,27 @@ def test_export_star():
         assert names == {"bar", "okay", "some_target"}
         # `other` was only privately imported by foo, so it does not leak.
         assert get_function_by_path(root_module, "other") is None
+
+
+def test_targets_and_re_exported_targets_are_listed():
+    """Targets and re-exported targets are listed by `jaz --list`."""
+    if True:
+        # Config
+        jazzoo_fn = save_fixture("""# test_import_reexported.jaz
+        from ./foo.jaz export (bar as baz,)
+
+        qux():
+            #!/usr/bin/env bash
+            echo "qux"
+        """)
+
+        # Run
+        root_module = parse_module(jazzoo_fn)
+        baz = get_function_by_path(root_module, "baz")
+        qux = get_function_by_path(root_module, "qux")
+
+        # Assert
+        assert baz.is_target is True
+        assert baz in get_targets(root_module)
+        assert qux.is_target is True
+        assert qux in get_targets(root_module)

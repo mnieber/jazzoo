@@ -1,6 +1,7 @@
 import os
 from jazzoo.modules.rules.parse_module import parse_module
 from jazzoo.modules.rules.get_child_module_by_name import get_child_module_by_name
+from jazzoo.modules.rules.get_module_by_path import get_module_by_path
 from jazzoo.modules.rules.get_function_by_path import get_function_by_path
 from jazzoo.modules.rules.get_targets import get_targets
 from jazzoo.modules.rules.eval import eval
@@ -55,28 +56,11 @@ def test_single_import():
         assert get_targets(root_module) == []
 
 
-def test_import_tuple():
-    """You can import multiple functions from a module into an alias sub-module."""
+def test_import_tuple_and_assign_alias():
+    """You can import a function from a module into an alias sub-module, and assign an alias."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_import_tuple.jaz
-        from ./foo.jaz import (bar, okay) as baz
-        """)
-
-        # Run
-        root_module = parse_module(jazzoo_fn)
-
-        # Assert
-        assert get_function_by_path(root_module, "baz.bar") is not None
-        assert get_function_by_path(root_module, "baz.okay") is not None
-        assert get_targets(root_module) == []
-
-
-def test_import_symbol_alias():
-    """You can import a function from a module into an alias sub-module, and rename it."""
-    if True:
-        # Config
-        jazzoo_fn = save_fixture("""# test_import_symbol_alias.jaz
+        jazzoo_fn = save_fixture("""# test_import_tuple_and_assign_alias.jaz
         from ./foo.jaz import (bar as hello, okay) as baz
         """)
 
@@ -107,13 +91,13 @@ def test_import_star():
         assert get_targets(root_module) == []
 
 
-def test_mouse_resolves_against_definer():
+def test_resolve_module_symbols():
     """Symbols defined in the module scope are resolved against the module scope."""
     if True:
         # Config
         # Caller defines its own 🐭.test; the imported bar() must still resolve
         # 🐭.test against foo.jaz, not against the caller.
-        root_module_fn = save_fixture("""# test_mouse_resolves_against_definer.jaz
+        root_module_fn = save_fixture("""# test_resolve_module_symbols.jaz
         🐭.test = "caller"
 
         from ./foo.jaz import bar as baz
@@ -150,3 +134,24 @@ def test_global_symbols_are_shared_across_modules():
         assert eval(root_module, "🐭.g()") == "from-root"
         assert eval(glob_module, "🐐.shared") == "from-root"
         assert eval(glob_module, "🐭.touch()") == "from-root"
+
+
+def test_targets_from_imported_modules_are_not_listed():
+    """Targets from imported modules are not targets of the root module, and
+    are not listed by `jaz --list`."""
+    if True:
+        # Config
+        jazzoo_fn = save_fixture("""# test_import_not_listed.jaz
+        from ./foo.jaz import bar as baz
+        """)
+
+        # Run
+        root_module = parse_module(jazzoo_fn)
+        baz_module = get_module_by_path(root_module, "baz")
+        bar = get_function_by_path(root_module, "baz.bar")
+
+        # Assert
+        assert bar.is_target is True
+        assert bar not in get_targets(root_module)
+        assert get_targets(root_module) == []
+        assert bar in get_targets(baz_module)
