@@ -1,5 +1,5 @@
 from jazzoo.modules.rules.parse_module import parse_module
-from jazzoo.modules.rules.get_child_module_by_name import get_child_module_by_name
+from jazzoo.modules.rules.get_module_by_path import get_module_by_path
 from jazzoo.modules.rules.get_function_by_path import get_function_by_path
 from jazzoo.modules.rules.get_targets import get_targets
 from jazzoo.runtime.utils.test_utils import save_fixture
@@ -18,21 +18,46 @@ bar():
 """)
 
 
-def test_import_target_not_listed_at_root():
-    # Root privately imports foo; foo.bar is a target intrinsically, but is
-    # nested under the alias sub-module rather than a direct member of root.
-    jazzoo_fn = save_fixture("""# test_import_not_listed.jaz
-    from ./foo.jaz import bar as baz
-    """)
-    root_module = parse_module(jazzoo_fn)
+def test_targets_from_imported_modules_are_not_listed():
+    """Targets from imported modules are not targets of the root module, and
+    are not listed by `jaz --list`."""
+    if True:
+        # Config
+        jazzoo_fn = save_fixture("""# test_import_not_listed.jaz
+        from ./foo.jaz import bar as baz
+        """)
 
-    baz_module = get_child_module_by_name(root_module, "baz")
-    bar = get_function_by_path(root_module, "baz.bar")
+        # Run
+        root_module = parse_module(jazzoo_fn)
+        baz_module = get_module_by_path(root_module, "baz")
+        bar = get_function_by_path(root_module, "baz.bar")
 
-    # Intrinsic target-ness survives the import...
-    assert bar.is_target is True
-    # ...but listability requires being a direct member of the root module.
-    assert bar not in get_targets(root_module)
-    assert get_targets(root_module) == []
-    # The sub-module's own targets do not surface at the root either.
-    assert bar in get_targets(baz_module)
+        # Assert
+        assert bar.is_target is True
+        assert bar not in get_targets(root_module)
+        assert get_targets(root_module) == []
+        assert bar in get_targets(baz_module)
+
+
+def test_targets_and_re_exported_targets_are_listed():
+    """Targets and re-exported targets are listed by `jaz --list`."""
+    if True:
+        # Config
+        jazzoo_fn = save_fixture("""# test_import_reexported.jaz
+        from ./foo.jaz export (bar as baz,)
+
+        qux():
+            #!/usr/bin/env bash
+            echo "qux"
+        """)
+
+        # Run
+        root_module = parse_module(jazzoo_fn)
+        baz = get_function_by_path(root_module, "baz")
+        qux = get_function_by_path(root_module, "qux")
+
+        # Assert
+        assert baz.is_target is True
+        assert baz in get_targets(root_module)
+        assert qux.is_target is True
+        assert qux in get_targets(root_module)
