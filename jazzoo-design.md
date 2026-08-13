@@ -45,24 +45,22 @@ TODO: Can values be lists, dicts and sets?
 In ternary expressions, a string value is falsy if its lowercased form is in `["0", "false", "no", ""]`. All other strings are truthy. This allows natural use of env-var-style boolean flags.
 TODO: If values can be lists, dicts and sets then we need falsy values for those.
 
-### Magic variables
+### System variables
 
-Jazzoo provides built-in read-only variables using uppercase snake_case names. Module-scoped magic variables reflect the file they appear in:
+Jazzoo provides built-in read-only variables:
 
-| Variable       | Scope | Value                                                          |
-| -------------- | ----- | -------------------------------------------------------------- |
-| `🐭.FILE_NAME` | 🐭    | Filename of the current module (e.g. `index.jaz`)              |
-| `🐭.FILE_PATH` | 🐭    | Absolute path of the current module file                       |
-| `🐭.DIR_PATH`  | 🐭    | Absolute path of the directory containing the current module   |
-| `🐐.FILE_NAME` | 🐐    | Filename of the entry-point `.jaz` file invoked by `jaz`       |
-| `🐐.FILE_PATH` | 🐐    | Absolute path of the entry-point `.jaz` file                   |
-| `🐐.DIR_PATH`  | 🐐    | Absolute path of the directory containing the entry-point file |
-
-`🐐.DIR_PATH` is particularly useful for resolving project-root-relative paths regardless of where `jaz` is invoked from.
+| Variable                  | Value                                                          |
+| ------------------------- | -------------------------------------------------------------- |
+| `⚙️.module.basename`      | Filename of the current module (e.g. `index.jaz`)              |
+| `⚙️.module.path`          | Absolute path of the current module file                       |
+| `⚙️.module.dirname`       | Absolute path of the directory containing the current module   |
+| `⚙️.root_module.basename` | Filename of the entry-point `.jaz` file invoked by `jaz`       |
+| `⚙️.root_module.path`     | Absolute path of the entry-point `.jaz` file                   |
+| `⚙️.root_module.dirname`  | Absolute path of the directory containing the entry-point file |
 
 ### Environment variables
 
-🐐.SOME_ALL_CAPS_VALUE refers to an environment variable. 🐐.SOME_ALL_CAPS_VALUE = "foo" sets an environment variable.
+⚙️.env.SOME_ALL_CAPS_VALUE refers to an environment variable.
 
 ## 4. Variable Substitution
 
@@ -137,28 +135,26 @@ The `/` operator joins two string values as path segments, producing a new strin
 
 ```
 🐭.config = 🐭.get_base_path() / "../config.json"
-🐆.out = 🐭.DIR_PATH / "build/output"
+🐆.out = ⚙️.module.dirname / "build/output"
 ```
 
 Path joins are a **pure string join** — `..`, symlinks, and redundant separators are left untouched. Path expressions can be chained: `a / b / c` is left-associative. Joining never canonicalizes on its own; the only way to canonicalize is the explicit goat marker below.
 
-#### Explicit resolution: `/ 🐐`
+#### Explicit resolution: `| ⚙️.abs`
 
-Placing `🐐` as a path segment canonicalizes the path accumulated **to its left** — resolving `..`, `.`, symlinks, and redundant separators — at the point where it appears. It is left-associative, like `/`, and reads as "resolve everything so far":
+Placing `| ⚙️.abs` as a path segment pipes the left side of the path to the ⚙️.abs function — resolving `..`, `.`, symlinks, and redundant separators — at the point where it appears. It is left-associative, like `| ⚙️.abs`, and reads as "resolve everything so far":
 
 ```
-🐭.config = 🐭.get_base_path() / "../config.json" / 🐐   # resolve the whole join
-🐭.config = 🐭.get_base_path() / 🐐 / "../config.json"   # resolve the prefix, then join "../config.json" as a raw string
+🐭.config = 🐭.get_base_path() / "../config.json" | ⚙️.abs   # resolve the whole join
+🐭.config = 🐭.get_base_path() | ⚙️.abs / "../config.json"   # resolve the prefix, then join "../config.json" as a raw string
 ```
 
-Semantics:
+Other pipe operators are:
 
-- **Left-fold trigger.** In `a / b / 🐐 / c / d`, the prefix `a / b` is canonicalized first, then `c` and `d` are joined onto the result as raw strings. A trailing `/ 🐐` resolves the entire expression.
-- **Presence is the sole trigger.** A join with no `🐐` is _always_ a pure string join and is never canonicalized, regardless of whether the result is absolute or relative.
-- **Repeatable.** `🐐` may appear more than once; each occurrence canonicalizes the path accumulated up to that point. This makes "resolve a base, append, then re-resolve" expressible: `base / 🐐 / "../x" / 🐐`.
-- **Relative prefixes resolve against CWD.** If the accumulated prefix is relative when `🐐` is applied, it is canonicalized relative to the current working directory (the directory `jaz` was invoked from), matching `pathlib.Path.resolve()`.
-
-Note that `🐐` in path position is a resolution marker, not a namespace reference — it is the one context where the bare goat sigil does not denote the global namespace.
+- ⚙️.basename: yields the basename
+- ⚙️.dirname: yields the dirname
+- ⚙️.ext: yields the extension
+- ⚙️.stem: yields the path except for the extension
 
 ---
 
@@ -395,8 +391,8 @@ Exported functions land flat in `🐭` and become targets — visible to outside
 
 ```
 from ./foo.jaz export bar                           # 🐭.bar()
-from ./foo.jaz export bar as hello                  # 🐭.hello()
 from ./foo.jaz export (bar, okay)                   # 🐭.bar(), 🐭.okay()
+from ./foo.jaz export (bar as hello,)               # 🐭.hello()
 from ./foo.jaz export (bar as hello, okay)          # 🐭.hello(), 🐭.okay()
 from ./foo.jaz export *                             # 🐭.<all exported functions from foo>()
 ```
