@@ -11,7 +11,7 @@ import './just/docker/index.just' as docker
 🐭.tracing = True
 
 # Show how to use variables in a recipe.
-debug(name="me"): _bar(name=🐆.level)
+debug(name="me"): _bar(name=🐆.name)
     # define a local variable (leopard namespace)
     🐆.dry-run = "--dry-run" if 🐐.log-level == "high" else ""
     # there is usually no need to escape a variable
@@ -21,6 +21,7 @@ debug(name="me"): _bar(name=🐆.level)
     🐭.docker.build()
     # usage in a shell command
     docker compose up --log-level=🐐.log-level 🐆.dry-run
+
 
 [private]
 _bar(name="anonymous"):
