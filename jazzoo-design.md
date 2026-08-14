@@ -38,12 +38,10 @@ Declared at the top level of a `.jaz` file:
 ### Types
 
 All values are strings. There are no integers. Path expressions (see section 5) produce path values, which are strings that may be canonicalized — see below.
-TODO: Can values be lists, dicts and sets?
 
 ### Truthiness
 
 In ternary expressions, a string value is falsy if its lowercased form is in `["0", "false", "no", ""]`. All other strings are truthy. This allows natural use of env-var-style boolean flags.
-TODO: If values can be lists, dicts and sets then we need falsy values for those.
 
 ### System variables
 
@@ -197,6 +195,11 @@ Dependencies are declared after the colon, before the body:
 ```
 debug(name="me"): _helper(name=🐆.name)
     echo "Running debug for: 🐆.name"
+
+foo(name="me"): \
+        _helper(name=🐆.name) \
+        _helper(name=🐭.bar)
+    echo "Running debug for: 🐆.name"
 ```
 
 Dependencies run before the function body. Dependency arguments may reference `🐐`, `🐭`, and the function's own parameters — but not local `🐆` assignments, since those don't exist yet.
@@ -236,6 +239,16 @@ The caller captures it via assignment:
 
 Return values must be strings or booleans (booleans are auto-converted to `"true"` / `"false"`). Statement calls (not assigned) silently discard any return value.
 
+### Function pipe
+
+Functions can also be applied postfix using the pipe operator:
+
+```
+🐆.full-path = "input.json" | 🐭.make-full-path(style="linux) | 🐭.drop-config-dir-part
+```
+
+This requires that exactly one parameter is left unbound.
+
 ---
 
 ## 7. Local Functions
@@ -252,6 +265,11 @@ help(who="me"):
 
 Local functions have their own fresh `🐆` namespace — variables set inside do not leak to the parent. Parameters are passed explicitly. Local functions support the same body forms as regular functions: shell lines, assignments, shebang blocks, and nested local functions.
 
+### Suppress console output
+
+In the above example, `jazzoo` will print the echo statement itself to the console so the caller can see what is being executed.
+This can be suppressed using `@echo "Hello 🐆.who! Tracing is: 🐭.tracing"`.
+
 ---
 
 ## 8. Shebang Blocks
@@ -264,9 +282,18 @@ help:
     print("Tracing is: 🐭.tracing, fyi")
     return "done"
 
+    #!
+    echo "Last return value was 🐆.retval"
+
 test:
     🐆.result = 🐭.help()  # will contain "done"
 ```
+
+### Bare #!
+
+A bare shebang means that the previous shebang block ended and that we return to the default "jazzoo" execution mode.
+
+### Sweeping
 
 Before execution, jazzoo sweeps the shebang block top to bottom, processing each line in order:
 
@@ -495,4 +522,5 @@ Key properties:
 
 - **`set shell`**: Should jazzoo support configuring the default shell (e.g. bash vs sh vs fish)? Currently unspecified.
 - **Circular imports**: Circular imports are allowed. Modules are cached by resolved file path after first load; a circular import receives the cached partially-initialized module. Circular references used only at call time (mid-body function calls) are safe. Circular references at load time — module-level variable assignments that call into a module not yet fully initialized — are a runtime error. This is the same model as TypeScript (live bindings resolved at access time), which is more predictable than Python's approach (copied values resolved at import time, where failures depend on statement order).
-- **Module-qualified CLI calls**: How to invoke a private function directly by CLI for debugging purposes (e.g. `jaz --module docker.build`)? Currently not supported.
+- Should a non-zero exit code in a shell block be treated as an error?
+  - If yes, then should we capture stdout (instead of the exit code) in 🐆.retval?
