@@ -159,7 +159,7 @@ def test_dependencies_run_before_the_body():
 
         debug(name="me"): _helper(name=🐆.name)
             #!/usr/bin/env bash
-            🐆.retval = "Running debug for: 🐆.name"
+            echo "Running debug for: 🐆.name"
         """)
 
         # Run
@@ -198,27 +198,115 @@ def test_dependency_arguments_may_reference_globals_and_parameters():
         assert eval(root_module, "🐭.debug()") == "high on me"
 
 
-def test_booleans_are_converted_to_strings():
-    """Return values must be strings or booleans; booleans are auto-converted to
-    "true" / "false"."""
+def test_function_returns_the_output_of_its_last_step():
+    """Every step sets 🐆.retval from its stdout, so a function returns the output
+    of the last step that ran."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_retval_bool.jaz
-        yes():
-            #!/usr/bin/env python3
-            return True
+        jazzoo_fn = save_fixture("""# test_last_step.jaz
+        make-full-path(input):
+            #!/usr/bin/env bash
+            echo "/data/🐆.input"
 
-        no():
-            #!/usr/bin/env python3
-            return False
+        two-steps():
+            #!/usr/bin/env bash
+            echo "first"
+
+            #!/usr/bin/env bash
+            echo "second"
         """)
 
         # Run
         root_module = parse_module(jazzoo_fn)
 
         # Assert
-        assert eval(root_module, "🐭.yes()") == "true"
-        assert eval(root_module, "🐭.no()") == "false"
+        assert (
+            eval(root_module, '🐭.make-full-path(input="input.json")')
+            == "/data/input.json"
+        )
+        # Only the last step's output survives - the first one was overwritten.
+        assert eval(root_module, "🐭.two-steps()") == "second"
+
+
+def test_stdout_is_the_value_for_every_interpreter():
+    """A shebang block returns whatever it writes to stdout, in any interpreter."""
+    if True:
+        # Config
+        jazzoo_fn = save_fixture("""# test_stdout_is_value.jaz
+        from-bash():
+            #!/usr/bin/env bash
+            echo "/etc/jazzoo.conf"
+
+        from-python():
+            #!/usr/bin/env python3
+            print("/etc/jazzoo.conf")
+        """)
+
+        # Run
+        root_module = parse_module(jazzoo_fn)
+
+        # Assert
+        assert eval(root_module, "🐭.from-bash()") == "/etc/jazzoo.conf"
+        assert eval(root_module, "🐭.from-python()") == "/etc/jazzoo.conf"
+
+
+def test_retval_strips_one_trailing_newline():
+    """🐆.stdout is the raw stdout; 🐆.retval is the same with a single trailing
+    newline removed."""
+    if True:
+        # Config
+        jazzoo_fn = save_fixture("""# test_retval_newline.jaz
+        speak():
+            #!/usr/bin/env bash
+            echo "one"
+            echo "two"
+
+        check():
+            🐭.speak()
+            🐆.raw = 🐆.stdout
+            🐆.trimmed = 🐆.retval
+        """)
+
+        # Run
+        root_module = parse_module(jazzoo_fn)
+
+        # Assert
+        # echo emits a trailing newline; only that one is removed.
+        assert eval(root_module, "🐭.speak()") == "one\ntwo"
+        assert eval(root_module, "🐭.check()") == "one\ntwo"
+
+
+def test_explicit_retval_assignment_overrides_the_last_step():
+    """A body can assign 🐆.retval explicitly to return something other than its
+    last step's output."""
+    if True:
+        # Config
+        jazzoo_fn = save_fixture("""# test_explicit_retval.jaz
+        make-full-path(input):
+            🐆.retval = "/data/🐆.input"
+
+        keep-earlier-output():
+            #!/usr/bin/env bash
+            echo "the value I want"
+
+            🐆.wanted = 🐆.retval
+            #!/usr/bin/env bash
+            echo "noise"
+
+            🐆.retval = 🐆.wanted
+        """)
+
+        # Run
+        root_module = parse_module(jazzoo_fn)
+
+        # Assert
+        # No subprocess runs at all here - the assignment is the whole body.
+        assert (
+            eval(root_module, '🐭.make-full-path(input="input.json")')
+            == "/data/input.json"
+        )
+        # The later echo overwrote 🐆.retval, but the explicit assignment came after.
+        assert eval(root_module, "🐭.keep-earlier-output()") == "the value I want"
 
 
 def test_statement_calls_discard_the_return_value():
@@ -265,3 +353,30 @@ def test_local_variables_do_not_leak_to_the_caller():
         # Assert
         # The callee's 🐆.secret is a different variable from the caller's.
         assert eval(root_module, "🐭.debug()") == "mine"
+
+
+def test_a_local_function_does_not_overwrite_the_callers_retval():
+    """A local function has a fresh 🐆 namespace, including 🐆.retval and 🐆.stdout:
+    its own steps do not overwrite the enclosing function's."""
+    if True:
+        # Config
+        jazzoo_fn = save_fixture("""# test_local_fn_retval.jaz
+        help(who="me"):
+            🐆.dump(who):
+                #!/usr/bin/env bash
+                echo "Hello 🐆.who!"
+
+            #!/usr/bin/env bash
+            echo "outer output"
+
+            🐆.mine = 🐆.retval
+            🐆.inner = 🐆.dump(who=🐆.who)
+            🐆.retval = "🐆.inner / 🐆.mine"
+        """)
+
+        # Run
+        root_module = parse_module(jazzoo_fn)
+
+        # Assert
+        # The local function's echo did not clobber the caller's captured 🐆.retval.
+        assert eval(root_module, '🐭.help(who="maarten")') == "Hello maarten! / outer output"
