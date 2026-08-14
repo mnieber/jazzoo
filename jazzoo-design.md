@@ -366,9 +366,9 @@ __jazzoo_result__ = __jazzoo_block__()
 
 The return value must be a string or bool; other types raise an error at runtime.
 
-### Shell shebang blocks
+### Bash shebang blocks
 
-The exit code of a shell block is used as the return value. There is no `return` statement. The same sweep applies — Jazzoo assignments are extracted and references substituted before the block is handed to the shell.
+The return value of a bash block is whatever it prints to stdout, with trailing whitespace trimmed (note that the original stdout value is still available as 🐆.stdout, see below). If a bash shebang block returns a non-zero exit code then jazzoo treats it as an error (it prints the error and exits). The same sweep applies — Jazzoo assignments are extracted and references substituted before the block is handed to the shell.
 
 ### Stdout capture
 
@@ -522,5 +522,3 @@ Key properties:
 
 - **`set shell`**: Should jazzoo support configuring the default shell (e.g. bash vs sh vs fish)? Currently unspecified.
 - **Circular imports**: Circular imports are allowed. Modules are cached by resolved file path after first load; a circular import receives the cached partially-initialized module. Circular references used only at call time (mid-body function calls) are safe. Circular references at load time — module-level variable assignments that call into a module not yet fully initialized — are a runtime error. This is the same model as TypeScript (live bindings resolved at access time), which is more predictable than Python's approach (copied values resolved at import time, where failures depend on statement order).
-- Should a non-zero exit code in a shell block be treated as an error?
-  - If yes, then should we capture stdout (instead of the exit code) in 🐆.retval?
