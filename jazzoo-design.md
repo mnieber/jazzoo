@@ -110,6 +110,46 @@ To produce a literal `{{ 🐐.log-level }}` string:
 echo "Jazzoo supports the {{ \🐐.log-level }}-setting syntax"
 ```
 
+### Substitution is textual, and values are not escaped
+
+Substitution splices the value into the line as text, before the interpreter sees it. Jazzoo does not quote or escape what it splices, so a value containing interpreter syntax becomes interpreter syntax:
+
+```
+🐆.name = "; rm -rf ~ #"
+echo "Hello 🐆.name"          # the shell sees a second command
+```
+
+This is the same exposure that `just`, `make` and a bare `$VAR` in a shell script have, and it follows from substituting into blocks that jazzoo treats as opaque. Jazzoo cannot escape correctly on the user's behalf: the same mechanism substitutes into bash words, Python identifiers (see section 6), JSON literals and interpreters jazzoo knows nothing about, and the correct escaping differs in each. Automatic quoting would be wrong in most of them.
+
+In practice this matters when a value does **not** come from the `.jaz` file itself. A `.jaz` file is code the author already trusts — someone who can edit it does not need an injection to run commands. The channels that carry data from elsewhere are:
+
+- `⚙️.stdout` and `⚙️.output` — the output of the last block, which may include filenames, branch names, or anything else a command printed
+- `⚙️.env.*` — environment variables, especially in CI
+- arguments passed on the command line
+
+Treat values from those three as untrusted, and escape them for the context they land in.
+
+### Escaping values with `⚙️.sh-quote`
+
+`⚙️.sh-quote` renders a value as a single, safely quoted POSIX shell word:
+
+```
+🐆.safe = 🐆.filename | ⚙️.sh-quote
+echo 🐆.safe                  # always exactly one shell word
+```
+
+It wraps the value in single quotes and escapes any single quotes inside it, so the result cannot expand, split, or terminate the surrounding command — the same guarantee as Python's `shlex.quote`. Use it whenever an untrusted value lands in a shell block:
+
+```
+list-branch(name):
+    🐆.safe-name = 🐆.name | ⚙️.sh-quote
+    git log 🐆.safe-name
+```
+
+Note that `⚙️.sh-quote` is a jazzoo pipe, evaluated in an expression before the line runs — it is not a shell pipeline. Applying it inside a shell line would be read by the shell, not by jazzoo.
+
+`⚙️.sh-quote` produces a *shell* word. It is not correct for Python, JSON, or any other interpreter, and applying it there yields a literal `'…'` string.
+
 ---
 
 ## 5. Expressions
@@ -152,6 +192,7 @@ Other pipe operators are:
 - ⚙️.dirname: yields the dirname
 - ⚙️.ext: yields the extension
 - ⚙️.stem: yields the path except for the extension
+- ⚙️.sh-quote: renders the value as a single, safely quoted POSIX shell word (see section 4)
 
 ---
 
@@ -528,6 +569,8 @@ Jazzoo processes `.jaz` files in two phases:
 **Phase 2 — Template substitution:** Before each shell line or shebang block is executed, jazzoo performs variable substitution: bare references, braced references, and escape sequences are resolved against the current namespace state.
 
 Shell lines and shebang blocks are otherwise treated as opaque strings by phase 1.
+
+Because phase 2 is textual and phase 1 never inspects the block's contents, jazzoo has no notion of the syntactic context a value lands in, and does not escape substituted values. See section 4 for what that means for untrusted input.
 
 ---
 
