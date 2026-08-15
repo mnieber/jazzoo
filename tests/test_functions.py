@@ -1,3 +1,8 @@
+import os
+
+import pytest
+
+from jazzoo.modules.errors import ArgumentError, ExecutionError, ResolutionError
 from jazzoo.modules.rules.parse_module import parse_module
 from jazzoo.modules.rules.get_function_by_path import get_function_by_path
 from jazzoo.modules.rules.get_targets import get_targets
@@ -251,7 +256,7 @@ def test_stdout_is_the_value_for_every_interpreter():
 
 
 def test_retval_strips_one_trailing_newline():
-    """🐆.stdout is the raw stdout; 🐆.retval is the same with a single trailing
+    """⚙️.stdout is the raw stdout; ⚙️.output is the same with a single trailing
     newline removed."""
     if True:
         # Config
@@ -303,7 +308,6 @@ def test_explicit_retval_assignment_overrides_the_last_step():
             eval(root_module, '🐭.make-full-path(input="input.json")')
             == "/data/input.json"
         )
-        # The later echo overwrote 🐆.retval, but the explicit assignment came after.
         assert eval(root_module, "🐭.keep-earlier-output()") == "the value I want"
 
 
@@ -349,12 +353,11 @@ def test_local_variables_do_not_leak_to_the_caller():
         root_module = parse_module(jazzoo_fn)
 
         # Assert
-        # The callee's 🐆.secret is a different variable from the caller's.
         assert eval(root_module, "🐭.debug()") == "mine"
 
 
 def test_a_local_function_does_not_overwrite_the_callers_retval():
-    """A local function has a fresh 🐆 namespace, including 🐆.retval and 🐆.stdout:
+    """A local function has a fresh 🐆 namespace, including 🐆.retval and ⚙️.stdout:
     its own steps do not overwrite the enclosing function's."""
     if True:
         # Config
@@ -377,7 +380,6 @@ def test_a_local_function_does_not_overwrite_the_callers_retval():
         root_module = parse_module(jazzoo_fn)
 
         # Assert
-        # The local function's echo did not clobber the caller's captured 🐆.retval.
         assert (
             eval(root_module, '🐭.help(who="maarten")')
             == "Hello maarten! / outer output"
