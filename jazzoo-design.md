@@ -330,6 +330,15 @@ Square brackets are used to create a curried function:
 ```
 
 You can think of this as creating a new function in which the `mode` parameter is bound to "dev". The caller may no longer supply an argument for `mode`.
+
+A bare parameter name inside the brackets does the opposite — it marks that parameter as explicitly **unbound**:
+
+```
+🐭.clean_up_name = 🐭.clean_up[name, max_length=3]
+```
+
+Here `name` is left open, `max_length` is bound to `3`, and every other parameter of `clean_up` must already have a default. This is the form used to prepare a function for a pipe (see below), where exactly one parameter must be left unbound.
+
 The function symbol itself is equivalent to applying empty square brackets to that function (which means that no parameters are bound):
 
 ```
@@ -392,7 +401,19 @@ Functions can also be applied postfix using the pipe operator:
 🐆.full-path = "input.json" | 🐭.make-full-path[style="linux"] | 🐭.drop-config-dir-part | 🐭.clean_up[name, max_length=3]
 ```
 
-This requires that exactly one parameter is left unbound for each function in the pipe.
+This requires that exactly one parameter is left unbound for each function in the pipe. The piped value becomes the argument for that parameter, and the call's return value is piped onwards to the next stage.
+
+A parameter is unbound if the curry expression does not bind it to a value — either because it is named bare in the brackets, or because the brackets are absent or empty. Which parameter is free must be unambiguous from the expression alone; defaults play no part in deciding it. It is an error for a stage to leave zero parameters unbound, or more than one.
+
+`🐭.drop-config-dir-part` above is piped without brackets, which is the same as `🐭.drop-config-dir-part[]` — so it must declare exactly one parameter in total. A function with more than one parameter has to say which is free, even when every other parameter has a default:
+
+```
+🐭.f[path]                # path is free; style takes its default
+🐭.f[style="posix"]       # equivalent, by binding everything else
+🐭.f                      # error for f(path, style="posix") - ambiguous
+```
+
+Naming the free parameter is usually clearer, since it also says that every other parameter falls back to its default.
 
 ---
 
@@ -471,6 +492,7 @@ from ./foo.jaz export *                             # 🐭.<all exported functio
 jaz <target> [arg=value ...]   # run a target
 jaz --list                     # list available targets
 jaz --dry-run <target>         # show what would execute without running
+jaz --trace <target>           # on error, also print the stack trace
 ```
 
 ### Argument passing
@@ -509,7 +531,73 @@ Shell lines and shebang blocks are otherwise treated as opaque strings by phase 
 
 ---
 
-## 12. Scope and Object Model
+## 12. Errors
+
+All errors jazzoo raises derive from a single base class, `JazzooError`. Subclasses exist to distinguish the kind of failure:
+
+```python
+class JazzooError(Exception):
+    message: str
+    filename: T.Optional[str]   # the .jaz file the error is attributed to
+    line: T.Optional[int]       # 1-based line number within that file
+
+class ParseError(JazzooError):       # malformed file, detected in phase 1
+class ResolutionError(JazzooError):  # unknown variable, function, module or namespace
+class ArgumentError(JazzooError):    # wrong or missing arguments at a call site
+class ModuleImportError(JazzooError):  # an import that cannot be satisfied
+class ExecutionError(JazzooError):   # a shebang block exited non-zero
+```
+
+None of these shadow a Python builtin, so they can be imported directly without aliasing.
+
+Every error carries the `.jaz` file and line it is attributed to, so the message can point at the offending source rather than at jazzoo's internals.
+
+### When errors are detected
+
+Errors are reported as early as they can be. Anything decidable from the parse tree alone is a **parse-time** error, raised when the file is loaded — before any subprocess runs, and regardless of which target was invoked. A `.jaz` file with a bad call site in one target therefore fails even when a different target is run, and `jaz --list` fails too. This is deliberate: mistakes surface immediately rather than when some rarely-used branch is first exercised.
+
+| Condition                                                        | Class           |
+| ---------------------------------------------------------------- | --------------- |
+| Syntax that does not parse                                        | `ParseError`    |
+| A positional argument in a `.jaz` file (`🐭.build("dev")`)        | `ArgumentError` |
+| A pipe stage leaving zero, or more than one, parameter unbound    | `ArgumentError` |
+| Binding an unknown parameter in a curry expression                | `ArgumentError` |
+| A call missing an argument for a required parameter               | `ArgumentError` |
+| A call supplying an argument for a parameter already bound by a curry | `ArgumentError` |
+| An import naming a file that does not exist                       | `ModuleImportError` |
+| An import naming a symbol the imported module does not export     | `ModuleImportError` |
+| A reference to a variable, function or module that does not exist  | `ResolutionError` |
+
+The rest are **run-time** errors, raised while a target executes:
+
+| Condition                                                     | Class            |
+| ------------------------------------------------------------- | ---------------- |
+| A shebang block exits non-zero                                 | `ExecutionError` |
+| A reference to a variable that exists but has no value yet     | `ResolutionError`|
+| A load-time circular import (see section 14)                   | `ModuleImportError`  |
+
+A run-time error **aborts the whole run** — jazzoo does not continue with the remaining lines of the body, with later dependencies, or with the target that triggered a dependency. Nothing is rolled back: steps that already ran have already had their effects.
+
+### What the user sees
+
+By default `jaz` prints only the error message, prefixed with its source location, and exits with a non-zero status:
+
+```
+$ jaz build
+jazzoo.jaz:12: error: build() has no parameter named 'profile'
+```
+
+Passing `--trace` additionally prints the Python stack trace, for debugging jazzoo itself:
+
+```
+jaz --trace build
+```
+
+A stack trace is never shown without `--trace` — it describes jazzoo's internals, not the user's `.jaz` file, and the location in the message is what the user can act on.
+
+---
+
+## 13. Scope and Object Model
 
 Jazzoo's parse tree is structured as nested scopes. The entry-point `.jaz` file is the root module. Imported modules are sub-modules of the module that imports them.
 
@@ -544,7 +632,7 @@ Key properties:
 
 ---
 
-## 13. Open Questions
+## 14. Open Questions
 
 - **`set shell`**: Should jazzoo support configuring the default shell (e.g. bash vs sh vs fish)? Currently unspecified.
 - **Circular imports**: Circular imports are allowed. Modules are cached by resolved file path after first load; a circular import receives the cached partially-initialized module. Circular references used only at call time (mid-body function calls) are safe. Circular references at load time — module-level variable assignments that call into a module not yet fully initialized — are a runtime error. This is the same model as TypeScript (live bindings resolved at access time), which is more predictable than Python's approach (copied values resolved at import time, where failures depend on statement order).
