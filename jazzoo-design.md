@@ -68,7 +68,9 @@ These are read-only but **not** constant — jazzoo updates them as a function b
 
 ### Environment variables
 
-⚙️.env.SOME_ALL_CAPS_VALUE refers to an environment variable.
+`⚙️.env.SOME_ALL_CAPS_VALUE` refers to an environment variable. All-caps is a convention, not a requirement. There is no syntax for enumerating the environment — variables are only ever accessed by name.
+
+An environment variable that is not set cannot be resolved, and referencing it is a `ResolutionError` like any other unresolvable reference. Use the `?` marker (see section 4) to say that absence is expected.
 
 ## 4. Variable Substitution
 
@@ -109,6 +111,53 @@ To produce a literal `{{ 🐐.log-level }}` string:
 ```
 echo "Jazzoo supports the {{ \🐐.log-level }}-setting syntax"
 ```
+
+### Optional references and defaults
+
+By default every reference must resolve: an unset variable is a `ResolutionError` (see section 12). Two markers relax that, and they apply uniformly to `🐐`, `🐭`, `🐆` and `⚙️.env`.
+
+`?` marks a reference as **possibly absent**. It resolves to the empty string instead of raising:
+
+```
+🐆.ci-flag = "--ci" if ⚙️.env.CI? else ""
+```
+
+`:-` supplies a **default** used when the value is empty:
+
+```
+🐐.log-level:-info
+```
+
+Combined as `?:-`, the reference may be absent *and* has a default — the default applies when it is absent or empty:
+
+```
+⚙️.env.LOG_LEVEL?:-info
+```
+
+The four forms:
+
+| Syntax                    | If absent          | If empty       |
+| ------------------------- | ------------------ | -------------- |
+| `⚙️.env.X`                | `ResolutionError`  | empty string   |
+| `⚙️.env.X?`               | empty string       | empty string   |
+| `⚙️.env.X:-y`             | `ResolutionError`  | `y`            |
+| `⚙️.env.X?:-y`            | `y`                | `y`            |
+
+A default may be a bare string or a quoted one; bare defaults end at the first whitespace, so quote anything containing spaces:
+
+```
+⚙️.env.GREETING?:-hello
+⚙️.env.GREETING?:-"hello there"
+```
+
+Both markers are part of the reference syntax, so they work in bare and braced positions alike, and `\` still terminates the variable name before them:
+
+```
+echo {{ ⚙️.env.LOG_LEVEL?:-info }}-setting
+echo ⚙️.env.HOST\?:-literal        # prints the value of HOST, then "?:-literal"
+```
+
+Note that `:-` was chosen over a bare `:` because colons follow references routinely in shell lines — `⚙️.env.HOST:8080`, `-v ⚙️.env.HOME:/data` — and a bare `:` would silently read those as defaults.
 
 ### Substitution is textual, and values are not escaped
 
@@ -609,14 +658,16 @@ Errors are reported as early as they can be. Anything decidable from the parse t
 | A call supplying an argument for a parameter already bound by a curry | `ArgumentError` |
 | An import naming a file that does not exist                       | `ModuleImportError` |
 | An import naming a symbol the imported module does not export     | `ModuleImportError` |
-| A reference to a variable, function or module that does not exist  | `ResolutionError` |
+| A call to a function or module that does not exist                | `ResolutionError` |
+
+Variable references are **not** checked at parse time. `🐐` and `🐭` variables may be assigned from any function body in any module, so whether a given reference resolves depends on which targets and dependencies have run — it is not decidable from the parse tree.
 
 The rest are **run-time** errors, raised while a target executes:
 
 | Condition                                                     | Class            |
 | ------------------------------------------------------------- | ---------------- |
 | A shebang block exits non-zero                                 | `ExecutionError` |
-| A reference to a variable that exists but has no value yet     | `ResolutionError`|
+| A reference that cannot be resolved, without a `?` marker      | `ResolutionError`|
 | A load-time circular import (see section 14)                   | `ModuleImportError`  |
 
 A run-time error **aborts the whole run** — jazzoo does not continue with the remaining lines of the body, with later dependencies, or with the target that triggered a dependency. Nothing is rolled back: steps that already ran have already had their effects.
