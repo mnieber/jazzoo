@@ -1,3 +1,6 @@
+import pytest
+
+from jazzoo.modules.errors import ArgumentError
 from jazzoo.modules.rules.parse_module import parse_module
 from jazzoo.modules.rules.eval import eval
 from jazzoo.runtime.utils.test_utils import save_fixture
@@ -215,3 +218,91 @@ def test_pipe_applies_to_builtin_functions():
         # Assert
         assert eval(root_module, "🐭.go()") == "/data/input.json"
         assert eval(root_module, "🐭.go2()") == "input"
+
+
+def test_a_pipe_stage_binding_every_parameter_is_an_argument_error():
+    """A pipe stage must leave exactly one parameter unbound. Binding them all
+    leaves nowhere for the piped value to go, and is an ArgumentError."""
+    if True:
+        # Config
+        jazzoo_fn = save_fixture("""# test_pipe_zero_unbound.jaz
+        from ./helpers.jaz import make-full-path as h
+
+        go():
+            🐆.retval = "x.json" | 🐭.h.make-full-path[input="a.json", style="linux"]
+        """)
+
+        # Run / Assert
+        with pytest.raises(ArgumentError):
+            parse_module(jazzoo_fn)
+
+
+def test_a_pipe_stage_leaving_two_parameters_unbound_is_an_argument_error():
+    """A pipe stage that leaves more than one parameter unbound is ambiguous - which
+    parameter is free must be decidable from the expression alone, and defaults play
+    no part in deciding it."""
+    if True:
+        # Config
+        jazzoo_fn = save_fixture("""# test_pipe_two_unbound.jaz
+        from ./helpers.jaz import make-full-path as h
+
+        go():
+            🐆.retval = "x.json" | 🐭.h.make-full-path
+        """)
+
+        # Run / Assert
+        # make-full-path(input, style="posix") has two parameters, so the bare
+        # symbol - equivalent to `[]` - leaves both unbound, even though `style`
+        # has a default.
+        with pytest.raises(ArgumentError):
+            parse_module(jazzoo_fn)
+
+
+def test_binding_an_unknown_parameter_in_a_curry_is_an_argument_error():
+    """A curry expression may only bind parameters the function declares."""
+    if True:
+        # Config
+        jazzoo_fn = save_fixture("""# test_curry_unknown_param.jaz
+        from ./helpers.jaz import make-full-path as h
+
+        🐭.build = 🐭.h.make-full-path[nonesuch="x"]
+        """)
+
+        # Run / Assert
+        with pytest.raises(ArgumentError):
+            parse_module(jazzoo_fn)
+
+
+def test_naming_an_unknown_parameter_as_unbound_is_an_argument_error():
+    """A bare name in the brackets marks a parameter unbound, so it too must name a
+    parameter the function declares."""
+    if True:
+        # Config
+        jazzoo_fn = save_fixture("""# test_curry_unknown_bare_name.jaz
+        from ./helpers.jaz import make-full-path as h
+
+        🐭.build = 🐭.h.make-full-path[nonesuch, style="linux"]
+        """)
+
+        # Run / Assert
+        with pytest.raises(ArgumentError):
+            parse_module(jazzoo_fn)
+
+
+def test_supplying_an_argument_for_a_bound_parameter_is_an_argument_error():
+    """Currying binds a parameter, and the caller may no longer supply an argument
+    for it."""
+    if True:
+        # Config
+        jazzoo_fn = save_fixture("""# test_curry_rebind.jaz
+        from ./helpers.jaz import make-full-path as h
+
+        🐭.build-windows = 🐭.h.make-full-path[style="windows"]
+
+        go():
+            🐆.retval = 🐭.build-windows(input="input.json", style="linux")
+        """)
+
+        # Run / Assert
+        with pytest.raises(ArgumentError):
+            parse_module(jazzoo_fn)

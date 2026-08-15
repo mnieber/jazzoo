@@ -1,6 +1,6 @@
 import pytest
 
-from jazzoo.modules.errors import ResolutionError
+from jazzoo.modules.errors import JazzooError, ResolutionError
 from jazzoo.modules.rules.parse_module import parse_module
 from jazzoo.modules.rules.eval import eval
 from jazzoo.runtime.utils.test_utils import save_fixture
@@ -509,3 +509,26 @@ def test_a_colon_after_a_reference_is_not_a_default(monkeypatch):
         # Assert
         assert eval(root_module, "🐭.port()") == "example.com:8080"
         assert eval(root_module, "🐭.volume()") == "-v /home/me:/data"
+
+
+def test_system_variables_are_read_only():
+    """All ⚙️ variables are read-only - a .jaz file can never assign to ⚙️."""
+    if True:
+        # Config
+        at_top_level = save_fixture("""# test_readonly_top_level.jaz
+        ⚙️.module.basename = "mine.jaz"
+        """)
+
+        in_a_body = save_fixture("""# test_readonly_in_body.jaz
+        debug():
+            ⚙️.stdout = "mine"
+        """)
+
+        # Run / Assert
+        # Assigning to ⚙️ is rejected wherever it appears. The specific subclass is
+        # whatever the grammar decides - rejecting the sigil on an assignment LHS
+        # makes it a ParseError - so this pins only the JazzooError base.
+        with pytest.raises(JazzooError):
+            parse_module(at_top_level)
+        with pytest.raises(JazzooError):
+            parse_module(in_a_body)
