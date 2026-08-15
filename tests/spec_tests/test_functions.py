@@ -112,8 +112,7 @@ def test_mid_body_call_to_module_function():
             echo "Internal helper: 🐆.name"
 
         debug(name="me"):
-            🐭._helper(name="anonymous")
-            🐆.retval = 🐆.stdout
+            🐆.retval = 🐭._helper(name="anonymous")
         """)
 
         # Run
@@ -156,10 +155,11 @@ def test_dependencies_run_before_the_body():
         _helper(name):
             #!/usr/bin/env bash
             echo "Internal helper: 🐆.name"
+            🐭.name = 🐆.name
 
         debug(name="me"): _helper(name=🐆.name)
             #!/usr/bin/env bash
-            echo "Running debug for: 🐆.name"
+            echo "Running debug for: 🐭.name"
         """)
 
         # Run
@@ -185,17 +185,17 @@ def test_dependency_arguments_may_reference_globals_and_parameters():
         [private]
         _report(level, tracing, name):
             #!/usr/bin/env bash
-            echo "🐆.level 🐆.tracing 🐆.name"
+            🐭.msg = "🐆.level 🐆.tracing 🐆.name"
 
         debug(name="me"): _report(level=🐐.log-level, tracing=🐭.tracing, name=🐆.name)
-            🐆.retval = 🐆.stdout
+            echo "🐭.msg!"
         """)
 
         # Run
         root_module = parse_module(jazzoo_fn)
 
         # Assert
-        assert eval(root_module, "🐭.debug()") == "high on me"
+        assert eval(root_module, "🐭.debug()") == "high on me!"
 
 
 def test_function_returns_the_output_of_its_last_step():
@@ -262,9 +262,12 @@ def test_retval_strips_one_trailing_newline():
             echo "two"
 
         check():
-            🐭.speak()
-            🐆.raw = 🐆.stdout
-            🐆.trimmed = 🐆.retval
+            #!/usr/bin/env bash
+            echo "one"
+            echo "two"
+
+            #!
+            🐆.retval = ⚙️.stdout
         """)
 
         # Run
@@ -273,7 +276,7 @@ def test_retval_strips_one_trailing_newline():
         # Assert
         # echo emits a trailing newline; only that one is removed.
         assert eval(root_module, "🐭.speak()") == "one\ntwo"
-        assert eval(root_module, "🐭.check()") == "one\ntwo"
+        assert eval(root_module, "🐭.check()") == "one\ntwo\n"
 
 
 def test_explicit_retval_assignment_overrides_the_last_step():
@@ -286,13 +289,9 @@ def test_explicit_retval_assignment_overrides_the_last_step():
             🐆.retval = "/data/🐆.input"
 
         keep-earlier-output():
-            #!/usr/bin/env bash
             echo "the value I want"
-
-            🐆.wanted = 🐆.retval
-            #!/usr/bin/env bash
+            🐆.wanted = ⚙️.output
             echo "noise"
-
             🐆.retval = 🐆.wanted
         """)
 
@@ -300,7 +299,6 @@ def test_explicit_retval_assignment_overrides_the_last_step():
         root_module = parse_module(jazzoo_fn)
 
         # Assert
-        # No subprocess runs at all here - the assignment is the whole body.
         assert (
             eval(root_module, '🐭.make-full-path(input="input.json")')
             == "/data/input.json"
@@ -309,7 +307,7 @@ def test_explicit_retval_assignment_overrides_the_last_step():
         assert eval(root_module, "🐭.keep-earlier-output()") == "the value I want"
 
 
-def test_statement_calls_discard_the_return_value():
+def test_retvals_are_local_to_the_main_function():
     """A call that is not assigned silently discards any return value."""
     if True:
         # Config
@@ -319,8 +317,8 @@ def test_statement_calls_discard_the_return_value():
             🐆.retval = "discarded"
 
         debug():
-            🐭._returns-something()
             🐆.retval = "own value"
+            🐭._returns-something()
         """)
 
         # Run
@@ -369,6 +367,7 @@ def test_a_local_function_does_not_overwrite_the_callers_retval():
             #!/usr/bin/env bash
             echo "outer output"
 
+            #!
             🐆.mine = 🐆.retval
             🐆.inner = 🐆.dump(who=🐆.who)
             🐆.retval = "🐆.inner / 🐆.mine"
@@ -379,4 +378,7 @@ def test_a_local_function_does_not_overwrite_the_callers_retval():
 
         # Assert
         # The local function's echo did not clobber the caller's captured 🐆.retval.
-        assert eval(root_module, '🐭.help(who="maarten")') == "Hello maarten! / outer output"
+        assert (
+            eval(root_module, '🐭.help(who="maarten")')
+            == "Hello maarten! / outer output"
+        )
