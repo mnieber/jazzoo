@@ -37,7 +37,8 @@ Declared at the top level of a `.jaz` file:
 
 ### Types
 
-All values are strings. There are no integers. Path expressions (see section 5) produce path values, which are strings that may be canonicalized — see below.
+All values are strings. There are no integers.
+Unquoted values are treated as bare strings: `🐆.x = hello` is equivalent to `🐆.x = "hello"`.
 
 ### Truthiness
 
@@ -45,7 +46,9 @@ In ternary expressions, a string value is falsy if its lowercased form is in `["
 
 ### System variables
 
-Jazzoo provides built-in read-only variables:
+Jazzoo provides built-in variables in the `⚙️` namespace. All of them are read-only — a `.jaz` file can never assign to `⚙️`.
+
+These are constant for the lifetime of a run:
 
 | Variable                  | Value                                                          |
 | ------------------------- | -------------------------------------------------------------- |
@@ -55,6 +58,13 @@ Jazzoo provides built-in read-only variables:
 | `⚙️.root_module.basename` | Filename of the entry-point `.jaz` file invoked by `jaz`       |
 | `⚙️.root_module.path`     | Absolute path of the entry-point `.jaz` file                   |
 | `⚙️.root_module.dirname`  | Absolute path of the directory containing the entry-point file |
+
+These are read-only but **not** constant — jazzoo updates them as a function body runs (see section 6):
+
+| Variable      | Value                                                        |
+| ------------- | ------------------------------------------------------------ |
+| `⚙️.stdout`   | Stdout of the last shebang block in the current function     |
+| `⚙️.output`   | `⚙️.stdout` minus its trailing newline, if it has one        |
 
 ### Environment variables
 
@@ -81,6 +91,8 @@ Use `{{ }}` when a variable reference is adjacent to other text:
 echo "Running test with log level: {{ 🐐.log-level }}-setting"
 ```
 
+Braces without sigils in it are ignored by jazzoo.
+
 ### Escaping
 
 Prefix the emoji sigil with `\` to suppress substitution:
@@ -97,15 +109,6 @@ To produce a literal `{{ 🐐.log-level }}` string:
 ```
 echo "Jazzoo supports the {{ \🐐.log-level }}-setting syntax"
 ```
-
-### Substitution rules summary
-
-| Syntax                | Result                       |
-| --------------------- | ---------------------------- |
-| `🐐.log-level`        | Substituted (bare)           |
-| `{{ 🐐.log-level }}`  | Substituted (braced)         |
-| `\🐐.log-level`       | Literal emoji + `.log-level` |
-| `{{ \🐐.log-level }}` | Literal `{{ 🐐.log-level }}` |
 
 ---
 
@@ -125,7 +128,7 @@ Jazzoo supports chained ternary expressions modelled on Python syntax:
 🐆.x = "a" if 🐐.log-level == "high" else "b" if 🐐.log-level == "low" else ""
 ```
 
-Chaining is right-associative: `A if C1 else (B if C2 else C)`. Only string equality (`==`) is supported as a condition, plus bare variable truthiness testing (see section 3).
+Chaining is right-associative: `A if C1 else (B if C2 else C)`. Only string equality (`==`) is supported as a condition, plus bare variable truthiness testing.
 
 ### Path expressions
 
@@ -136,11 +139,7 @@ The `/` operator joins two string values as path segments, producing a new strin
 🐆.out = ⚙️.module.dirname / "build/output"
 ```
 
-Path joins are a **pure string join** — `..`, symlinks, and redundant separators are left untouched. Path expressions can be chained: `a / b / c` is left-associative. Joining never canonicalizes on its own; the only way to canonicalize is the explicit goat marker below.
-
-#### Explicit resolution: `| ⚙️.abs`
-
-Placing `| ⚙️.abs` as a path segment pipes the left side of the path to the ⚙️.abs function — resolving `..`, `.`, symlinks, and redundant separators — at the point where it appears. It is left-associative, like `| ⚙️.abs`, and reads as "resolve everything so far":
+Path joins are a **pure string join** — `..`, symlinks, and redundant separators are left untouched. Path expressions can be chained: `a / b / c` is left-associative. Joining never canonicalizes on its own; the only way to canonicalize is to pipe to ⚙️.abs:
 
 ```
 🐭.config = 🐭.get_base_path() / "../config.json" | ⚙️.abs   # resolve the whole join
@@ -156,168 +155,79 @@ Other pipe operators are:
 
 ---
 
-## 6. Functions
+## 6. Shebang Blocks
 
-### Basic function
+### The default jazzoo execution mode
 
-```
-debug(name="me"):
-    🐆.dry-run = "--dry-run" if 🐐.log-level == "high" else ""
-    echo "Running test with log level: 🐐.log-level for user: 🐆.name"
-    docker compose up --log-level=🐐.log-level 🐆.dry-run
-```
-
-### Parameters
-
-Parameters are always named. A parameter may have a default value or be required (no default):
+In the default jazzoo execution mode, every line runs in its own shell shebang block (see next section).
+Therefore, this jazzoo code:
 
 ```
-build(target, mode="release"):
-    cargo build --target=🐆.target --profile=🐆.mode
+help:
+    echo "hello"
+    ls -al
 ```
 
-### Function attributes
-
-Attributes are declared on the line before the function:
+is equivalent to
 
 ```
-[private]
-_helper(name):
-    echo "Internal helper: 🐆.name"
+help:
+    #!/usr/bin/env bash
+    echo "hello"
+
+    #!/usr/bin/env bash
+    ls -al
 ```
 
-`[private]` functions are not targets — they do not appear in `jaz --list` and cannot be invoked from the CLI, but are callable from within `.jaz` files.
-
-### Function dependencies
-
-Dependencies are declared after the colon, before the body:
+Each line is therefore its own subprocess, and **nothing carries over from one line to the next** — not the working directory, not shell variables, not `set` options:
 
 ```
-debug(name="me"): _helper(name=🐆.name)
-    echo "Running debug for: 🐆.name"
+broken:
+    cd /tmp          # affects only this line's subprocess
+    ls               # still runs in the original directory
+    FOO=bar          # sets a variable in a shell that then exits
+    echo $FOO        # prints nothing
 
-foo(name="me"): \
-        _helper(name=🐆.name) \
-        _helper(name=🐭.bar)
-    echo "Running debug for: 🐆.name"
+works:
+    #!/usr/bin/env bash
+    cd /tmp
+    ls               # one subprocess, so the cd applies
 ```
 
-Dependencies run before the function body. Dependency arguments may reference `🐐`, `🐭`, and the function's own parameters — but not local `🐆` assignments, since those don't exist yet.
+Use an explicit shebang block whenever lines need to share state.
 
-### Mid-body calls
+### The ⚙️.stdout and ⚙️.output values
 
-Functions in the current module can be called mid-body using the `🐭` sigil:
+The ⚙️.stdout captures what the last shebang block in the current function wrote to stdout.
+The ⚙️.output value equals ⚙️.stdout minus the trailing newline (if it exists).
 
-```
-debug(name="me"):
-    🐭._helper(name="anonymous")
-    echo "Done"
-```
+The value of ⚙️.stdout is not affected by calls to other jazzoo functions (it's local to that function).
 
-Calls to imported modules use the module alias (see section 10):
+### Alternative shebang blocks and bare #!
 
-```
-    🐭.docker.build(target="myapp")
-```
-
-All function calls block until completion.
-
-### Return values
-
-A function returns `🐆.retval` as it stands when the body finishes. Since every step of a body — shell line, shebang block, or function call — sets `🐆.retval` from its stdout (see section 8), a function returns **the output of the last step that ran**, with a single trailing newline removed:
-
-```
-make-full-path(input):
-    echo "/data/🐆.input"
-```
-
-The caller captures it via assignment:
-
-```
-🐆.full-path = 🐭.make-full-path(input="input.json")   # "/data/input.json"
-```
-
-This is the same rule as for shebang blocks, applied one level up: a function is a shell tool, and what it writes is what it returns.
-
-A body may also assign `🐆.retval` explicitly. This is how a function returns something other than its last step's output — a literal, a computed expression, or the output of an earlier step:
-
-```
-make-full-path(input):
-    🐆.retval = "/data/🐆.input"          # no subprocess involved
-
-check(path):
-    ls -l 🐆.path
-    🐆.listing = 🐆.retval                # keep it before the next step overwrites
-    echo "done"                          # this would otherwise be the value
-    🐆.retval = 🐆.listing
-```
-
-Because each step overwrites `🐆.retval`, an explicit assignment only sticks if no later step runs after it.
-
-Return values are always strings. A function whose body never runs a step and never assigns `🐆.retval` returns the empty string. Statement calls (not assigned) silently discard the value.
-
-### Function pipe
-
-Functions can also be applied postfix using the pipe operator:
-
-```
-🐆.full-path = "input.json" | 🐭.make-full-path(style="linux) | 🐭.drop-config-dir-part
-```
-
-This requires that exactly one parameter is left unbound.
-
----
-
-## 7. Local Functions
-
-A function can define local functions scoped to `🐆`. These are structurally identical to `🐭` functions but are only accessible within the enclosing function.
-
-```
-help(who="me"):
-    🐆.dump(who):
-        echo "Hello 🐆.who! Tracing is: 🐭.tracing"
-
-    🐆.retval = 🐆.dump(who=🐆.who)
-```
-
-Here `🐆.dump` returns the output of its `echo` — the same return-value rule as any other function — and the caller assigns it to its own `🐆.retval` to return it onwards.
-
-Local functions have their own fresh `🐆` namespace — variables set inside do not leak to the parent. This includes `🐆.retval` and `🐆.stdout`: a local function's steps overwrite its own, not the caller's. Parameters are passed explicitly. Local functions support the same body forms as regular functions: shell lines, assignments, shebang blocks, and nested local functions.
-
-### Suppress console output
-
-In the above example, `jazzoo` will print the echo statement itself to the console so the caller can see what is being executed.
-This can be suppressed using `@echo "Hello 🐆.who! Tracing is: 🐭.tracing"`.
-
----
-
-## 8. Shebang Blocks
-
-A function or local function body can use a shebang block to run an alternative interpreter:
+A function or local function body can use a shebang block to run an alternative interpreter.
+A bare shebang means that the previous shebang block ended and that we return to the default "jazzoo" execution mode.
 
 ```
 help:
     #!/usr/bin/env python3
     print("Tracing is: 🐭.tracing, fyi")
-    return "done"
 
     #!
-    echo "Last return value was 🐆.retval"
+    echo "We just wrote ⚙️.stdout"
+    echo "Test"
+    echo "Last message was: ⚙️.output"
 
 test:
-    🐆.result = 🐭.help()  # will contain "done"
+    🐭.help()  # The last echo will write "Last message was: Test"
 ```
-
-### Bare #!
-
-A bare shebang means that the previous shebang block ended and that we return to the default "jazzoo" execution mode.
 
 ### Sweeping
 
 Before execution, jazzoo sweeps the shebang block top to bottom, processing each line in order:
 
-1. Trim the line. If it matches `<sigil>.<name> = <expression>` (a Jazzoo assignment), evaluate the RHS as a full Jazzoo expression (string literal, ternary, path expression, recipe call — same grammar as outside shebang blocks). Unquoted RHS values are treated as bare strings: `🐆.x = hello` is equivalent to `🐆.x = "hello"`. Update the namespace and remove the line.
-2. Otherwise, substitute all Jazzoo references in the line using the current namespace state, and keep the line.
+1. Trim the line. If it matches `<sigil>.<name> = <expression>` (a Jazzoo assignment), evaluate the RHS as a Jazzoo expression.
+2. Otherwise, substitute all Jazzoo references in the line using the current namespace state.
 
 The resulting block — with all Jazzoo assignments removed and all references substituted — is then executed once as a single subprocess.
 
@@ -368,80 +278,144 @@ To assign a Python variable whose _name_ comes from a Jazzoo value, use a braced
 {{ 🐭.variable }} = "bar"   # e.g. foo = "bar"
 ```
 
+## 7. Functions
+
+### Basic function
+
+```
+debug(name="me"):
+    🐆.dry-run = "--dry-run" if 🐐.log-level == "high" else ""
+    echo "Running test with log level: 🐐.log-level for user: 🐆.name"
+    docker compose up --log-level=🐐.log-level 🐆.dry-run
+```
+
 ### Return values
 
-Jazzoo is a shell tool, and shell tools communicate through stdout. A shebang block has no separate return channel: **whatever the block writes to stdout is its value**, exactly as it would be if you ran the same program on the command line and captured its output. There is no `return` statement and no marker line.
+The return value is represented by 🐆.retval. As long as a function has not assigned it, it has no value of its own and falls back to ⚙️.output — so by default a function returns the output of its last shebang block.
+
+Assigning 🐆.retval gives it a value, and the fallback no longer applies: from that point on it holds what was assigned, and later blocks no longer change it.
 
 ```
-read-config():
-    #!/usr/bin/env bash
-    echo "/etc/jazzoo.conf"
+debug(name="me"):
+    echo "Test 🐆.name"
+
+doit():
+    echo "123"             # 🐆.retval changes to "123"
+    🐭.test()              # 🐆.retval is still "123"
+    🐆.retval = 🐭.test()  # 🐆.retval changes to "Test me"
+    echo "123"             # 🐆.retval stays at "Test me"
+```
+
+Note that the last line would have changed 🐆.retval if the assignment above it had not run. Whether a shebang block affects the return value depends on whether the body has assigned 🐆.retval yet.
+
+### Parameters
+
+A function declares *parameters*; a caller supplies *arguments* for them. A parameter may have a default value or be required (no default). Arguments are always named:
+
+```
+build(target, mode="release"):
+    cargo build --target=🐆.target --profile=🐆.mode
 
 test():
-    🐆.config = 🐭.read-config()          # "/etc/jazzoo.conf"
+    🐭.build(target="dev")   # correct
+    🐭.build("dev")          # raises an error, arguments are always named
 ```
 
-This holds for every interpreter — a Python block returns what it `print`s, a bash block returns what it `echo`s:
+### Currying
+
+Square brackets are used to create a curried function:
 
 ```
-read-config():
-    #!/usr/bin/env python3
-    print("/etc/jazzoo.conf")
+🐭.build_in_dev = 🐭.build[mode="dev"]
 ```
 
-The consequence is that stdout is both the value channel and the human-visible output channel. A line written for the reader's benefit becomes part of the value if the call is assigned:
+You can think of this as creating a new function in which the `mode` parameter is bound to "dev". The caller may no longer supply an argument for `mode`.
+The function symbol itself is equivalent to applying empty square brackets to that function (which means that no parameters are bound):
+
+```
+🐭.foo = 🐭.build[]   # okay
+🐭.foo = 🐭.build     # okay, same as above
+🐭.foo = 🐭.build()   # error, because we're trying to execute `build` without passing any arguments
+```
+
+### Function attributes
+
+Attributes are declared on the line before the function:
+
+```
+[private]
+_helper(name):
+    echo "Internal helper: 🐆.name"
+```
+
+`[private]` functions are not targets — they do not appear in `jaz --list` and cannot be invoked from the CLI, but are callable from within `.jaz` files.
+
+### Function dependencies
+
+Dependencies are declared after the colon, before the body:
+
+```
+debug(name="me"): _helper(name=🐆.name)
+    echo "Running debug for: 🐆.name"
+
+foo(name="me"): \
+        _helper(name=🐆.name) \
+        _helper(name=🐭.bar)
+    echo "Running debug for: 🐆.name"
+```
+
+Dependencies run before the function body. Dependency arguments may reference `🐐`, `🐭`, and the function's own parameters — but not local `🐆` assignments, since those don't exist yet.
+
+### Mid-body calls
+
+Functions in the current module can be called mid-body using the `🐭` sigil:
 
 ```
 debug(name="me"):
-    #!/usr/bin/env bash
-    echo "Running debug for: 🐆.name"     # this is the value too
+    🐭._helper(name="anonymous")
+    echo "Done"
 ```
 
-For output that should *not* end up in the value, write to stderr — jazzoo never captures it:
+Calls to imported modules use the module alias:
 
 ```
-    echo "still working..." >&2
+    🐭.docker.build(target="myapp")
 ```
 
-Note that `@` (see section 7) suppresses the echo of the *command itself*, not its output; it has no effect on the value.
+All function calls block until completion.
 
-Statement calls discard the value (see section 6), so this only matters for calls whose result is assigned or piped.
+### Function pipe
 
-If a shebang block exits with a non-zero exit code then jazzoo treats it as an error (it prints the error and exits).
-
-### `🐆.retval` and `🐆.stdout`
-
-Both hold the output of the last thing that ran, and differ only in trailing-newline handling:
-
-| Variable     | Value                                                          |
-| ------------ | -------------------------------------------------------------- |
-| `🐆.stdout`  | The raw stdout, byte for byte                                  |
-| `🐆.retval`  | The same, with a single trailing newline removed if one is present |
-
-`🐆.retval` is what a call evaluates to, so it is the one you get from `🐆.x = 🐭.f()`. Stripping one trailing newline matches shell `$(...)`, and means the common `echo "value"` yields `"value"` rather than `"value\n"`. Only one newline is removed — a block that deliberately ends in a blank line keeps it in `🐆.retval`, and `🐆.stdout` always has everything.
-
-They also differ in lifetime: `🐆.stdout` and `🐆.retval` are overwritten by the next step that runs, whereas a value captured by assignment is bound at the point of assignment and is unaffected by later steps.
-
-### Stdout capture
-
-After any shell line, shebang block, or function call completes, jazzoo sets both `🐆.stdout` and `🐆.retval` from its stdout. This makes them uniformly "the output of the last thing that ran."
+Functions can also be applied postfix using the pipe operator:
 
 ```
-bar:
-    #!/bin/bash
-    echo "one"
-    echo "two"
-    echo "three"
-
-debug(name="me"):
-    echo "hello from shell"
-    echo "shell line said: 🐆.stdout"
-
-    🐆.foo = 🐭.bar()
-    echo "last function outputted: 🐆.stdout"
+🐆.full-path = "input.json" | 🐭.make-full-path[style="linux"] | 🐭.drop-config-dir-part | 🐭.clean_up[name, max_length=3]
 ```
 
-Both are overwritten after each such step and are not set before the first one runs.
+This requires that exactly one parameter is left unbound for each function in the pipe.
+
+---
+
+## 8. Local Functions
+
+A function can define local functions scoped to `🐆`. These are structurally identical to `🐭` functions but are only accessible within the enclosing function.
+
+```
+help(who="me"):
+    🐆.dump(who):
+        echo "Hello 🐆.who! Tracing is: 🐭.tracing"
+
+    🐆.retval = 🐆.dump(who=🐆.who)
+```
+
+Local functions have their own fresh `🐆` namespace — variables set inside do not leak to the parent. Arguments are passed explicitly. Local functions support the same body forms as regular functions: shell lines, assignments, shebang blocks, and nested local functions.
+
+They declare parameters and are called with named arguments exactly like `🐭` functions.
+
+### Suppress console output
+
+In the above example, `jazzoo` will print the echo statement itself to the console so the caller can see what is being executed.
+This can be suppressed using `@echo "Hello 🐆.who! Tracing is: 🐭.tracing"`.
 
 ---
 
@@ -507,7 +481,7 @@ Arguments are always named:
 jaz debug name=maarten
 ```
 
-As a convenience, the first declared parameter of a target may be passed positionally at the CLI:
+As a convenience, an argument for the first declared parameter of a target may be passed positionally at the CLI:
 
 ```
 jaz build myapp        # equivalent to: jaz build target=myapp
@@ -564,8 +538,8 @@ class Function(Scope):
 Key properties:
 
 - **`Module`** is a `Scope` and can contain sub-modules (from imports) and functions.
-- **`Function`** is a `Scope` and can contain local functions (section 7), but not sub-modules.
-- **Parameters** are the static call signature. At call time, jazzoo validates the arguments against `parameters`, then populates `variables` with the resolved values. The function body only ever reads from `variables`.
+- **`Function`** is a `Scope` and can contain local functions, but not sub-modules.
+- **Parameters** are the static call signature. At call time, jazzoo validates the caller's arguments against `parameters`, then populates `variables` with the resolved values. The function body only ever reads from `variables`.
 - **Targets** are functions with `is_target = True` — i.e. all functions not marked `[private]`. Only targets are callable from the CLI and visible in `jaz --list`.
 
 ---
