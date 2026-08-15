@@ -1,4 +1,8 @@
 import os
+
+import pytest
+
+from jazzoo.modules.errors import ModuleImportError
 from jazzoo.modules.rules.parse_module import parse_module
 from jazzoo.modules.rules.get_child_module_by_name import get_child_module_by_name
 from jazzoo.modules.rules.get_module_by_path import get_module_by_path
@@ -155,3 +159,118 @@ def test_targets_from_imported_modules_are_not_listed():
         assert bar not in get_targets(root_module)
         assert get_targets(root_module) == []
         assert bar in get_targets(baz_module)
+
+
+def test_importing_a_missing_file_is_a_module_import_error():
+    """An import naming a file that does not exist is a ModuleImportError. Paths are
+    always explicit relative or absolute - there is no search path to fall back on."""
+    if True:
+        # Config
+        jazzoo_fn = save_fixture("""# test_missing_file.jaz
+        from ./nope.jaz import bar as baz
+        """)
+
+        # Run / Assert
+        with pytest.raises(ModuleImportError):
+            parse_module(jazzoo_fn)
+
+
+def test_importing_an_unknown_symbol_is_a_module_import_error():
+    """An import naming a symbol the imported module does not define is a
+    ModuleImportError."""
+    if True:
+        # Config
+        jazzoo_fn = save_fixture("""# test_unknown_symbol.jaz
+        from ./foo.jaz import no-such-function as baz
+        """)
+
+        # Run / Assert
+        with pytest.raises(ModuleImportError):
+            parse_module(jazzoo_fn)
+
+
+def test_importing_a_privately_imported_symbol_is_a_module_import_error():
+    """Imported functions are private - not visible to outside importers. Naming one
+    explicitly is a ModuleImportError, just as `import *` does not pull it in."""
+    if True:
+        # Config
+        # foo.jaz privately imports `secret` from helper.jaz, so `secret` is not a
+        # symbol foo.jaz offers to its own importers.
+        jazzoo_fn = save_fixture("""# test_private_symbol.jaz
+        from ./foo.jaz import secret as baz
+        """)
+
+        # Run / Assert
+        with pytest.raises(ModuleImportError):
+            parse_module(jazzoo_fn)
+
+
+def test_call_time_circular_imports_are_safe():
+    """Circular imports are allowed. Modules are cached by resolved file path after
+    first load, and circular references used only at call time are safe."""
+    if True:
+        # Config
+        save_fixture("""# ping.jaz
+        from ./pong.jaz import pong as p
+
+        ping():
+            🐆.retval = "ping/🐭.p.pong()"
+        """)
+
+        save_fixture("""# pong.jaz
+        from ./ping.jaz import ping as p
+
+        pong():
+            #!/usr/bin/env bash
+            echo "pong"
+        """)
+
+        jazzoo_fn = save_fixture("""# test_circular_call_time.jaz
+        from ./ping.jaz import ping as entry
+
+        go():
+            🐆.retval = 🐭.entry.ping()
+        """)
+
+        # Run
+        root_module = parse_module(jazzoo_fn)
+
+        # Assert
+        # The cycle is only traversed when the call runs, so loading succeeds.
+        assert eval(root_module, "🐭.go()") == "ping/pong"
+
+
+def test_load_time_circular_imports_are_a_module_import_error():
+    """A circular import receives the cached, partially-initialized module. A
+    load-time circular reference - a module-level assignment calling into a module
+    that is not yet fully initialized - is a ModuleImportError."""
+    if True:
+        # Config
+        # left.jaz needs a value from right.jaz while right.jaz is still loading.
+        save_fixture("""# left.jaz
+        from ./right.jaz import value as r
+
+        🐭.eager = 🐭.r.value()
+
+        value():
+            #!/usr/bin/env bash
+            echo "left"
+        """)
+
+        save_fixture("""# right.jaz
+        from ./left.jaz import value as l
+
+        🐭.eager = 🐭.l.value()
+
+        value():
+            #!/usr/bin/env bash
+            echo "right"
+        """)
+
+        jazzoo_fn = save_fixture("""# test_circular_load_time.jaz
+        from ./left.jaz import value as entry
+        """)
+
+        # Run / Assert
+        with pytest.raises(ModuleImportError):
+            parse_module(jazzoo_fn)

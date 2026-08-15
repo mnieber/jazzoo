@@ -384,3 +384,180 @@ def test_a_local_function_does_not_overwrite_the_callers_retval():
             eval(root_module, '🐭.help(who="maarten")')
             == "Hello maarten! / outer output"
         )
+
+
+def test_a_positional_argument_is_an_argument_error():
+    """Within .jaz files all arguments must be named, so a positional argument at a
+    call site is an ArgumentError - raised at parse time, before anything runs."""
+    if True:
+        # Config
+        jazzoo_fn = save_fixture("""# test_positional_arg.jaz
+        build(target, mode="release"):
+            #!/usr/bin/env bash
+            echo "🐆.target 🐆.mode"
+
+        test():
+            🐭.build("dev")
+        """)
+
+        # Run / Assert
+        with pytest.raises(ArgumentError):
+            parse_module(jazzoo_fn)
+
+
+def test_a_missing_required_argument_is_an_argument_error():
+    """A parameter without a default is required; a call that does not supply an
+    argument for it is an ArgumentError at parse time."""
+    if True:
+        # Config
+        jazzoo_fn = save_fixture("""# test_missing_required_arg.jaz
+        build(target, mode="release"):
+            #!/usr/bin/env bash
+            echo "🐆.target 🐆.mode"
+
+        test():
+            🐭.build()
+        """)
+
+        # Run / Assert
+        # `mode` has a default and may be omitted; `target` may not.
+        with pytest.raises(ArgumentError):
+            parse_module(jazzoo_fn)
+
+
+def test_an_unknown_argument_name_is_an_argument_error():
+    """A call supplying an argument the function has no parameter for is an
+    ArgumentError."""
+    if True:
+        # Config
+        jazzoo_fn = save_fixture("""# test_unknown_arg.jaz
+        build(target, mode="release"):
+            #!/usr/bin/env bash
+            echo "🐆.target 🐆.mode"
+
+        test():
+            🐭.build(target="myapp", profile="dev")
+        """)
+
+        # Run / Assert
+        with pytest.raises(ArgumentError):
+            parse_module(jazzoo_fn)
+
+
+def test_a_call_to_an_unknown_function_is_a_resolution_error():
+    """A call to a function that does not exist is a ResolutionError at parse time."""
+    if True:
+        # Config
+        jazzoo_fn = save_fixture("""# test_unknown_function.jaz
+        test():
+            🐭.no-such-function()
+        """)
+
+        # Run / Assert
+        with pytest.raises(ResolutionError):
+            parse_module(jazzoo_fn)
+
+
+def test_a_call_to_an_unknown_module_is_a_resolution_error():
+    """A call through a namespace alias that was never imported is a
+    ResolutionError - unknown modules and namespaces resolve like unknown
+    functions do."""
+    if True:
+        # Config
+        jazzoo_fn = save_fixture("""# test_unknown_module.jaz
+        test():
+            🐭.nope.bar()
+        """)
+
+        # Run / Assert
+        with pytest.raises(ResolutionError):
+            parse_module(jazzoo_fn)
+
+
+def test_a_shebang_block_exiting_non_zero_is_an_execution_error():
+    """A shebang block that exits non-zero is an ExecutionError. This is a run-time
+    error: the file parses, and the failure surfaces only when the target runs."""
+    if True:
+        # Config
+        jazzoo_fn = save_fixture("""# test_non_zero_exit.jaz
+        explicit-exit():
+            #!/usr/bin/env bash
+            exit 3
+
+        failing-command():
+            false
+        """)
+
+        # Run
+        root_module = parse_module(jazzoo_fn)
+
+        # Assert
+        with pytest.raises(ExecutionError):
+            eval(root_module, "🐭.explicit-exit()")
+        # A jazzoo-mode line is its own shebang block, so it fails the same way.
+        with pytest.raises(ExecutionError):
+            eval(root_module, "🐭.failing-command()")
+
+
+def test_a_run_time_error_aborts_the_remaining_body(tmp_path):
+    """A run-time error aborts the whole run: jazzoo does not continue with the
+    remaining lines of the body. Nothing is rolled back - steps that already ran
+    have already had their effects."""
+    if True:
+        # Config
+        before = tmp_path / "before.marker"
+        after = tmp_path / "after.marker"
+
+        jazzoo_fn = save_fixture(f"""# test_abort_body.jaz
+        run():
+            touch {before}
+            false
+            touch {after}
+        """)
+
+        # Run
+        root_module = parse_module(jazzoo_fn)
+
+        # Assert
+        with pytest.raises(ExecutionError):
+            eval(root_module, "🐭.run()")
+        # The step before the failure ran, and its effect stands.
+        assert os.path.exists(before)
+        # The step after it never ran.
+        assert not os.path.exists(after)
+
+
+def test_a_failing_dependency_aborts_later_dependencies_and_the_body(tmp_path):
+    """A run-time error in a dependency aborts the run: later dependencies do not
+    run, and neither does the body of the target that triggered them."""
+    if True:
+        # Config
+        first = tmp_path / "first.marker"
+        second = tmp_path / "second.marker"
+        body = tmp_path / "body.marker"
+
+        jazzoo_fn = save_fixture(f"""# test_abort_dependencies.jaz
+        [private]
+        _fails():
+            touch {first}
+            false
+
+        [private]
+        _never-runs():
+            touch {second}
+
+        run(): \\
+                _fails() \\
+                _never-runs()
+            touch {body}
+        """)
+
+        # Run
+        root_module = parse_module(jazzoo_fn)
+
+        # Assert
+        with pytest.raises(ExecutionError):
+            eval(root_module, "🐭.run()")
+        assert os.path.exists(first)
+        assert not os.path.exists(second)
+        assert not os.path.exists(body)
