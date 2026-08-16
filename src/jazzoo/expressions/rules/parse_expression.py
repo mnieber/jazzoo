@@ -1,3 +1,4 @@
+import json
 import typing as T
 
 from dataclassy import dataclass
@@ -14,6 +15,12 @@ from jazzoo.expressions.rules.tokenize_expression import Token, tokenize_express
 class Call:
     # The whole `🐭.name(args)` text; arguments are parsed when it is evaluated.
     text: str
+
+
+@dataclass
+class JsonLiteral:
+    # A JSON scalar, array or object written literally in the source.
+    value: T.Any
 
 
 @dataclass
@@ -102,9 +109,25 @@ class _Parser:
             self.take()
             return Literal(text=token.text)
 
-        if token.kind == "word":
+        if token.kind == "json":
             self.take()
-            return Literal(text=token.text)
+            try:
+                return JsonLiteral(value=json.loads(token.text))
+            except ValueError as error:
+                raise ParseError(
+                    f"invalid JSON in expression: {token.text}"
+                ) from error
+
+        if token.kind == "word":
+            # An unquoted word is read as JSON, so `true`, `false`, `null` and
+            # numbers are those values. Anything else must be quoted.
+            self.take()
+            try:
+                return JsonLiteral(value=json.loads(token.text))
+            except ValueError:
+                raise ParseError(
+                    f"strings must be quoted: {token.text}"
+                ) from None
 
         if token.kind == "call":
             self.take()

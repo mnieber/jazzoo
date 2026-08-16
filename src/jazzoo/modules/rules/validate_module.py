@@ -68,6 +68,12 @@ def _validate_function(
                         line=block_line.line,
                     )
             candidate = assignment.group("rhs").strip() if assignment else trimmed
+            if assignment is not None:
+                # An unquoted string on the right-hand side is a ParseError, and is
+                # decidable from the source alone.
+                _validate_expression(
+                    candidate, block.filename, block_line.line
+                )
             _validate_pipes(
                 candidate, module, in_scope, block.filename, block_line.line
             )
@@ -136,6 +142,20 @@ def _function_valued_locals(
                 target, brackets, filename=block.filename, line=block_line.line
             )
     return found
+
+
+def _validate_expression(
+    source: str, filename: T.Optional[str], line: T.Optional[int]
+) -> None:
+    """Parse an expression so its parse-time errors surface at load time."""
+    from jazzoo.expressions.rules.parse_expression import parse_expression
+
+    try:
+        parse_expression(source)
+    except ParseError as error:
+        raise ParseError(
+            error.message, filename=filename, line=line
+        ) from None
 
 
 def _validate_pipes(

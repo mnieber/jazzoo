@@ -15,6 +15,7 @@ from jazzoo.expressions.rules.is_truthy import is_truthy
 from jazzoo.expressions.rules.parse_expression import (
     Call,
     Curry,
+    JsonLiteral,
     ReferenceText,
     parse_expression,
 )
@@ -22,6 +23,7 @@ from jazzoo.expressions.rules.parse_references import parse_references
 from jazzoo.modules.models.absent import ABSENT
 from jazzoo.expressions.rules.substitute_references import substitute_references
 from jazzoo.expressions.utils.join_path import join_path
+from jazzoo.expressions.utils.render_value import render_value
 from jazzoo.functions.models.curried_function import CurriedFunction
 from jazzoo.modules.rules.parse_source import parse_call_arguments
 
@@ -90,9 +92,12 @@ def _evaluate_node(node: T.Any, frame) -> T.Any:
         # A literal may still contain references and calls to substitute.
         return substitute_references(
             node.text,
-            lambda reference: str(resolve_reference(reference, frame)),
+            lambda reference: resolve_reference(reference, frame),
             evaluate_call=lambda call_text: evaluate_call(call_text, frame),
         )
+
+    if isinstance(node, JsonLiteral):
+        return node.value
 
     if isinstance(node, Call):
         return evaluate_call(node.text, frame)
@@ -102,8 +107,8 @@ def _evaluate_node(node: T.Any, frame) -> T.Any:
 
     if isinstance(node, PathJoin):
         return join_path(
-            str(_evaluate_node(node.left, frame)),
-            str(_evaluate_node(node.right, frame)),
+            render_value(_evaluate_node(node.left, frame)),
+            render_value(_evaluate_node(node.right, frame)),
         )
 
     if isinstance(node, Ternary):
@@ -159,9 +164,9 @@ def _resolve_function_value(text: str, frame) -> T.Optional[CurriedFunction]:
 def _resolve_reference_text(text: str, frame) -> T.Any:
     """Resolve a reference in expression position.
 
-    Variable names never contain dots, so the scanner already ends the name at the
-    first one and anything after it is literal text - which is what makes
-    `🐭.bare.com` the variable `bare` followed by ".com".
+    A dotted name walks into a structured value, so the first segment names the
+    variable and the rest is a path. Text after the reference - which only occurs
+    when a `\\` terminated the name - is literal.
     """
     from jazzoo.expressions.rules.resolve_reference import resolve_reference
 
@@ -173,27 +178,26 @@ def _resolve_reference_text(text: str, frame) -> T.Any:
     suffix = text[match.end :]
 
     # A bare symbol in expression position may name a function rather than a
-    # variable, in which case it is the function value (same as `f[]`). The name may
-    # be dotted when it walks module namespaces, so the whole text is tried first.
-    stored = frame.lookup(match.reference.sigil, match.reference.name)
+    # variable, in which case it is the function value (same as `f[]`).
+    stored = frame.lookup(match.reference.sigil, match.reference.parts[0])
     if stored is ABSENT:
         function_value = _resolve_function_value(text, frame)
         if function_value is not None:
             return function_value
 
+    value = resolve_reference(match.reference, frame)
     if not suffix:
-        # A lone reference keeps its value's type rather than being stringified.
-        return resolve_reference(match.reference, frame)
-
-    return f"{resolve_reference(match.reference, frame)}{suffix}"
+        # A lone reference keeps its value's type rather than being rendered.
+        return value
+    return f"{render_value(value)}{suffix}"
 
 
 def _is_condition_true(node: T.Any, frame) -> bool:
     if isinstance(node, Comparison):
-        left = str(_evaluate_node(node.left, frame))
-        right = str(_evaluate_node(node.right, frame))
+        left = render_value(_evaluate_node(node.left, frame))
+        right = render_value(_evaluate_node(node.right, frame))
         return left == right
-    return is_truthy(str(_evaluate_node(node, frame)))
+    return is_truthy(_evaluate_node(node, frame))
 
 
 def _apply_stage(stage: T.Any, value: str, frame) -> str:
@@ -209,7 +213,7 @@ def _apply_stage(stage: T.Any, value: str, frame) -> str:
         if matches and matches[0].reference.sigil is Sigil.SYSTEM:
             name = matches[0].reference.name
             if is_builtin_pipe(name):
-                return apply_builtin_pipe(name, str(value))
+                return apply_builtin_pipe(name, value)
             raise ResolutionError(f"no such pipe operator: ⚙️.{name}")
 
         curried = _resolve_function_value(stage.text, frame)
@@ -225,7 +229,9 @@ def _apply_stage(stage: T.Any, value: str, frame) -> str:
     if isinstance(stage, PathJoin):
         # `a | ⚙️.abs / b` - the pipe applies to the join's left side only.
         left = _apply_stage(stage.left, value, frame)
-        return join_path(str(left), str(_evaluate_node(stage.right, frame)))
+        return join_path(
+            render_value(left), render_value(_evaluate_node(stage.right, frame))
+        )
 
     raise ResolutionError(f"cannot pipe into: {stage!r}")
 

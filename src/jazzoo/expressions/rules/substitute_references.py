@@ -1,6 +1,7 @@
 import typing as T
 
 from jazzoo.expressions.rules.parse_references import ReferenceMatch, parse_references
+from jazzoo.expressions.utils.render_value import render_value
 
 
 def substitute_references(
@@ -32,9 +33,9 @@ def substitute_references(
                 # No call evaluator in this context: leave the text alone.
                 out.append(match.call_text)
             else:
-                out.append(str(evaluate_call(match.call_text)))
+                out.append(render_value(evaluate_call(match.call_text)))
         else:
-            out.append(str(resolve(match.reference)))
+            out.append(render_value(resolve(match.reference)))
         cursor = match.end
     out.append(text[cursor:])
     return "".join(out)
