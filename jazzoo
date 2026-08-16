@@ -8,7 +8,7 @@ import './just/docker/index.just' as docker
 🐐.log-level = "high"
 
 # define a module variable (mouse namespace)
-🐭.tracing = True
+🐭.tracing = true
 
 # Show how to use variables in a recipe.
 debug(name="me"): _bar(name=🐆.name)
@@ -43,7 +43,7 @@ foo(name="bar", level="high"):
 # Show Python recipe
 help:
     #!/usr/bin/env python3
-    🐆.dry-run = True
+    🐆.dry-run = true
     print("Tracing is: 🐭.tracing, fyi")
 
 # Note that only named recipe args are supported.
