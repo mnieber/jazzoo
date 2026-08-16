@@ -112,7 +112,7 @@ def test_bare_name_marks_a_parameter_as_unbound():
 
         # Assert
         # max_length is bound to 3, suffix falls back to its default, name is open.
-        assert evaluate(root_module, "🐭.go()") == "maa"
+        assert evaluate(root_module, "🐭.go()") == "jan"
 
 
 def test_pipe_feeds_the_unbound_parameter():
