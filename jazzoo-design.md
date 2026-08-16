@@ -100,11 +100,20 @@ Only `🐐`, `🐭` and `🐆` hold structured values. `⚙️` is a fixed set o
 
 A dotted name is also how a function inside an imported namespace is reached
 (`🐭.docker.build`, section 9), so `🐭.a.b` is lexically both a field path and a call
-path. A trailing `()` settles it wherever there is one. For a bare `🐭.a.b`, **the
-variable wins**: jazzoo resolves the first segment as a variable and treats the rest as
-a path, and only looks for a function when that first segment names nothing. A variable
-is declared in the file being read, whereas a namespace arrives from an import, so
-preferring the local declaration keeps the reading close at hand.
+path. Rather than pick a winner, jazzoo forbids the collision: a namespace alias and a
+`🐭` variable may not share a name, in either order. This is the same rule that already
+keeps a variable and a function apart (section 13), extended to the third thing a `🐭`
+name can denote.
+
+```
+from ./docker.jaz import build as docker
+
+🐭.docker.build = "x"     # error: `docker` is already a namespace
+```
+
+Because the collision is impossible, the first segment of a dotted `🐭` name always has
+exactly one reading, and it can be determined from the file rather than from what
+happens to be defined when the line runs.
 
 ### Rendering a value as text
 
@@ -873,6 +882,7 @@ Errors are reported as early as they can be. Anything decidable from the parse t
 | --------------------------------------------------------------------- | ------------------- |
 | Syntax that does not parse                                            | `ParseError`        |
 | An unquoted string in an expression (`🐆.x = hello`)                  | `ParseError`        |
+| Two of a variable, function or namespace sharing a name in one scope  | `ParseError`        |
 | A positional argument in a `.jaz` file (`🐭.build("dev")`)            | `ArgumentError`     |
 | A pipe stage leaving zero, or more than one, parameter unbound        | `ArgumentError`     |
 | Binding an unknown parameter in a curry expression                    | `ArgumentError`     |
@@ -952,7 +962,7 @@ Key properties:
 
 ### Names are unique within a scope
 
-A `Scope` holds `variables` and `functions` in separate lists, but a reference names only a sigil and a name — `🐭.foo` does not say which list to look in. A scope may therefore not define a variable and a function under the same name, in either order. Doing so is a `ParseError`:
+A `Scope` holds `variables`, `functions` and sub-modules separately, but a reference names only a sigil and a name — `🐭.foo` does not say which of the three to look in. A scope may therefore not define two of them under the same name, in any order. Doing so is a `ParseError`:
 
 ```
 🐭.foo = "bar"
@@ -970,7 +980,17 @@ build(target, mode="release"):
 🐭.build = 🐭.build[mode="dev"]   # error: `build` is already defined in this scope
 ```
 
-The rule applies per scope, so a local `🐆.foo` may shadow a module-level `🐭.foo` — they are different scopes, and their sigils tell them apart. Imported namespaces are also separate scopes: `🐭.docker.build` and a local `🐭.build` do not collide.
+It covers an imported namespace alias too, which is the third thing a `🐭` name can
+denote:
+
+```
+from ./docker.jaz import build as docker
+
+🐭.docker = "x"           # error: `docker` is already defined in this scope
+🐭.docker.port = "8080"   # error: same, the first segment is what collides
+```
+
+The rule applies per scope, so a local `🐆.foo` may shadow a module-level `🐭.foo` — they are different scopes, and their sigils tell them apart. What lives *inside* a namespace is a separate scope as well: `🐭.docker.build` and a module-level `🐭.build` do not collide, because only the first segment names something in this scope.
 
 ---
 
