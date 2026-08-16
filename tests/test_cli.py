@@ -7,7 +7,7 @@ rely on the documented default-file rules.
 
 import os
 
-from jazzoo.modules.errors import ArgumentError
+from jazzoo import ArgumentError
 from jazzoo.runtime.entrypoints.jazzoo import main
 from jazzoo.runtime.utils.test_utils import save_fixture
 

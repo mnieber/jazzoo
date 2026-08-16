@@ -2,12 +2,14 @@ import os
 
 import pytest
 
-from jazzoo.modules.errors import ModuleImportError
-from jazzoo.modules.rules.parse_module import parse_module
-from jazzoo.modules.rules.get_module_by_path import get_module_by_path
-from jazzoo.modules.rules.get_function_by_path import get_function_by_path
-from jazzoo.modules.rules.get_targets import get_targets
-from jazzoo.modules.rules.evaluate import evaluate
+from jazzoo import (
+    ModuleImportError,
+    evaluate,
+    get_function_by_path,
+    get_module_by_path,
+    get_targets,
+    parse_module,
+)
 from jazzoo.runtime.utils.test_utils import save_fixture
 
 # A library module used as the import source.
