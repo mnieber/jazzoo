@@ -765,6 +765,40 @@ def test_a_call_path_and_a_field_path_do_not_collide():
         assert evaluate(root_module, "🐭.as-a-field()") == "from the variable"
 
 
+def test_a_variable_wins_over_a_namespace_of_the_same_name():
+    """When the same dotted name is both a field path and a call path, a trailing
+    `()` settles it; a bare reference resolves the variable."""
+    if True:
+        # Config
+        save_fixture("""# same_name_lib.jaz
+        build():
+            #!/usr/bin/env bash
+            echo "the function"
+        """)
+
+        jazzoo_fn = save_fixture("""# test_same_name_collision.jaz
+        from ./same_name_lib.jaz import build as docker
+
+        🐭.docker.build = "the field"
+
+        as-a-call():
+            🐆.retval = 🐭.docker.build()
+
+        as-a-field():
+            🐆.retval = 🐭.docker.build
+        """)
+
+        # Run
+        root_module = parse_module(jazzoo_fn)
+
+        # Assert
+        # The call form is unambiguous.
+        assert evaluate(root_module, "🐭.as-a-call()") == "the function"
+        # The bare form prefers the variable, which is declared in this file rather
+        # than arriving from an import.
+        assert evaluate(root_module, "🐭.as-a-field()") == "the field"
+
+
 def test_a_module_variable_holds_structure_across_an_import():
     """🐭 scoping is unchanged by structured values: an imported accessor reads and
     writes the object in its own defining module."""

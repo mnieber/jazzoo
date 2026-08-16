@@ -98,6 +98,14 @@ a `ResolutionError` unless marked with `?` (see section 4).
 Only `🐐`, `🐭` and `🐆` hold structured values. `⚙️` is a fixed set of built-ins, and
 `⚙️.env` values are always strings, because that is what the environment provides.
 
+A dotted name is also how a function inside an imported namespace is reached
+(`🐭.docker.build`, section 9), so `🐭.a.b` is lexically both a field path and a call
+path. A trailing `()` settles it wherever there is one. For a bare `🐭.a.b`, **the
+variable wins**: jazzoo resolves the first segment as a variable and treats the rest as
+a path, and only looks for a function when that first segment names nothing. A variable
+is declared in the file being read, whereas a namespace arrives from an import, so
+preferring the local declaration keeps the reading close at hand.
+
 ### Rendering a value as text
 
 Substitution always produces text (section 4), so every value has a string rendering:
@@ -969,20 +977,4 @@ The rule applies per scope, so a local `🐆.foo` may shadow a module-level `�
 ## 14. Open Questions
 
 - **`set shell`**: Should jazzoo support configuring the default shell (e.g. bash vs sh vs fish)? Currently unspecified.
-- **Structured values are specified but not yet implemented.** Section 3 describes JSON
-  values, dotted paths and `⚙️.parse`/`⚙️.json`; the current implementation still treats
-  every value as a string and stops a name at the first dot. Landing it means:
-  - the reference scanner continues a name across dots for `🐐`/`🐭`/`🐆`, which is the
-    breaking half — `🐭.bare.com` currently means `🐭.bare` then `.com`, and will mean a
-    field lookup. `🐭.bare\.com` is the migration, and it needs to work in expression
-    position as well as in shell lines, where today it already does.
-  - assignment parses a dotted left-hand side and creates intermediate objects
-  - rendering splits scalar (bare) from container (compact JSON), per section 3
-  - `is_truthy` takes a value rather than a string, so `null`, `[]` and `{}` are falsy
-  - a call path and a field path become lexically identical, so `🐭.a.b` is resolved as a
-    function first and a field second — the one place the two namespaces overlap
-  - an unquoted word in an expression is parsed as JSON, and is a `ParseError` unless it
-    is `true`, `false`, `null` or a number. Reference defaults and CLI arguments keep
-    bare words, since neither position parses an expression.
-  - `⚙️.empty` and `⚙️.bool` join the pipe operators
 - **Circular imports**: Circular imports are allowed. Modules are cached by resolved file path after first load; a circular import receives the cached partially-initialized module. Circular references used only at call time (mid-body function calls) are safe. Circular references at load time — module-level variable assignments that call into a module not yet fully initialized — are a runtime error. This is the same model as TypeScript (live bindings resolved at access time), which is more predictable than Python's approach (copied values resolved at import time, where failures depend on statement order).
