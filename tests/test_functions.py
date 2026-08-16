@@ -2,7 +2,12 @@ import os
 
 import pytest
 
-from jazzoo.modules.errors import ArgumentError, ExecutionError, ResolutionError
+from jazzoo.modules.errors import (
+    ArgumentError,
+    ExecutionError,
+    ParseError,
+    ResolutionError,
+)
 from jazzoo.modules.rules.parse_module import parse_module
 from jazzoo.modules.rules.get_function_by_path import get_function_by_path
 from jazzoo.modules.rules.get_targets import get_targets
@@ -555,3 +560,130 @@ def test_a_failing_dependency_aborts_later_dependencies_and_the_body(tmp_path):
         assert os.path.exists(first)
         assert not os.path.exists(second)
         assert not os.path.exists(body)
+
+
+def test_a_name_may_not_be_both_a_variable_and_a_function():
+    """A reference names only a sigil and a name, so it does not say whether to look
+    in a scope's variables or its functions. A scope may not define both under the
+    same name."""
+    if True:
+        # Config
+        variable_first = save_fixture("""# test_variable_then_function.jaz
+        🐭.foo = "bar"
+
+        foo():
+            echo "hello"
+        """)
+
+        function_first = save_fixture("""# test_function_then_variable.jaz
+        foo():
+            echo "hello"
+
+        🐭.foo = "bar"
+        """)
+
+        # Run / Assert
+        # The collision is an error in either order.
+        with pytest.raises(ParseError):
+            parse_module(variable_first)
+        with pytest.raises(ParseError):
+            parse_module(function_first)
+
+
+def test_a_curried_function_may_not_shadow_an_existing_name():
+    """A curry expression assigns a function to a variable, so it collides with an
+    existing function of the same name like any other assignment would."""
+    if True:
+        # Config
+        jazzoo_fn = save_fixture("""# test_curry_name_collision.jaz
+        build(target, mode="release"):
+            echo "🐆.target/🐆.mode"
+
+        🐭.build = 🐭.build[mode="dev"]
+        """)
+
+        # Run / Assert
+        with pytest.raises(ParseError):
+            parse_module(jazzoo_fn)
+
+    """Under a different name it is fine - that is the ordinary currying form."""
+    if True:
+        # Config
+        jazzoo_fn = save_fixture("""# test_curry_distinct_name.jaz
+        build(target, mode="release"):
+            echo "🐆.target/🐆.mode"
+
+        🐭.build-in-dev = 🐭.build[mode="dev"]
+
+        go():
+            🐆.retval = 🐭.build-in-dev(target="myapp")
+        """)
+
+        # Run
+        root_module = parse_module(jazzoo_fn)
+
+        # Assert
+        assert eval(root_module, "🐭.go()") == "myapp/dev"
+
+
+def test_two_functions_may_not_share_a_name():
+    """Two functions in one scope may not share a name either - the same ambiguity."""
+    if True:
+        # Config
+        jazzoo_fn = save_fixture("""# test_duplicate_function.jaz
+        foo():
+            echo "first"
+
+        foo():
+            echo "second"
+        """)
+
+        # Run / Assert
+        with pytest.raises(ParseError):
+            parse_module(jazzoo_fn)
+
+
+def test_the_uniqueness_rule_applies_per_scope():
+    """The rule applies per scope, so a local 🐆.foo may shadow a module-level 🐭.foo -
+    they are different scopes, and their sigils tell them apart."""
+    if True:
+        # Config
+        jazzoo_fn = save_fixture("""# test_scope_shadowing.jaz
+        🐭.foo = "module"
+
+        go():
+            🐆.foo = "local"
+            🐆.retval = "🐭.foo/🐆.foo"
+        """)
+
+        # Run
+        root_module = parse_module(jazzoo_fn)
+
+        # Assert
+        assert eval(root_module, "🐭.go()") == "module/local"
+
+    """An imported namespace is its own scope, so it does not collide either."""
+    if True:
+        # Config
+        save_fixture("""# name_library.jaz
+        build(target):
+            echo "library: 🐆.target"
+        """)
+
+        jazzoo_fn = save_fixture("""# test_namespace_no_collision.jaz
+        from ./name_library.jaz import build as docker
+
+        build(target):
+            echo "own: 🐆.target"
+
+        go():
+            🐆.own = 🐭.build(target="a")
+            🐆.imported = 🐭.docker.build(target="b")
+            🐆.retval = "🐆.own/🐆.imported"
+        """)
+
+        # Run
+        root_module = parse_module(jazzoo_fn)
+
+        # Assert
+        assert eval(root_module, "🐭.go()") == "own: a/library: b"

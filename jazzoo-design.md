@@ -739,6 +739,28 @@ Key properties:
 - **Parameters** are the static call signature. At call time, jazzoo validates the caller's arguments against `parameters`, then populates `variables` with the resolved values. The function body only ever reads from `variables`.
 - **Targets** are functions with `is_target = True` — i.e. all functions not marked `[private]`. Only targets are callable from the CLI and visible in `jaz --list`.
 
+### Names are unique within a scope
+
+A `Scope` holds `variables` and `functions` in separate lists, but a reference names only a sigil and a name — `🐭.foo` does not say which list to look in. A scope may therefore not define a variable and a function under the same name, in either order. Doing so is a `ParseError`:
+
+```
+🐭.foo = "bar"
+
+foo():              # error: `foo` is already defined in this scope
+    echo "hello"
+```
+
+This covers currying too, since a curry expression assigns a function to a variable:
+
+```
+build(target, mode="release"):
+    cargo build --target=🐆.target --profile=🐆.mode
+
+🐭.build = 🐭.build[mode="dev"]   # error: `build` is already defined in this scope
+```
+
+The rule applies per scope, so a local `🐆.foo` may shadow a module-level `🐭.foo` — they are different scopes, and their sigils tell them apart. Imported namespaces are also separate scopes: `🐭.docker.build` and a local `🐭.build` do not collide.
+
 ---
 
 ## 14. Open Questions
