@@ -1,8 +1,6 @@
 Ideas:
 
-- allow to assign any json to a variable and allow to create structured objects, e.g. 🐆.config.name = "jane".
-  - substitution such as `echo 🐆.config` will convert from json to string
-  - `🐆.config = 🐭.load_config() | ⚙️.parse` parses the result of `🐭.load_config()` as a json string.
+- simple logic and arithmetic, e.g. {{ "yes" if 🐆.foo > 2 or 🐆.bar else "no" }}
 - lambda functions: 🐆.foo = (name="okay") => 🐭.log(🐆.name)
 - support `from hello.jaz export (build_fe as build,) as fe
   - this allows the caller to use `jaz fe.build mode=dev`
