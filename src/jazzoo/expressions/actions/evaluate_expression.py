@@ -18,11 +18,9 @@ from jazzoo.expressions.rules.parse_expression import (
     ReferenceText,
     parse_expression,
 )
-from jazzoo.expressions.models.reference import Reference
 from jazzoo.expressions.rules.parse_references import parse_references
 from jazzoo.expressions.rules.substitute_references import substitute_references
 from jazzoo.expressions.utils.join_path import join_path
-from jazzoo.modules.models.absent import ABSENT
 from jazzoo.modules.rules.parse_source import parse_call_arguments
 
 # Splits `🐭.name(args)` into its name and its argument text.
@@ -102,10 +100,9 @@ def _evaluate_node(node: T.Any, frame) -> T.Any:
 def _resolve_reference_text(text: str, frame) -> T.Any:
     """Resolve a reference in expression position.
 
-    A dotted name is ambiguous - `🐭.bare.com` could name `bare.com` or name `bare`
-    with a literal `.com` after it - so the longest name is tried first and shorter
-    prefixes are tried in turn, the remainder becoming literal text. ⚙️ is exempt,
-    since its names really are dotted (`⚙️.module.basename`).
+    Variable names never contain dots, so the scanner already ends the name at the
+    first one and anything after it is literal text - which is what makes
+    `🐭.bare.com` the variable `bare` followed by ".com".
     """
     from jazzoo.expressions.rules.resolve_reference import resolve_reference
 
@@ -114,33 +111,12 @@ def _resolve_reference_text(text: str, frame) -> T.Any:
         return text
 
     match = matches[0]
-    reference = match.reference
+    value = resolve_reference(match.reference, frame)
     suffix = text[match.end :]
-
-    if reference.sigil is Sigil.SYSTEM:
-        return f"{resolve_reference(reference, frame)}{suffix}"
-
-    parts = list(reference.parts)
-    while parts:
-        candidate = Reference(
-            sigil=reference.sigil,
-            parts=parts,
-            is_optional=reference.is_optional,
-            default=reference.default,
-            filename=reference.filename,
-            line=reference.line,
-        )
-        value = frame.lookup(candidate.sigil, candidate.name)
-        if value is not ABSENT:
-            trailing = ".".join(reference.parts[len(parts) :])
-            dot = "." if trailing else ""
-            if not isinstance(value, str):
-                return value
-            return f"{value}{dot}{trailing}{suffix}"
-        parts = parts[:-1]
-
-    # Nothing resolved: let the full reference raise, honouring ? and :- .
-    return f"{resolve_reference(reference, frame)}{suffix}"
+    if not suffix:
+        # A lone reference keeps its value's type rather than being stringified.
+        return value
+    return f"{value}{suffix}"
 
 
 def _is_condition_true(node: T.Any, frame) -> bool:
