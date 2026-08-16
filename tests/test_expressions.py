@@ -4,8 +4,8 @@ from jazzoo import evaluate, parse_module
 from jazzoo.runtime.utils.test_utils import save_fixture
 
 
-def test_all_values_are_strings():
-    """All values are strings. There are no integers."""
+def test_strings_must_be_quoted():
+    """A quoted number is a string, and stays one."""
     if True:
         # Config
         jazzoo_fn = save_fixture("""# test_values_are_strings.jaz
@@ -21,30 +21,29 @@ def test_all_values_are_strings():
         # Assert
         assert evaluate(root_module, "🐭.go()") == "123"
 
-    """Unquoted values are treated as bare strings, so quoting is optional."""
+    """A string on the right-hand side of an assignment must be quoted."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_bare_strings.jaz
-        🐭.bare = hello
+        jazzoo_fn = save_fixture("""# test_quoted_strings.jaz
         🐭.quoted = "hello"
-        🐭.also-bare = 🐭.bare\\.com
+        🐭.suffixed = 🐭.quoted\\.com
 
-        bare-fn():
-            🐆.x = hello
+        quoted-fn():
+            🐆.x = "hello"
             🐆.retval = 🐆.x
 
         module-level-fn():
-            🐆.retval = "🐭.bare/🐭.quoted"
+            🐆.retval = "🐭.quoted/🐭.quoted"
         """)
 
         # Run
         root_module = parse_module(jazzoo_fn)
 
         # Assert
-        assert evaluate(root_module, "🐭.bare-fn()") == "hello"
+        assert evaluate(root_module, "🐭.quoted-fn()") == "hello"
         # A dot continues the name into a structured lookup, so a literal dotted
         # suffix needs the `\` that ends the name.
-        assert evaluate(root_module, "🐭.also-bare") == "hello.com"
+        assert evaluate(root_module, "🐭.suffixed") == "hello.com"
         assert evaluate(root_module, "🐭.module-level-fn()") == "hello/hello"
 
 

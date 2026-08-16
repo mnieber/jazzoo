@@ -32,14 +32,35 @@ Declared at the top level of a `.jaz` file:
 
 ```
 🐐.log-level = "high"
-🐭.tracing = True
+🐭.tracing = true
 ```
 
 ### Types
 
 A variable holds a JSON value: a string, a number, a boolean, `null`, an array, or an
-object. Most values in practice are strings, and a value written without quotes is a
-bare string — `🐆.x = hello` is equivalent to `🐆.x = "hello"`.
+object.
+
+**A string on the right-hand side of an assignment must be quoted.** An unquoted word
+is read as JSON, so `true`, `false`, `null` and `8080` are the boolean, null and number
+values, and anything else is a `ParseError`:
+
+```
+🐆.flag = true       # the boolean
+🐆.flag = "true"     # the string
+🐆.name = "jane"     # a string, quoted
+🐆.name = jane       # ParseError: strings must be quoted
+```
+
+Without this rule `🐆.flag = true` would be ambiguous the moment booleans exist, and
+which reading won would decide whether `"yes" if 🐆.flag else "no"` is asking about a
+boolean or about a five-character string. Quoting settles it in the source, where the
+author can see it.
+
+Quoting is required only where an expression is parsed. Two positions have no
+expression grammar and so keep bare words, because there a word can only be a string:
+
+- reference defaults — `⚙️.env.LOG_LEVEL?:-info` (see section 4)
+- command-line arguments — `jaz build myapp` (see section 10)
 
 Jazzoo does no arithmetic. A number is a value it can hold and pass around, not one it
 can compute with: there is no `+`, and `==` compares the rendered strings. Numbers
@@ -140,6 +161,35 @@ flags, and the others make `"yes" if 🐆.config.items else "no"` mean what it l
 
 Note that truthiness is decided on the value, not on its rendering — an empty array is
 falsy even though it renders as the non-empty text `[]`.
+
+### Testing for emptiness with `⚙️.empty`
+
+Truthiness answers "does this value mean yes?", which is deliberately generous about
+env-var spellings. A different and equally common question is "did I get anything back
+at all?" — and for that the string rule gives the wrong answer, because a command that
+printed `no` printed something:
+
+```
+🐆.result = 🐭.check-status()
+🐆.nothing-came-back = 🐆.result | ⚙️.empty
+```
+
+`⚙️.empty` yields `true` when the value is the empty string, an empty array, an empty
+object, or `null`, and `false` for everything else — including `"no"`, `"false"` and
+`"0"`, which are falsy but not empty.
+
+| Value      | Truthy? | `⚙️.empty` |
+| ---------- | ------- | ---------- |
+| `""`       | no      | `true`     |
+| `[]`, `{}` | no      | `true`     |
+| `null`     | no      | `true`     |
+| `"no"`     | no      | `false`    |
+| `"false"`  | no      | `false`    |
+| `"0"`      | no      | `false`    |
+| `"hello"`  | yes     | `false`    |
+
+The two disagree on exactly the three env-var spellings, which is the point: use
+truthiness to read a flag, and `⚙️.empty` to ask whether a command produced output.
 
 ### System variables
 
@@ -353,6 +403,7 @@ Other pipe operators are:
 - ⚙️.sh-quote: renders the value as a single, safely quoted POSIX shell word (see section 4)
 - ⚙️.parse: parses a JSON string into a structured value (see section 3)
 - ⚙️.json: renders any value as a JSON string (see section 3)
+- ⚙️.empty: yields whether the value is empty, which is not the same as falsy (see section 3)
 
 ---
 
@@ -777,6 +828,7 @@ Errors are reported as early as they can be. Anything decidable from the parse t
 | Condition                                                             | Class               |
 | --------------------------------------------------------------------- | ------------------- |
 | Syntax that does not parse                                            | `ParseError`        |
+| An unquoted string in an expression (`🐆.x = hello`)                  | `ParseError`        |
 | A positional argument in a `.jaz` file (`🐭.build("dev")`)            | `ArgumentError`     |
 | A pipe stage leaving zero, or more than one, parameter unbound        | `ArgumentError`     |
 | Binding an unknown parameter in a curry expression                    | `ArgumentError`     |
@@ -893,4 +945,8 @@ The rule applies per scope, so a local `🐆.foo` may shadow a module-level `�
   - `is_truthy` takes a value rather than a string, so `null`, `[]` and `{}` are falsy
   - a call path and a field path become lexically identical, so `🐭.a.b` is resolved as a
     function first and a field second — the one place the two namespaces overlap
+  - an unquoted word in an expression is parsed as JSON, and is a `ParseError` unless it
+    is `true`, `false`, `null` or a number. Reference defaults and CLI arguments keep
+    bare words, since neither position parses an expression.
+  - `⚙️.empty` joins the pipe operators
 - **Circular imports**: Circular imports are allowed. Modules are cached by resolved file path after first load; a circular import receives the cached partially-initialized module. Circular references used only at call time (mid-body function calls) are safe. Circular references at load time — module-level variable assignments that call into a module not yet fully initialized — are a runtime error. This is the same model as TypeScript (live bindings resolved at access time), which is more predictable than Python's approach (copied values resolved at import time, where failures depend on statement order).

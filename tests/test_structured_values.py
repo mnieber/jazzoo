@@ -11,7 +11,13 @@ values existed. Only containers render as JSON.
 
 import pytest
 
-from jazzoo import ExecutionError, ResolutionError, evaluate, parse_module
+from jazzoo import (
+    ExecutionError,
+    ParseError,
+    ResolutionError,
+    evaluate,
+    parse_module,
+)
 from jazzoo.runtime.utils.test_utils import save_fixture
 
 
@@ -405,6 +411,187 @@ def test_a_structured_value_survives_a_function_call():
 
         # Assert
         assert evaluate(root_module, "🐭.build()") == "name=jane"
+
+
+def test_an_unquoted_word_is_read_as_json():
+    """An unquoted word on an assignment's right-hand side is JSON, so `true` is the
+    boolean rather than a five-character string."""
+    if True:
+        # Config
+        jazzoo_fn = save_fixture("""# test_unquoted_is_json.jaz
+        boolean():
+            🐆.flag = true
+            🐆.retval = "yes" if 🐆.flag else "no"
+
+        the-string():
+            🐆.flag = "true"
+            🐆.retval = "yes" if 🐆.flag else "no"
+
+        boolean-false():
+            🐆.flag = false
+            🐆.retval = "yes" if 🐆.flag else "no"
+
+        a-number():
+            🐆.port = 8080
+            🐆.retval = 🐆.port
+        """)
+
+        # Run
+        root_module = parse_module(jazzoo_fn)
+
+        # Assert
+        # The boolean and the string agree here, which is exactly why the ambiguity
+        # had to be settled in the source rather than at evaluation.
+        assert evaluate(root_module, "🐭.boolean()") == "yes"
+        assert evaluate(root_module, "🐭.the-string()") == "yes"
+        assert evaluate(root_module, "🐭.boolean-false()") == "no"
+        assert evaluate(root_module, "🐭.a-number()") == "8080"
+
+
+def test_an_unquoted_string_is_a_parse_error():
+    """A word that is not valid JSON is a ParseError - strings must be quoted."""
+    if True:
+        # Config
+        at_top_level = save_fixture("""# test_unquoted_top_level.jaz
+        🐭.name = jane
+        """)
+
+        in_a_body = save_fixture("""# test_unquoted_in_body.jaz
+        go():
+            🐆.name = jane
+            🐆.retval = 🐆.name
+        """)
+
+        # Run / Assert
+        with pytest.raises(ParseError):
+            parse_module(at_top_level)
+        with pytest.raises(ParseError):
+            parse_module(in_a_body)
+
+
+def test_bare_words_survive_where_no_expression_is_parsed(monkeypatch):
+    """Quoting is required only where an expression is parsed. A reference default
+    has no expression grammar, so it keeps bare words."""
+    if True:
+        # Config
+        monkeypatch.delenv("JAZZOO_ABSENT_WORD", raising=False)
+
+        jazzoo_fn = save_fixture("""# test_bare_default.jaz
+        go():
+            echo "⚙️.env.JAZZOO_ABSENT_WORD?:-info"
+        """)
+
+        # Run
+        root_module = parse_module(jazzoo_fn)
+
+        # Assert
+        # `info` is bare here and stays a string - see design section 3.
+        assert evaluate(root_module, "🐭.go()") == "info"
+
+
+def test_empty_distinguishes_nothing_from_falsy():
+    """⚙️.empty asks whether a value is empty, which is not the same as falsy: a
+    command that printed `no` printed something."""
+    if True:
+        # Config
+        jazzoo_fn = save_fixture("""# test_empty_operator.jaz
+        [private]
+        _prints-no():
+            #!/usr/bin/env bash
+            echo "no"
+
+        [private]
+        _prints-nothing():
+            #!/usr/bin/env bash
+            printf ''
+
+        said-something():
+            🐆.result = 🐭._prints-no()
+            🐆.retval = 🐆.result | ⚙️.empty
+
+        said-nothing():
+            🐆.result = 🐭._prints-nothing()
+            🐆.retval = 🐆.result | ⚙️.empty
+        """)
+
+        # Run
+        root_module = parse_module(jazzoo_fn)
+
+        # Assert
+        # "no" is falsy but not empty - this is the case the truthiness rule gets
+        # wrong for this question.
+        assert evaluate(root_module, "🐭.said-something()") == "false"
+        assert evaluate(root_module, "🐭.said-nothing()") == "true"
+
+
+def test_empty_covers_the_empty_containers_and_null():
+    """⚙️.empty is true for "", [], {} and null, and false for everything else."""
+    if True:
+        # Config
+        jazzoo_fn = save_fixture("""# test_empty_values.jaz
+        empty-string():
+            🐆.v = ""
+            🐆.retval = 🐆.v | ⚙️.empty
+
+        empty-array():
+            🐆.v = []
+            🐆.retval = 🐆.v | ⚙️.empty
+
+        empty-object():
+            🐆.v = {}
+            🐆.retval = 🐆.v | ⚙️.empty
+
+        nothing():
+            🐆.v = null
+            🐆.retval = 🐆.v | ⚙️.empty
+
+        a-falsy-string():
+            🐆.v = "false"
+            🐆.retval = 🐆.v | ⚙️.empty
+
+        a-zero-string():
+            🐆.v = "0"
+            🐆.retval = 🐆.v | ⚙️.empty
+
+        a-full-array():
+            🐆.v = ["a"]
+            🐆.retval = 🐆.v | ⚙️.empty
+        """)
+
+        # Run
+        root_module = parse_module(jazzoo_fn)
+
+        # Assert
+        for target in ["empty-string", "empty-array", "empty-object", "nothing"]:
+            assert evaluate(root_module, f"🐭.{target}()") == "true"
+        # Falsy but not empty.
+        for target in ["a-falsy-string", "a-zero-string", "a-full-array"]:
+            assert evaluate(root_module, f"🐭.{target}()") == "false"
+
+
+def test_empty_composes_into_a_condition():
+    """⚙️.empty is an ordinary pipe operator, so it reads naturally inside a
+    ternary."""
+    if True:
+        # Config
+        jazzoo_fn = save_fixture("""# test_empty_in_condition.jaz
+        [private]
+        _prints-no():
+            #!/usr/bin/env bash
+            echo "no"
+
+        go():
+            🐆.result = 🐭._prints-no()
+            🐆.retval = "nothing came back" if 🐆.result | ⚙️.empty else "got: 🐆.result"
+        """)
+
+        # Run
+        root_module = parse_module(jazzoo_fn)
+
+        # Assert
+        # Under plain truthiness this would take the other branch, because "no" is
+        # falsy - which is the whole reason ⚙️.empty exists.
+        assert evaluate(root_module, "🐭.go()") == "got: no"
 
 
 def test_a_call_path_and_a_field_path_do_not_collide():
