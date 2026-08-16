@@ -191,6 +191,41 @@ object, or `null`, and `false` for everything else — including `"no"`, `"false
 The two disagree on exactly the three env-var spellings, which is the point: use
 truthiness to read a flag, and `⚙️.empty` to ask whether a command produced output.
 
+### Capturing a truthiness decision with `⚙️.bool`
+
+A ternary consumes truthiness but does not hand it back. `⚙️.bool` yields the decision
+itself as a boolean, so it can be stored, passed to a function, or rendered:
+
+```
+🐆.ci = ⚙️.env.CI?  | ⚙️.bool      # true / false, whatever spelling CI used
+🐭.report(enabled=🐆.ci)
+```
+
+It applies the same rule as a ternary condition, so `"yes"`, `"1"` and `"anything"`
+yield `true`, while `""`, `"no"`, `"false"`, `"0"`, `null`, `[]`, `{}` and `0` yield
+`false`. Its value is a real boolean, so it renders as `true` or `false` and is itself
+truthy or falsy accordingly.
+
+`⚙️.bool` is total: every value maps to a boolean and nothing raises. That is
+deliberate, because the values it is for arrive as *strings* from `⚙️.env` or a
+command's stdout, and a version that rejected `"yes"` would fail exactly where it is
+most useful. Where a genuine boolean is required, take it from `⚙️.parse`, which
+preserves JSON's own `true` and `false`.
+
+The three ways of asking about a value line up like this:
+
+| Value     | Truthy? | `⚙️.bool` | `⚙️.empty` |
+| --------- | ------- | --------- | ---------- |
+| `""`      | no      | `false`   | `true`     |
+| `null`    | no      | `false`   | `true`     |
+| `[]`, `{}` | no     | `false`   | `true`     |
+| `"no"`    | no      | `false`   | `false`    |
+| `"yes"`   | yes     | `true`    | `false`    |
+| `["a"]`   | yes     | `true`    | `false`    |
+
+`⚙️.bool` is the truthiness column made into a value; `⚙️.empty` answers a different
+question and is not its negation.
+
 ### System variables
 
 Jazzoo provides built-in variables in the `⚙️` namespace. All of them are read-only — a `.jaz` file can never assign to `⚙️`.
@@ -404,6 +439,7 @@ Other pipe operators are:
 - ⚙️.parse: parses a JSON string into a structured value (see section 3)
 - ⚙️.json: renders any value as a JSON string (see section 3)
 - ⚙️.empty: yields whether the value is empty, which is not the same as falsy (see section 3)
+- ⚙️.bool: yields the value's truthiness as a boolean (see section 3)
 
 ---
 
@@ -948,5 +984,5 @@ The rule applies per scope, so a local `🐆.foo` may shadow a module-level `�
   - an unquoted word in an expression is parsed as JSON, and is a `ParseError` unless it
     is `true`, `false`, `null` or a number. Reference defaults and CLI arguments keep
     bare words, since neither position parses an expression.
-  - `⚙️.empty` joins the pipe operators
+  - `⚙️.empty` and `⚙️.bool` join the pipe operators
 - **Circular imports**: Circular imports are allowed. Modules are cached by resolved file path after first load; a circular import receives the cached partially-initialized module. Circular references used only at call time (mid-body function calls) are safe. Circular references at load time — module-level variable assignments that call into a module not yet fully initialized — are a runtime error. This is the same model as TypeScript (live bindings resolved at access time), which is more predictable than Python's approach (copied values resolved at import time, where failures depend on statement order).
