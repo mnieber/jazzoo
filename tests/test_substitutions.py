@@ -121,8 +121,49 @@ def test_backslash_terminates_a_variable_name():
         root_module = parse_module(jazzoo_fn)
 
         # Assert
-        # Without the backslash this would look for a variable named `tracing.com`.
+        # Without the backslash the dot would continue the name into a structured
+        # lookup, so the escape is what makes ".com" literal text.
         assert evaluate(root_module, "🐭.debug()") == "on.com"
+
+    """The escape is required, not optional: an unescaped dot is a path segment."""
+    if True:
+        # Config
+        jazzoo_fn = save_fixture("""# test_unescaped_dot_is_a_path.jaz
+        🐭.tracing = "on"
+
+        debug():
+            echo "🐭.tracing.com"
+        """)
+
+        # Run
+        root_module = parse_module(jazzoo_fn)
+
+        # Assert
+        # `tracing` holds a string, so it has no `com` field.
+        with pytest.raises(ResolutionError):
+            evaluate(root_module, "🐭.debug()")
+
+
+def test_the_name_terminator_works_in_expression_position():
+    """A `\\` ends the name in an expression too, not only in a shell line - which is
+    what makes the migration from the old dotted-suffix behaviour possible."""
+    if True:
+        # Config
+        jazzoo_fn = save_fixture("""# test_terminator_in_expression.jaz
+        🐭.host = "example"
+        🐭.full = 🐭.host\\.com
+
+        debug():
+            🐆.local = 🐭.host\\.org
+            🐆.retval = "🐭.full/🐆.local"
+        """)
+
+        # Run
+        root_module = parse_module(jazzoo_fn)
+
+        # Assert
+        assert evaluate(root_module, "🐭.full") == "example.com"
+        assert evaluate(root_module, "🐭.debug()") == "example.com/example.org"
 
 
 def test_escaping_inside_braces_yields_a_literal_braced_reference():
