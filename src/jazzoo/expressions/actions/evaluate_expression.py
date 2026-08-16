@@ -63,9 +63,11 @@ def _evaluate_node(node: T.Any, frame) -> T.Any:
     from jazzoo.expressions.rules.resolve_reference import resolve_reference
 
     if isinstance(node, Literal):
-        # A literal may still contain references to substitute.
+        # A literal may still contain references and calls to substitute.
         return substitute_references(
-            node.text, lambda reference: str(resolve_reference(reference, frame))
+            node.text,
+            lambda reference: str(resolve_reference(reference, frame)),
+            evaluate_call=lambda call_text: evaluate_call(call_text, frame),
         )
 
     if isinstance(node, Call):

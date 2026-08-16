@@ -113,6 +113,20 @@ def _lookup_function(path: str, frame: Frame, call_site) -> Function:
             filename=getattr(call_site, "filename", None),
             line=getattr(call_site, "line", None),
         )
+
+    # A circular import hands back the cached, partially-initialized module. Using
+    # it at call time is fine; reaching it while it is still loading is not, because
+    # its own top-level assignments have not run yet (design section 14).
+    owner = function.module
+    if owner is not None and not owner.is_initialized and owner is not frame.module:
+        from jazzoo.errors import ModuleImportError
+
+        raise ModuleImportError(
+            f"'{path}' is not available yet: {owner.name} is still loading",
+            filename=getattr(call_site, "filename", None),
+            line=getattr(call_site, "line", None),
+        )
+
     return function
 
 
