@@ -19,5 +19,8 @@ class Function(Scope):
     # Calls declared after the colon, run before the body.
     dependencies: T.List["CallSite"] = []
     body: T.List["Block"] = []
+    # The module this function was defined in, so 🐭 and ⚙️.module resolve against
+    # the defining file even when the caller lives elsewhere.
+    module: T.Any = None
     filename: T.Optional[str] = None
     line: T.Optional[int] = None
