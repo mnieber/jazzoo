@@ -1,6 +1,6 @@
 import pytest
 
-from jazzoo.modules.errors import ArgumentError
+from jazzoo.modules.errors import ArgumentError, ResolutionError
 from jazzoo.modules.rules.parse_module import parse_module
 from jazzoo.modules.rules.evaluate import evaluate
 from jazzoo.runtime.utils.test_utils import save_fixture
@@ -310,5 +310,114 @@ def test_supplying_an_argument_for_a_bound_parameter_is_an_argument_error():
         """)
 
         # Run / Assert
+        with pytest.raises(ArgumentError):
+            parse_module(jazzoo_fn)
+
+
+def test_a_variable_holding_a_function_is_callable():
+    """Assigning a function symbol to a variable makes that variable callable - the
+    function symbol is equivalent to applying empty square brackets to it."""
+    if True:
+        # Config
+        jazzoo_fn = save_fixture("""# test_variable_is_callable.jaz
+        [private]
+        _greet(who, punctuation="!"):
+            echo "Hello 🐆.who🐆.punctuation"
+
+        🐭.greet = 🐭._greet
+
+        go():
+            🐆.retval = 🐭.greet(who="jane")
+
+        with-every-argument():
+            🐆.retval = 🐭.greet(who="jane", punctuation="?")
+        """)
+
+        # Run
+        root_module = parse_module(jazzoo_fn)
+
+        # Assert
+        # The variable behaves as the function it holds, defaults included.
+        assert evaluate(root_module, "🐭.go()") == "Hello jane!"
+        assert evaluate(root_module, "🐭.with-every-argument()") == "Hello jane?"
+
+
+def test_a_local_variable_may_hold_and_call_a_function():
+    """A 🐆 variable can hold a function too, and is called the same way."""
+    if True:
+        # Config
+        jazzoo_fn = save_fixture("""# test_local_variable_is_callable.jaz
+        [private]
+        _greet(who):
+            echo "Hello 🐆.who"
+
+        go():
+            🐆.greet = 🐭._greet
+            🐆.retval = 🐆.greet(who="jane")
+        """)
+
+        # Run
+        root_module = parse_module(jazzoo_fn)
+
+        # Assert
+        assert evaluate(root_module, "🐭.go()") == "Hello jane"
+
+
+def test_a_variable_holding_a_function_can_be_reassigned_and_piped():
+    """A variable holding a function is an ordinary value: it can be passed onwards
+    to another variable, and used as a pipe stage."""
+    if True:
+        # Config
+        jazzoo_fn = save_fixture("""# test_function_value_flows.jaz
+        from ./helpers.jaz import drop-config-dir-part as h
+
+        🐭.first = 🐭.h.drop-config-dir-part
+        🐭.second = 🐭.first
+
+        called():
+            🐆.retval = 🐭.second(path="/data/config/input.json")
+
+        piped():
+            🐆.retval = "/data/config/input.json" | 🐭.second
+        """)
+
+        # Run
+        root_module = parse_module(jazzoo_fn)
+
+        # Assert
+        assert evaluate(root_module, "🐭.called()") == "/data/input.json"
+        assert evaluate(root_module, "🐭.piped()") == "/data/input.json"
+
+
+def test_calling_a_variable_that_holds_a_string_is_an_error():
+    """Only a variable holding a function is callable. Calling one that holds an
+    ordinary string does not resolve to a function."""
+    if True:
+        # Config
+        jazzoo_fn = save_fixture("""# test_calling_a_string.jaz
+        🐭.not-a-function = "just a string"
+
+        go():
+            🐆.retval = 🐭.not-a-function()
+        """)
+
+        # Run / Assert
+        with pytest.raises(ResolutionError):
+            parse_module(jazzoo_fn)
+
+
+def test_calling_a_function_symbol_without_arguments_is_an_error():
+    """`🐭.foo = 🐭.build()` is an error, because it executes `build` without passing
+    any arguments rather than referring to it."""
+    if True:
+        # Config
+        jazzoo_fn = save_fixture("""# test_symbol_vs_call.jaz
+        from ./helpers.jaz import make-full-path as h
+
+        🐭.executed-too-early = 🐭.h.make-full-path()
+        """)
+
+        # Run / Assert
+        # `make-full-path` requires `input`, so calling it here is a missing argument.
         with pytest.raises(ArgumentError):
             parse_module(jazzoo_fn)
