@@ -149,6 +149,7 @@ def _run_one_block(block, frame: Frame, evaluate_expression) -> None:
                 lambda reference: _resolve(reference, frame),
                 filename=block.filename,
                 line=block_line.line,
+                evaluate_call=lambda call_text: _evaluate_call(call_text, frame),
             )
             _echo(text, block_line.is_quiet)
             frame.stdout = run_block(
@@ -163,6 +164,7 @@ def _run_one_block(block, frame: Frame, evaluate_expression) -> None:
             lambda reference: _resolve(reference, frame),
             filename=block.filename,
             line=block_line.line,
+            evaluate_call=lambda call_text: _evaluate_call(call_text, frame),
         )
         swept.append((text, block_line.line, block_line.is_quiet))
 
@@ -175,6 +177,12 @@ def _run_one_block(block, frame: Frame, evaluate_expression) -> None:
     frame.stdout = run_block(
         block.shebang, body, filename=block.filename, line=swept[0][1]
     )
+
+
+def _evaluate_call(call_text: str, frame: Frame) -> str:
+    from jazzoo.expressions.actions.evaluate_expression import evaluate_call
+
+    return evaluate_call(call_text, frame)
 
 
 def _resolve(reference, frame: Frame) -> str:
