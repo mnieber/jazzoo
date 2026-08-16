@@ -19,17 +19,24 @@ _CALL_RE = re.compile(
 )
 
 
-def validate_module(module: Module) -> None:
+def validate_module(
+    module: Module, function_valued: T.Optional[T.Dict[str, Function]] = None
+) -> None:
     """Check every call site in the module against the function it names.
 
     Raised at load time, before any subprocess runs, so a mistake in one target
     surfaces even when a different target is invoked.
+
+    `function_valued` maps module-level variables that hold a function to the
+    function they hold, so a call through a curried name resolves.
     """
     for function in module.functions:
-        _validate_function(function, module)
+        _validate_function(function, module, function_valued or {})
 
 
-def _validate_function(function: Function, module: Module) -> None:
+def _validate_function(
+    function: Function, module: Module, function_valued: T.Dict[str, Function]
+) -> None:
     for dependency in function.dependencies:
         _validate_call(
             dependency.target_path,
@@ -38,7 +45,13 @@ def _validate_function(function: Function, module: Module) -> None:
             function,
             dependency.filename,
             dependency.line,
+            function_valued,
         )
+
+    # A body may assign a function to a 🐆 variable and then call through it, so
+    # those names are collected before the calls in this body are checked.
+    in_scope = dict(function_valued)
+    in_scope.update(_function_valued_locals(function, module, function_valued))
 
     for block in function.body:
         for block_line in block.lines:
@@ -55,6 +68,9 @@ def _validate_function(function: Function, module: Module) -> None:
                         line=block_line.line,
                     )
             candidate = assignment.group("rhs").strip() if assignment else trimmed
+            _validate_pipes(
+                candidate, module, in_scope, block.filename, block_line.line
+            )
             match = _CALL_RE.match(candidate)
             if match is None:
                 continue
@@ -66,20 +82,141 @@ def _validate_function(function: Function, module: Module) -> None:
                 function,
                 block.filename,
                 block_line.line,
+                in_scope,
             )
 
     for local in function.functions:
-        _validate_function(local, module)
+        _validate_function(local, module, in_scope)
+
+
+def _function_valued_locals(
+    function: Function, module: Module, outer: T.Dict[str, Function]
+) -> T.Dict[str, T.Any]:
+    """🐆 variables in this body that hold a function, keyed by name."""
+    from jazzoo.expressions.rules.parse_expression import (
+        Curry,
+        ReferenceText,
+        parse_expression,
+    )
+    from jazzoo.expressions.rules.split_reference_path import split_reference_path
+    from jazzoo.functions.rules.get_function_by_path import get_function_by_path
+    from jazzoo.functions.rules.parse_curry import parse_curry
+
+    found: T.Dict[str, T.Any] = {}
+    for block in function.body:
+        for block_line in block.lines:
+            assignment = _ASSIGNMENT_RE.match(block_line.text.strip())
+            if assignment is None:
+                continue
+            try:
+                node = parse_expression(assignment.group("rhs").strip())
+            except Exception:
+                continue
+
+            if isinstance(node, Curry):
+                target_text, brackets = node.target.text, node.text
+            elif isinstance(node, ReferenceText):
+                target_text, brackets = node.text, "[]"
+            else:
+                continue
+
+            split = split_reference_path(target_text)
+            if split is None:
+                continue
+            path = split[1]
+
+            held = outer.get(path) or found.get(path)
+            target = (
+                held.function if held is not None
+                else get_function_by_path(module, path)
+            )
+            if target is None:
+                continue
+            found[assignment.group("name")] = parse_curry(
+                target, brackets, filename=block.filename, line=block_line.line
+            )
+    return found
+
+
+def _validate_pipes(
+    source: str,
+    module: Module,
+    function_valued: T.Dict[str, Function],
+    filename: T.Optional[str],
+    line: T.Optional[int],
+) -> None:
+    """Check that each pipe stage leaves exactly one parameter unbound.
+
+    Which parameter is free must be decidable from the expression alone, so a stage
+    binding all of them, or leaving two, is an ArgumentError at parse time.
+    """
+    from jazzoo.expressions.models.pipe import Pipe
+    from jazzoo.expressions.rules.parse_expression import (
+        Curry,
+        ReferenceText,
+        parse_expression,
+    )
+    from jazzoo.expressions.rules.split_reference_path import split_reference_path
+    from jazzoo.functions.rules.get_function_by_path import get_function_by_path
+    from jazzoo.functions.rules.parse_curry import get_free_parameters, parse_curry
+
+    if "|" not in source:
+        return
+    try:
+        node = parse_expression(source)
+    except Exception:
+        return
+    if not isinstance(node, Pipe):
+        return
+
+    for stage in node.stages:
+        if isinstance(stage, Curry):
+            target_text, brackets = stage.target.text, stage.text
+        elif isinstance(stage, ReferenceText):
+            target_text, brackets = stage.text, "[]"
+        else:
+            continue
+
+        split = split_reference_path(target_text)
+        if split is None:
+            continue
+        sigil, path = split
+        if sigil is Sigil.SYSTEM:
+            # A built-in operator, not a user function.
+            continue
+
+        held = function_valued.get(path)
+        target = held.function if held is not None else get_function_by_path(module, path)
+        if target is None:
+            continue
+
+        curried = parse_curry(target, brackets, filename=filename, line=line)
+        if held is not None and brackets == "[]":
+            # Piping a variable that already holds a curry keeps its bindings.
+            curried = held
+        free = get_free_parameters(curried)
+        if len(free) != 1:
+            raise ArgumentError(
+                f"a pipe stage must leave exactly one parameter unbound; "
+                f"{target.name}() leaves {len(free)}",
+                filename=filename,
+                line=line,
+            )
 
 
 def _find_function(
-    path: str, module: Module, enclosing: Function
+    path: str,
+    module: Module,
+    enclosing: Function,
+    function_valued: T.Dict[str, Function],
 ) -> T.Optional[Function]:
     from jazzoo.functions.rules.get_function_by_path import get_function_by_path
 
     for local in enclosing.functions:
         if local.name == path:
             return local
+    if path in function_valued:
+        return function_valued[path].function
     return get_function_by_path(module, path)
 
 
@@ -90,8 +227,9 @@ def _validate_call(
     enclosing: Function,
     filename: T.Optional[str],
     line: T.Optional[int],
+    function_valued: T.Dict[str, Function],
 ) -> None:
-    target = _find_function(path, module, enclosing)
+    target = _find_function(path, module, enclosing, function_valued)
     if target is None:
         raise ResolutionError(
             f"no such function: {path}", filename=filename, line=line
@@ -106,6 +244,15 @@ def _validate_call(
             )
 
     supplied = {name for name, _ in arguments}
+    held = function_valued.get(path)
+    if held is not None:
+        for name in supplied:
+            if name in held.bound:
+                raise ArgumentError(
+                    f"{target.name}() already has a value for '{name}' from currying",
+                    filename=filename,
+                    line=line,
+                )
     declared = {p.name for p in target.parameters}
     for name in supplied:
         if name not in declared:

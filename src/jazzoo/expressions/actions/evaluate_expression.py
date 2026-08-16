@@ -19,8 +19,10 @@ from jazzoo.expressions.rules.parse_expression import (
     parse_expression,
 )
 from jazzoo.expressions.rules.parse_references import parse_references
+from jazzoo.modules.models.absent import ABSENT
 from jazzoo.expressions.rules.substitute_references import substitute_references
 from jazzoo.expressions.utils.join_path import join_path
+from jazzoo.functions.models.curried_function import CurriedFunction
 from jazzoo.modules.rules.parse_source import parse_call_arguments
 
 # Splits `🐭.name(args)` into its name and its argument text.
@@ -55,8 +57,30 @@ def evaluate_call(text: str, frame) -> str:
         filename = None
         line = None
 
+    sigil_text = match.group("sigil")
+    stored = _resolve_function_value(f"{sigil_text}.{path}", frame)
+    if stored is not None and (stored.bound or stored.explicitly_unbound):
+        return call_curried(stored, resolved, frame)
+
     target = _lookup_function(path, frame, _Site())
     return call_function(target, resolved, frame, evaluate_expression)
+
+
+def call_curried(
+    curried: "CurriedFunction", arguments: T.Dict[str, str], frame
+) -> str:
+    """Call a curried function, merging the bound arguments with the caller's."""
+    from jazzoo.functions.actions.call_function import call_function
+
+    for name in arguments:
+        if name in curried.bound:
+            raise ArgumentError(
+                f"{curried.function.name}() already has a value for '{name}' "
+                "from currying"
+            )
+    merged = dict(curried.bound)
+    merged.update(arguments)
+    return call_function(curried.function, merged, frame, evaluate_expression)
 
 
 def _evaluate_node(node: T.Any, frame) -> T.Any:
@@ -94,9 +118,42 @@ def _evaluate_node(node: T.Any, frame) -> T.Any:
         return value
 
     if isinstance(node, Curry):
-        raise ResolutionError("currying is not supported yet")
+        from jazzoo.functions.rules.parse_curry import parse_curry
+
+        target = _resolve_function_value(node.target.text, frame)
+        if target is None:
+            raise ResolutionError(f"no such function: {node.target.text}")
+        return parse_curry(target.function, node.text)
 
     raise ResolutionError(f"cannot evaluate expression node: {node!r}")
+
+
+def _resolve_function_value(text: str, frame) -> T.Optional[CurriedFunction]:
+    """Resolve a reference that names a function, or a variable holding one.
+
+    Returns None when the name resolves to an ordinary string, which is what makes
+    calling a string a ResolutionError rather than a silent no-op.
+    """
+    from jazzoo.expressions.rules.split_reference_path import split_reference_path
+    from jazzoo.functions.rules.get_function_by_path import get_function_by_path
+
+    split = split_reference_path(text)
+    if split is None:
+        return None
+    sigil, path = split
+
+    # A variable may hold a function value, and passes it on when reassigned. A
+    # variable name is never dotted, so only an undotted path can be one.
+    if "." not in path:
+        value = frame.lookup(sigil, path)
+        if isinstance(value, CurriedFunction):
+            return value
+
+    function = get_function_by_path(frame.module, path)
+    if function is None:
+        return None
+    # A bare function symbol is the same as applying empty brackets to it.
+    return CurriedFunction(function=function, bound={}, explicitly_unbound=[])
 
 
 def _resolve_reference_text(text: str, frame) -> T.Any:
@@ -113,12 +170,22 @@ def _resolve_reference_text(text: str, frame) -> T.Any:
         return text
 
     match = matches[0]
-    value = resolve_reference(match.reference, frame)
     suffix = text[match.end :]
+
+    # A bare symbol in expression position may name a function rather than a
+    # variable, in which case it is the function value (same as `f[]`). The name may
+    # be dotted when it walks module namespaces, so the whole text is tried first.
+    stored = frame.lookup(match.reference.sigil, match.reference.name)
+    if stored is ABSENT:
+        function_value = _resolve_function_value(text, frame)
+        if function_value is not None:
+            return function_value
+
     if not suffix:
         # A lone reference keeps its value's type rather than being stringified.
-        return value
-    return f"{value}{suffix}"
+        return resolve_reference(match.reference, frame)
+
+    return f"{resolve_reference(match.reference, frame)}{suffix}"
 
 
 def _is_condition_true(node: T.Any, frame) -> bool:
@@ -130,7 +197,13 @@ def _is_condition_true(node: T.Any, frame) -> bool:
 
 
 def _apply_stage(stage: T.Any, value: str, frame) -> str:
-    """Apply one pipe stage to the piped value."""
+    """Apply one pipe stage to the piped value.
+
+    A stage is either a built-in ⚙️ operator or a function value with exactly one
+    unbound parameter, which the piped value fills.
+    """
+    from jazzoo.functions.rules.parse_curry import get_free_parameters, parse_curry
+
     if isinstance(stage, ReferenceText):
         matches = parse_references(stage.text)
         if matches and matches[0].reference.sigil is Sigil.SYSTEM:
@@ -139,12 +212,41 @@ def _apply_stage(stage: T.Any, value: str, frame) -> str:
                 return apply_builtin_pipe(name, str(value))
             raise ResolutionError(f"no such pipe operator: ⚙️.{name}")
 
+        curried = _resolve_function_value(stage.text, frame)
+        if curried is not None:
+            return _pipe_into(curried, value, frame)
+
+    if isinstance(stage, Curry):
+        target = _resolve_function_value(stage.target.text, frame)
+        if target is None:
+            raise ResolutionError(f"no such function: {stage.target.text}")
+        return _pipe_into(parse_curry(target.function, stage.text), value, frame)
+
     if isinstance(stage, PathJoin):
         # `a | ⚙️.abs / b` - the pipe applies to the join's left side only.
         left = _apply_stage(stage.left, value, frame)
         return join_path(str(left), str(_evaluate_node(stage.right, frame)))
 
-    raise ResolutionError("only ⚙️ operators may be piped yet")
+    raise ResolutionError(f"cannot pipe into: {stage!r}")
+
+
+def _pipe_into(curried: "CurriedFunction", value: str, frame) -> str:
+    """Feed the piped value to the stage's single free parameter."""
+    from jazzoo.functions.rules.parse_curry import get_free_parameters
+
+    free = get_free_parameters(curried)
+    if len(free) != 1:
+        raise ArgumentError(
+            f"a pipe stage must leave exactly one parameter unbound; "
+            f"{curried.function.name}() leaves {len(free)}"
+        )
+    arguments = dict(curried.bound)
+    arguments[free[0]] = value
+    return call_curried(
+        CurriedFunction(function=curried.function, bound={}, explicitly_unbound=[]),
+        arguments,
+        frame,
+    )
 
 
 def evaluate_expression(source: str, frame) -> str:
