@@ -24,6 +24,7 @@ from jazzoo.runtime.entrypoints.jazzoo import main
 from jazzoo.runtime.utils.test_utils import save_fixture
 
 
+@pytest.mark.stage(1)
 def test_syntax_that_does_not_parse_is_a_parse_error():
     """Syntax that does not parse is a ParseError, detected in phase 1."""
     if True:
@@ -38,6 +39,7 @@ def test_syntax_that_does_not_parse_is_a_parse_error():
             parse_module(jazzoo_fn)
 
 
+@pytest.mark.stage(0)
 def test_every_error_derives_from_jazzoo_error():
     """All errors jazzoo raises derive from a single base class, JazzooError."""
     if True:
@@ -56,6 +58,7 @@ def test_every_error_derives_from_jazzoo_error():
         assert issubclass(JazzooError, Exception)
 
 
+@pytest.mark.stage(0)
 def test_no_error_shadows_a_python_builtin():
     """None of the error classes shadow a Python builtin, so they can be imported
     directly without aliasing."""
@@ -79,6 +82,7 @@ def test_no_error_shadows_a_python_builtin():
             assert not hasattr(builtins, name)
 
 
+@pytest.mark.stage(1)
 def test_a_parse_time_error_carries_its_source_location():
     """Every error carries the .jaz file and 1-based line it is attributed to, so the
     message can point at the offending source rather than at jazzoo's internals."""
@@ -105,6 +109,7 @@ def test_a_parse_time_error_carries_its_source_location():
         assert excinfo.value.message
 
 
+@pytest.mark.stage(1)
 def test_a_run_time_error_carries_its_source_location():
     """Run-time errors are attributed to a source location too - by a different code
     path than parse-time ones, since the file has long since been parsed."""
@@ -128,6 +133,7 @@ def test_a_run_time_error_carries_its_source_location():
         assert excinfo.value.message
 
 
+@pytest.mark.stage(4)
 def test_an_error_is_attributed_to_the_module_that_contains_it():
     """The location points at the .jaz file the error is in, which is not necessarily
     the entry-point file."""
@@ -156,6 +162,7 @@ def test_an_error_is_attributed_to_the_module_that_contains_it():
         assert excinfo.value.line == 2
 
 
+@pytest.mark.stage(1)
 def test_parse_time_errors_fire_regardless_of_the_target_invoked():
     """Anything decidable from the parse tree alone is raised when the file is
     loaded - before any subprocess runs, and regardless of which target was invoked.
@@ -178,6 +185,7 @@ def test_parse_time_errors_fire_regardless_of_the_target_invoked():
             parse_module(jazzoo_fn)
 
 
+@pytest.mark.stage(7)
 def test_list_fails_on_a_file_with_a_parse_time_error(capsys):
     """`jaz --list` fails too: mistakes surface immediately rather than when some
     rarely-used branch is first exercised."""
@@ -202,6 +210,7 @@ def test_list_fails_on_a_file_with_a_parse_time_error(capsys):
         assert "healthy" not in captured.out
 
 
+@pytest.mark.stage(7)
 def test_the_user_sees_only_the_message_and_its_location(capsys):
     """By default jaz prints only the error message, prefixed with its source
     location, and exits with a non-zero status."""
@@ -227,6 +236,7 @@ def test_the_user_sees_only_the_message_and_its_location(capsys):
         assert "profile" in captured.err
 
 
+@pytest.mark.stage(7)
 def test_a_stack_trace_is_shown_only_with_trace(capsys):
     """A stack trace is never shown without --trace - it describes jazzoo's
     internals, not the user's .jaz file. Passing --trace adds one."""

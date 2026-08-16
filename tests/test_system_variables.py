@@ -14,6 +14,7 @@ from jazzoo import ResolutionError, evaluate, parse_module
 from jazzoo.runtime.utils.test_utils import save_fixture
 
 
+@pytest.mark.stage(3)
 def test_the_module_variables_describe_the_current_file():
     """⚙️.module.basename, .path and .dirname describe the current module file."""
     if True:
@@ -38,6 +39,7 @@ def test_the_module_variables_describe_the_current_file():
         assert evaluate(root_module, "🐭.dirname()") == os.path.dirname(jazzoo_fn)
 
 
+@pytest.mark.stage(3)
 def test_the_module_path_is_absolute():
     """⚙️.module.path is an absolute path, and .dirname is the absolute path of the
     directory containing it."""
@@ -59,6 +61,7 @@ def test_the_module_path_is_absolute():
         assert os.path.join(dirname, "test_module_path_absolute.jaz") == path
 
 
+@pytest.mark.stage(4)
 def test_the_module_variables_are_per_module():
     """⚙️.module refers to the file the line lives in, so an imported module reports
     itself rather than the file that imported it."""
@@ -93,6 +96,7 @@ def test_the_module_variables_are_per_module():
         assert library_fn != jazzoo_fn
 
 
+@pytest.mark.stage(3)
 def test_the_root_module_variables_describe_the_entry_point():
     """⚙️.root_module.basename, .path and .dirname describe the entry-point .jaz file
     invoked by jaz."""
@@ -118,6 +122,7 @@ def test_the_root_module_variables_describe_the_entry_point():
         assert evaluate(root_module, "🐭.dirname()") == os.path.dirname(jazzoo_fn)
 
 
+@pytest.mark.stage(4)
 def test_the_root_module_variables_are_the_same_in_every_module():
     """⚙️.root_module is the entry point for the whole run, so an imported module
     reports the same values as the file that imported it."""
@@ -145,6 +150,7 @@ def test_the_root_module_variables_are_the_same_in_every_module():
         assert module_basename == "root_module_library.jaz"
 
 
+@pytest.mark.stage(3)
 def test_the_root_module_variables_agree_with_each_other():
     """.path is absolute, .dirname is its directory, and .basename its filename."""
     if True:
@@ -164,6 +170,7 @@ def test_the_root_module_variables_agree_with_each_other():
         assert os.path.join(dirname, basename) == path
 
 
+@pytest.mark.stage(3)
 def test_the_system_variables_are_constant_for_a_run():
     """The module and root_module variables are constant for the lifetime of a run,
     unlike ⚙️.stdout and ⚙️.output which jazzoo updates as a body runs."""
@@ -192,6 +199,7 @@ def test_the_system_variables_are_constant_for_a_run():
         )
 
 
+@pytest.mark.stage(3)
 def test_system_variables_can_be_used_in_expressions():
     """⚙️ variables are ordinary values: they take part in path joins and pipes."""
     if True:
@@ -212,6 +220,7 @@ def test_system_variables_can_be_used_in_expressions():
         assert evaluate(root_module, "🐭.piped()") == "test_system_vars_in_expressions"
 
 
+@pytest.mark.stage(3)
 def test_an_unknown_system_variable_is_a_resolution_error():
     """⚙️ is a fixed set of built-ins, so an unknown name in it does not resolve."""
     if True:

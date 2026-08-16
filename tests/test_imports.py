@@ -12,6 +12,8 @@ from jazzoo import (
 )
 from jazzoo.runtime.utils.test_utils import save_fixture
 
+pytestmark = pytest.mark.stage(4)
+
 # A library module used as the import source.
 save_fixture("""# foo.jaz
 🐐.test = 123
