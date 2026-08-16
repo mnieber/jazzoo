@@ -18,3 +18,8 @@ class CallSite:
     arguments: T.List[Argument] = []
     filename: T.Optional[str] = None
     line: T.Optional[int] = None
+
+    @property
+    def name(self) -> str:
+        """The final segment - the function's own name, without any namespace."""
+        return self.target_path.rsplit(".", 1)[-1]
