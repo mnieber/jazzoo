@@ -1,6 +1,4 @@
-from jazzoo.modules.rules.parse_module import parse_module
-from jazzoo.modules.rules.get_function_by_path import get_function_by_path
-from jazzoo.modules.rules.get_targets import get_targets
+from jazzoo import get_function_by_path, get_targets, parse_module
 from jazzoo.runtime.utils.test_utils import save_fixture
 
 # A library module used as the export source. It exports two of its own

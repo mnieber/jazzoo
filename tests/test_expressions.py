@@ -1,5 +1,4 @@
-from jazzoo.modules.rules.parse_module import parse_module
-from jazzoo.modules.rules.evaluate import evaluate
+from jazzoo import evaluate, parse_module
 from jazzoo.runtime.utils.test_utils import save_fixture
 
 

@@ -10,16 +10,16 @@ carries, when errors are detected, and what the user sees.
 
 import pytest
 
-from jazzoo.modules.errors import (
+from jazzoo import (
     ArgumentError,
     ExecutionError,
     JazzooError,
     ModuleImportError,
     ParseError,
     ResolutionError,
+    evaluate,
+    parse_module,
 )
-from jazzoo.modules.rules.parse_module import parse_module
-from jazzoo.modules.rules.evaluate import evaluate
 from jazzoo.runtime.entrypoints.jazzoo import main
 from jazzoo.runtime.utils.test_utils import save_fixture
 
