@@ -10,7 +10,7 @@ from jazzoo.modules.errors import ArgumentError, ResolutionError
 from jazzoo.modules.rules.parse_module import parse_module
 from jazzoo.modules.rules.get_function_by_path import get_function_by_path
 from jazzoo.modules.rules.get_targets import get_targets
-from jazzoo.modules.rules.eval import eval
+from jazzoo.modules.rules.evaluate import evaluate
 from jazzoo.runtime.utils.test_utils import save_fixture
 
 
@@ -33,8 +33,10 @@ def test_a_local_function_is_called_with_named_arguments():
         root_module = parse_module(jazzoo_fn)
 
         # Assert
-        assert eval(root_module, "🐭.help()") == "Hello me! Tracing is: on"
-        assert eval(root_module, '🐭.help(who="jane")') == "Hello jane! Tracing is: on"
+        assert evaluate(root_module, "🐭.help()") == "Hello me! Tracing is: on"
+        assert (
+            evaluate(root_module, '🐭.help(who="jane")') == "Hello jane! Tracing is: on"
+        )
 
 
 def test_a_local_function_takes_parameter_defaults():
@@ -53,7 +55,7 @@ def test_a_local_function_takes_parameter_defaults():
         root_module = parse_module(jazzoo_fn)
 
         # Assert
-        assert eval(root_module, "🐭.help()") == "Hello world!"
+        assert evaluate(root_module, "🐭.help()") == "Hello world!"
 
 
 def test_a_positional_argument_to_a_local_function_is_an_argument_error():
@@ -112,7 +114,7 @@ def test_a_local_function_has_a_fresh_local_namespace():
 
         # Assert
         # The child set its own 🐆.secret; the parent's is untouched.
-        assert eval(root_module, "🐭.help()") == "child/parent"
+        assert evaluate(root_module, "🐭.help()") == "child/parent"
 
 
 def test_arguments_are_passed_explicitly_not_inherited():
@@ -134,7 +136,7 @@ def test_arguments_are_passed_explicitly_not_inherited():
         # Assert
         # The `?` marker keeps this a resolution to the empty string rather than an
         # error - what matters is that `who` did not carry into the local function.
-        assert eval(root_module, "🐭.help()") == "[]"
+        assert evaluate(root_module, "🐭.help()") == "[]"
 
     """Without the `?` marker, the same reference is a ResolutionError."""
     if True:
@@ -152,7 +154,7 @@ def test_arguments_are_passed_explicitly_not_inherited():
 
         # Assert
         with pytest.raises(ResolutionError):
-            eval(root_module, "🐭.help()")
+            evaluate(root_module, "🐭.help()")
 
 
 def test_a_local_function_sees_module_and_global_variables():
@@ -175,7 +177,7 @@ def test_a_local_function_sees_module_and_global_variables():
         root_module = parse_module(jazzoo_fn)
 
         # Assert
-        assert eval(root_module, "🐭.help()") == "high/on"
+        assert evaluate(root_module, "🐭.help()") == "high/on"
 
 
 def test_a_local_function_is_not_visible_outside_its_enclosing_function():
@@ -249,8 +251,8 @@ def test_local_functions_support_shebang_blocks():
         root_module = parse_module(jazzoo_fn)
 
         # Assert
-        assert eval(root_module, "🐭.help()") == "Hello jane, from python"
-        assert eval(root_module, "🐭.with-an-assignment()") == "Hello jane"
+        assert evaluate(root_module, "🐭.help()") == "Hello jane, from python"
+        assert evaluate(root_module, "🐭.with-an-assignment()") == "Hello jane"
 
 
 def test_local_functions_nest():
@@ -272,7 +274,7 @@ def test_local_functions_nest():
         root_module = parse_module(jazzoo_fn)
 
         # Assert
-        assert eval(root_module, "🐭.help()") == "inner: jane"
+        assert evaluate(root_module, "🐭.help()") == "inner: jane"
 
 
 def test_a_nested_local_function_is_scoped_to_its_own_parent():
@@ -317,7 +319,7 @@ def test_a_local_function_may_call_module_functions():
         root_module = parse_module(jazzoo_fn)
 
         # Assert
-        assert eval(root_module, "🐭.help()") == "helper: jane"
+        assert evaluate(root_module, "🐭.help()") == "helper: jane"
 
 
 def test_the_at_marker_suppresses_console_output(capsys):
@@ -336,10 +338,10 @@ def test_the_at_marker_suppresses_console_output(capsys):
         # Run
         root_module = parse_module(jazzoo_fn)
 
-        loud_retval = eval(root_module, "🐭.loud()")
+        loud_retval = evaluate(root_module, "🐭.loud()")
         loud_console = capsys.readouterr()
 
-        quiet_retval = eval(root_module, "🐭.quiet()")
+        quiet_retval = evaluate(root_module, "🐭.quiet()")
         quiet_console = capsys.readouterr()
 
         # Assert
@@ -366,7 +368,7 @@ def test_the_at_marker_applies_inside_a_local_function(capsys):
         # Run
         root_module = parse_module(jazzoo_fn)
 
-        retval = eval(root_module, '🐭.help(who="jane")')
+        retval = evaluate(root_module, '🐭.help(who="jane")')
         console = capsys.readouterr()
 
         # Assert

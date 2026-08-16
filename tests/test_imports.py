@@ -8,7 +8,7 @@ from jazzoo.modules.rules.get_child_module_by_name import get_child_module_by_na
 from jazzoo.modules.rules.get_module_by_path import get_module_by_path
 from jazzoo.modules.rules.get_function_by_path import get_function_by_path
 from jazzoo.modules.rules.get_targets import get_targets
-from jazzoo.modules.rules.eval import eval
+from jazzoo.modules.rules.evaluate import evaluate
 from jazzoo.runtime.utils.test_utils import save_fixture
 
 # A library module used as the import source.
@@ -54,8 +54,8 @@ def test_single_import():
         assert baz_module.filename == os.path.join(
             os.path.dirname(jazzoo_fn), "foo.jaz"
         )
-        assert eval(root_module, "🐐.test") == "123"
-        assert eval(baz_module, "🐭.test") == "mouse"
+        assert evaluate(root_module, "🐐.test") == "123"
+        assert evaluate(baz_module, "🐭.test") == "mouse"
         assert fn.is_target is False
         assert get_targets(root_module) == []
 
@@ -110,8 +110,8 @@ def test_resolve_module_symbols():
         foo_module = get_child_module_by_name(root_module, "baz")
 
         # Same-named 🐭.test in both scopes; each resolves independently.
-        assert eval(root_module, "🐭.test") == "caller"
-        assert eval(foo_module, "🐭.test") == "mouse"
+        assert evaluate(root_module, "🐭.test") == "caller"
+        assert evaluate(foo_module, "🐭.test") == "mouse"
 
 
 def test_global_symbols_are_shared_across_modules():
@@ -134,10 +134,10 @@ def test_global_symbols_are_shared_across_modules():
         glob_module = get_child_module_by_name(root_module, "g")
 
         # Assert
-        assert eval(root_module, "🐐.shared") == "from-root"
-        assert eval(root_module, "🐭.g()") == "from-root"
-        assert eval(glob_module, "🐐.shared") == "from-root"
-        assert eval(glob_module, "🐭.touch()") == "from-root"
+        assert evaluate(root_module, "🐐.shared") == "from-root"
+        assert evaluate(root_module, "🐭.g()") == "from-root"
+        assert evaluate(glob_module, "🐐.shared") == "from-root"
+        assert evaluate(glob_module, "🐭.touch()") == "from-root"
 
 
 def test_targets_from_imported_modules_are_not_listed():
@@ -237,7 +237,7 @@ def test_call_time_circular_imports_are_safe():
 
         # Assert
         # The cycle is only traversed when the call runs, so loading succeeds.
-        assert eval(root_module, "🐭.go()") == "ping/pong"
+        assert evaluate(root_module, "🐭.go()") == "ping/pong"
 
 
 def test_load_time_circular_imports_are_a_module_import_error():

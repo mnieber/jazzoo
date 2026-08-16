@@ -2,7 +2,7 @@ import pytest
 
 from jazzoo.modules.errors import ArgumentError
 from jazzoo.modules.rules.parse_module import parse_module
-from jazzoo.modules.rules.eval import eval
+from jazzoo.modules.rules.evaluate import evaluate
 from jazzoo.runtime.utils.test_utils import save_fixture
 
 # A library module of small string helpers, used as pipe stages.
@@ -39,7 +39,7 @@ def test_currying_binds_a_parameter():
         root_module = parse_module(jazzoo_fn)
 
         # Assert
-        assert eval(root_module, "🐭.go()") == "/data/windows/input.json"
+        assert evaluate(root_module, "🐭.go()") == "/data/windows/input.json"
 
 
 def test_currying_leaves_other_parameters_open():
@@ -63,8 +63,8 @@ def test_currying_leaves_other_parameters_open():
         root_module = parse_module(jazzoo_fn)
 
         # Assert
-        assert eval(root_module, "🐭.go()") == "/data/linux/a.json"
-        assert eval(root_module, "🐭.go2()") == "/data/linux/b.json"
+        assert evaluate(root_module, "🐭.go()") == "/data/linux/a.json"
+        assert evaluate(root_module, "🐭.go2()") == "/data/linux/b.json"
 
 
 def test_empty_brackets_are_the_function_itself():
@@ -89,8 +89,8 @@ def test_empty_brackets_are_the_function_itself():
         root_module = parse_module(jazzoo_fn)
 
         # Assert
-        assert eval(root_module, "🐭.go()") == "/data/posix/x.json"
-        assert eval(root_module, "🐭.go2()") == "/data/posix/x.json"
+        assert evaluate(root_module, "🐭.go()") == "/data/posix/x.json"
+        assert evaluate(root_module, "🐭.go2()") == "/data/posix/x.json"
 
 
 def test_bare_name_marks_a_parameter_as_unbound():
@@ -112,7 +112,7 @@ def test_bare_name_marks_a_parameter_as_unbound():
 
         # Assert
         # max_length is bound to 3, suffix falls back to its default, name is open.
-        assert eval(root_module, "🐭.go()") == "maa"
+        assert evaluate(root_module, "🐭.go()") == "maa"
 
 
 def test_pipe_feeds_the_unbound_parameter():
@@ -131,7 +131,7 @@ def test_pipe_feeds_the_unbound_parameter():
         root_module = parse_module(jazzoo_fn)
 
         # Assert
-        assert eval(root_module, "🐭.go()") == "/data/linux/input.json"
+        assert evaluate(root_module, "🐭.go()") == "/data/linux/input.json"
 
 
 def test_pipe_without_brackets():
@@ -150,7 +150,7 @@ def test_pipe_without_brackets():
         root_module = parse_module(jazzoo_fn)
 
         # Assert
-        assert eval(root_module, "🐭.go()") == "/data/input.json"
+        assert evaluate(root_module, "🐭.go()") == "/data/input.json"
 
 
 def test_the_free_parameter_must_be_unambiguous():
@@ -175,9 +175,13 @@ def test_the_free_parameter_must_be_unambiguous():
         # Assert
         # `input` is free and takes the piped value; `style` falls back to its default.
         assert (
-            eval(root_module, "🐭.by-naming-the-free-one()") == "/data/posix/input.json"
+            evaluate(root_module, "🐭.by-naming-the-free-one()")
+            == "/data/posix/input.json"
         )
-        assert eval(root_module, "🐭.by-binding-the-rest()") == "/data/posix/input.json"
+        assert (
+            evaluate(root_module, "🐭.by-binding-the-rest()")
+            == "/data/posix/input.json"
+        )
 
 
 def test_pipe_chain_passes_return_values_onwards():
@@ -199,7 +203,7 @@ def test_pipe_chain_passes_return_values_onwards():
 
         # Assert
         # "input.json" -> "/data/config/input.json" -> "/data/input.json" -> "/data/i"
-        assert eval(root_module, "🐭.go()") == "/data/i"
+        assert evaluate(root_module, "🐭.go()") == "/data/i"
 
 
 def test_pipe_applies_to_builtin_functions():
@@ -218,8 +222,8 @@ def test_pipe_applies_to_builtin_functions():
         root_module = parse_module(jazzoo_fn)
 
         # Assert
-        assert eval(root_module, "🐭.go()") == "/data/input.json"
-        assert eval(root_module, "🐭.go2()") == "input"
+        assert evaluate(root_module, "🐭.go()") == "/data/input.json"
+        assert evaluate(root_module, "🐭.go2()") == "input"
 
 
 def test_a_pipe_stage_binding_every_parameter_is_an_argument_error():

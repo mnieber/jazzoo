@@ -11,7 +11,7 @@ from jazzoo.modules.errors import (
 from jazzoo.modules.rules.parse_module import parse_module
 from jazzoo.modules.rules.get_function_by_path import get_function_by_path
 from jazzoo.modules.rules.get_targets import get_targets
-from jazzoo.modules.rules.eval import eval
+from jazzoo.modules.rules.evaluate import evaluate
 from jazzoo.runtime.utils.test_utils import save_fixture
 
 
@@ -71,9 +71,10 @@ def test_arguments_are_resolved_into_local_variables():
         root_module = parse_module(jazzoo_fn)
 
         # Assert
-        assert eval(root_module, '🐭.build(target="myapp")') == "myapp-release"
+        assert evaluate(root_module, '🐭.build(target="myapp")') == "myapp-release"
         assert (
-            eval(root_module, '🐭.build(target="myapp", mode="debug")') == "myapp-debug"
+            evaluate(root_module, '🐭.build(target="myapp", mode="debug")')
+            == "myapp-debug"
         )
 
 
@@ -103,7 +104,7 @@ def test_private_functions_are_not_targets():
         assert helper.is_target is False
         assert helper not in get_targets(root_module)
         assert (
-            eval(root_module, '🐭._helper(name="anonymous")')
+            evaluate(root_module, '🐭._helper(name="anonymous")')
             == "Internal helper: anonymous"
         )
 
@@ -129,7 +130,7 @@ def test_mid_body_call_to_module_function():
         root_module = parse_module(jazzoo_fn)
 
         # Assert
-        assert eval(root_module, "🐭.debug()") == "Internal helper: anonymous"
+        assert evaluate(root_module, "🐭.debug()") == "Internal helper: anonymous"
 
 
 def test_mid_body_call_to_imported_module():
@@ -153,7 +154,7 @@ def test_mid_body_call_to_imported_module():
         root_module = parse_module(jazzoo_fn)
 
         # Assert
-        assert eval(root_module, "🐭.deploy()") == "building myapp"
+        assert evaluate(root_module, "🐭.deploy()") == "building myapp"
 
 
 def test_dependencies_run_before_the_body():
@@ -178,7 +179,9 @@ def test_dependencies_run_before_the_body():
 
         # Assert
         assert [d.name for d in debug.dependencies] == ["_helper"]
-        assert eval(root_module, '🐭.debug(name="jane")') == "Running debug for: jane"
+        assert (
+            evaluate(root_module, '🐭.debug(name="jane")') == "Running debug for: jane"
+        )
 
 
 def test_dependency_arguments_may_reference_globals_and_parameters():
@@ -202,7 +205,7 @@ def test_dependency_arguments_may_reference_globals_and_parameters():
         root_module = parse_module(jazzoo_fn)
 
         # Assert
-        assert eval(root_module, "🐭.debug()") == "high on me!"
+        assert evaluate(root_module, "🐭.debug()") == "high on me!"
 
 
 def test_function_returns_the_output_of_its_last_step():
@@ -228,11 +231,11 @@ def test_function_returns_the_output_of_its_last_step():
 
         # Assert
         assert (
-            eval(root_module, '🐭.make-full-path(input="input.json")')
+            evaluate(root_module, '🐭.make-full-path(input="input.json")')
             == "/data/input.json"
         )
         # Only the last step's output survives - the first one was overwritten.
-        assert eval(root_module, "🐭.two-steps()") == "second"
+        assert evaluate(root_module, "🐭.two-steps()") == "second"
 
 
 def test_stdout_is_the_value_for_every_interpreter():
@@ -253,8 +256,8 @@ def test_stdout_is_the_value_for_every_interpreter():
         root_module = parse_module(jazzoo_fn)
 
         # Assert
-        assert eval(root_module, "🐭.from-bash()") == "/etc/jazzoo.conf"
-        assert eval(root_module, "🐭.from-python()") == "/etc/jazzoo.conf"
+        assert evaluate(root_module, "🐭.from-bash()") == "/etc/jazzoo.conf"
+        assert evaluate(root_module, "🐭.from-python()") == "/etc/jazzoo.conf"
 
 
 def test_retval_strips_one_trailing_newline():
@@ -282,8 +285,8 @@ def test_retval_strips_one_trailing_newline():
 
         # Assert
         # echo emits a trailing newline; only that one is removed.
-        assert eval(root_module, "🐭.speak()") == "one\ntwo"
-        assert eval(root_module, "🐭.check()") == "one\ntwo\n"
+        assert evaluate(root_module, "🐭.speak()") == "one\ntwo"
+        assert evaluate(root_module, "🐭.check()") == "one\ntwo\n"
 
 
 def test_explicit_retval_assignment_overrides_the_last_step():
@@ -307,10 +310,10 @@ def test_explicit_retval_assignment_overrides_the_last_step():
 
         # Assert
         assert (
-            eval(root_module, '🐭.make-full-path(input="input.json")')
+            evaluate(root_module, '🐭.make-full-path(input="input.json")')
             == "/data/input.json"
         )
-        assert eval(root_module, "🐭.keep-earlier-output()") == "the value I want"
+        assert evaluate(root_module, "🐭.keep-earlier-output()") == "the value I want"
 
 
 def test_retvals_are_local_to_the_main_function():
@@ -332,7 +335,7 @@ def test_retvals_are_local_to_the_main_function():
 
         # Assert
         # The discarded return value does not become debug()'s return value.
-        assert eval(root_module, "🐭.debug()") == "own value"
+        assert evaluate(root_module, "🐭.debug()") == "own value"
 
 
 def test_local_variables_do_not_leak_to_the_caller():
@@ -355,7 +358,7 @@ def test_local_variables_do_not_leak_to_the_caller():
         root_module = parse_module(jazzoo_fn)
 
         # Assert
-        assert eval(root_module, "🐭.debug()") == "mine"
+        assert evaluate(root_module, "🐭.debug()") == "mine"
 
 
 def test_a_local_function_does_not_overwrite_the_callers_retval():
@@ -382,7 +385,9 @@ def test_a_local_function_does_not_overwrite_the_callers_retval():
         root_module = parse_module(jazzoo_fn)
 
         # Assert
-        assert eval(root_module, '🐭.help(who="jane")') == "Hello jane! / outer output"
+        assert (
+            evaluate(root_module, '🐭.help(who="jane")') == "Hello jane! / outer output"
+        )
 
 
 def test_a_positional_argument_is_an_argument_error():
@@ -492,10 +497,10 @@ def test_a_shebang_block_exiting_non_zero_is_an_execution_error():
 
         # Assert
         with pytest.raises(ExecutionError):
-            eval(root_module, "🐭.explicit-exit()")
+            evaluate(root_module, "🐭.explicit-exit()")
         # A jazzoo-mode line is its own shebang block, so it fails the same way.
         with pytest.raises(ExecutionError):
-            eval(root_module, "🐭.failing-command()")
+            evaluate(root_module, "🐭.failing-command()")
 
 
 def test_a_run_time_error_aborts_the_remaining_body(tmp_path):
@@ -519,7 +524,7 @@ def test_a_run_time_error_aborts_the_remaining_body(tmp_path):
 
         # Assert
         with pytest.raises(ExecutionError):
-            eval(root_module, "🐭.run()")
+            evaluate(root_module, "🐭.run()")
         # The step before the failure ran, and its effect stands.
         assert os.path.exists(before)
         # The step after it never ran.
@@ -556,7 +561,7 @@ def test_a_failing_dependency_aborts_later_dependencies_and_the_body(tmp_path):
 
         # Assert
         with pytest.raises(ExecutionError):
-            eval(root_module, "🐭.run()")
+            evaluate(root_module, "🐭.run()")
         assert os.path.exists(first)
         assert not os.path.exists(second)
         assert not os.path.exists(body)
@@ -623,7 +628,7 @@ def test_a_curried_function_may_not_shadow_an_existing_name():
         root_module = parse_module(jazzoo_fn)
 
         # Assert
-        assert eval(root_module, "🐭.go()") == "myapp/dev"
+        assert evaluate(root_module, "🐭.go()") == "myapp/dev"
 
 
 def test_two_functions_may_not_share_a_name():
@@ -660,7 +665,7 @@ def test_the_uniqueness_rule_applies_per_scope():
         root_module = parse_module(jazzoo_fn)
 
         # Assert
-        assert eval(root_module, "🐭.go()") == "module/local"
+        assert evaluate(root_module, "🐭.go()") == "module/local"
 
     """An imported namespace is its own scope, so it does not collide either."""
     if True:
@@ -686,4 +691,4 @@ def test_the_uniqueness_rule_applies_per_scope():
         root_module = parse_module(jazzoo_fn)
 
         # Assert
-        assert eval(root_module, "🐭.go()") == "own: a/library: b"
+        assert evaluate(root_module, "🐭.go()") == "own: a/library: b"

@@ -1,5 +1,5 @@
 from jazzoo.modules.rules.parse_module import parse_module
-from jazzoo.modules.rules.eval import eval
+from jazzoo.modules.rules.evaluate import evaluate
 from jazzoo.runtime.utils.test_utils import save_fixture
 
 
@@ -18,7 +18,7 @@ def test_all_values_are_strings():
         root_module = parse_module(jazzoo_fn)
 
         # Assert
-        assert eval(root_module, "🐭.go()") == "123"
+        assert evaluate(root_module, "🐭.go()") == "123"
 
     """Unquoted values are treated as bare strings, so quoting is optional."""
     if True:
@@ -40,9 +40,9 @@ def test_all_values_are_strings():
         root_module = parse_module(jazzoo_fn)
 
         # Assert
-        assert eval(root_module, "🐭.bare-fn()") == "hello"
-        assert eval(root_module, "🐭.also-bare") == "hello.com"
-        assert eval(root_module, "🐭.module-level-fn()") == "hello/hello"
+        assert evaluate(root_module, "🐭.bare-fn()") == "hello"
+        assert evaluate(root_module, "🐭.also-bare") == "hello.com"
+        assert evaluate(root_module, "🐭.module-level-fn()") == "hello/hello"
 
 
 def test_a_ternary_selects_on_string_equality():
@@ -65,8 +65,8 @@ def test_a_ternary_selects_on_string_equality():
         root_module = parse_module(jazzoo_fn)
 
         # Assert
-        assert eval(root_module, "🐭.matches()") == "[--dry-run]"
-        assert eval(root_module, "🐭.does-not-match()") == "[]"
+        assert evaluate(root_module, "🐭.matches()") == "[--dry-run]"
+        assert evaluate(root_module, "🐭.does-not-match()") == "[]"
 
 
 def test_a_ternary_tests_bare_variable_truthiness():
@@ -89,8 +89,8 @@ def test_a_ternary_tests_bare_variable_truthiness():
         root_module = parse_module(jazzoo_fn)
 
         # Assert
-        assert eval(root_module, "🐭.truthy()") == "on"
-        assert eval(root_module, "🐭.falsy()") == "off"
+        assert evaluate(root_module, "🐭.truthy()") == "on"
+        assert evaluate(root_module, "🐭.falsy()") == "off"
 
 
 def test_falsy_strings_are_the_env_var_style_flags():
@@ -108,16 +108,16 @@ def test_falsy_strings_are_the_env_var_style_flags():
 
         # Assert
         for falsy in ["0", "false", "no", ""]:
-            assert eval(root_module, f'🐭.check(flag="{falsy}")') == "falsy"
+            assert evaluate(root_module, f'🐭.check(flag="{falsy}")') == "falsy"
 
         # Lowercasing means the capitalized spellings are falsy too.
         for falsy in ["False", "FALSE", "No", "NO"]:
-            assert eval(root_module, f'🐭.check(flag="{falsy}")') == "falsy"
+            assert evaluate(root_module, f'🐭.check(flag="{falsy}")') == "falsy"
 
         # Everything else is truthy - including strings that merely contain a
         # falsy word, and "1"/"true"/"yes".
         for truthy in ["1", "true", "yes", "off", "none", "0.0", " ", "false-ish"]:
-            assert eval(root_module, f'🐭.check(flag="{truthy}")') == "truthy"
+            assert evaluate(root_module, f'🐭.check(flag="{truthy}")') == "truthy"
 
 
 def test_ternaries_chain_right_associatively():
@@ -134,9 +134,9 @@ def test_ternaries_chain_right_associatively():
         root_module = parse_module(jazzoo_fn)
 
         # Assert
-        assert eval(root_module, '🐭.classify(level="high")') == "a"
-        assert eval(root_module, '🐭.classify(level="low")') == "b"
-        assert eval(root_module, '🐭.classify(level="medium")') == ""
+        assert evaluate(root_module, '🐭.classify(level="high")') == "a"
+        assert evaluate(root_module, '🐭.classify(level="low")') == "b"
+        assert evaluate(root_module, '🐭.classify(level="medium")') == ""
 
 
 def test_the_path_operator_joins_two_values():
@@ -158,8 +158,8 @@ def test_the_path_operator_joins_two_values():
         root_module = parse_module(jazzoo_fn)
 
         # Assert
-        assert eval(root_module, "🐭.go()") == "/data/build/output"
-        assert eval(root_module, "🐭.from-a-system-variable()").endswith("/build")
+        assert evaluate(root_module, "🐭.go()") == "/data/build/output"
+        assert evaluate(root_module, "🐭.from-a-system-variable()").endswith("/build")
 
 
 def test_a_path_join_is_a_pure_string_join():
@@ -180,8 +180,10 @@ def test_a_path_join_is_a_pure_string_join():
 
         # Assert
         # `..` survives the join rather than being resolved away.
-        assert eval(root_module, "🐭.dot-dot()") == "/data/sub/../config.json"
-        assert eval(root_module, "🐭.redundant-separators()") == "/data//config.json"
+        assert evaluate(root_module, "🐭.dot-dot()") == "/data/sub/../config.json"
+        assert (
+            evaluate(root_module, "🐭.redundant-separators()") == "/data//config.json"
+        )
 
 
 def test_path_joins_chain_left_associatively():
@@ -197,7 +199,7 @@ def test_path_joins_chain_left_associatively():
         root_module = parse_module(jazzoo_fn)
 
         # Assert
-        assert eval(root_module, "🐭.go()") == "/data/sub/input.json"
+        assert evaluate(root_module, "🐭.go()") == "/data/sub/input.json"
 
 
 def test_a_function_call_can_be_a_path_segment():
@@ -218,7 +220,7 @@ def test_a_function_call_can_be_a_path_segment():
         root_module = parse_module(jazzoo_fn)
 
         # Assert
-        assert eval(root_module, "🐭.go()") == "/data/base/config.json"
+        assert evaluate(root_module, "🐭.go()") == "/data/base/config.json"
 
 
 def test_abs_is_the_only_way_to_canonicalize():
@@ -234,7 +236,7 @@ def test_abs_is_the_only_way_to_canonicalize():
         root_module = parse_module(jazzoo_fn)
 
         # Assert
-        assert eval(root_module, "🐭.go()") == "/data/config.json"
+        assert evaluate(root_module, "🐭.go()") == "/data/config.json"
 
 
 def test_abs_applies_after_the_whole_join_or_to_the_prefix_only():
@@ -259,8 +261,10 @@ def test_abs_applies_after_the_whole_join_or_to_the_prefix_only():
         root_module = parse_module(jazzoo_fn)
 
         # Assert
-        assert eval(root_module, "🐭.whole-join()") == "/data/base/config.json"
-        assert eval(root_module, "🐭.prefix-only()") == "/data/base/sub/../config.json"
+        assert evaluate(root_module, "🐭.whole-join()") == "/data/base/config.json"
+        assert (
+            evaluate(root_module, "🐭.prefix-only()") == "/data/base/sub/../config.json"
+        )
 
 
 def test_the_path_pipe_operators():
@@ -287,10 +291,10 @@ def test_the_path_pipe_operators():
         root_module = parse_module(jazzoo_fn)
 
         # Assert
-        assert eval(root_module, "🐭.basename()") == "input.json"
-        assert eval(root_module, "🐭.dirname()") == "/data/sub"
-        assert eval(root_module, "🐭.ext()") == ".json"
-        assert eval(root_module, "🐭.stem()") == "/data/sub/input"
+        assert evaluate(root_module, "🐭.basename()") == "input.json"
+        assert evaluate(root_module, "🐭.dirname()") == "/data/sub"
+        assert evaluate(root_module, "🐭.ext()") == ".json"
+        assert evaluate(root_module, "🐭.stem()") == "/data/sub/input"
 
 
 def test_pipe_operators_chain_with_path_expressions():
@@ -311,8 +315,8 @@ def test_pipe_operators_chain_with_path_expressions():
         root_module = parse_module(jazzoo_fn)
 
         # Assert
-        assert eval(root_module, "🐭.go()") == "input"
-        assert eval(root_module, "🐭.rebuild()") == "/data/sub/other.json"
+        assert evaluate(root_module, "🐭.go()") == "input"
+        assert evaluate(root_module, "🐭.rebuild()") == "/data/sub/other.json"
 
 
 def test_an_expression_may_reference_every_namespace():
@@ -332,4 +336,4 @@ def test_an_expression_may_reference_every_namespace():
         root_module = parse_module(jazzoo_fn)
 
         # Assert
-        assert eval(root_module, "🐭.go()") == "gml"
+        assert evaluate(root_module, "🐭.go()") == "gml"
