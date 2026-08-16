@@ -104,7 +104,7 @@ def test_bare_name_marks_a_parameter_as_unbound():
         🐭.shorten = 🐭.h.clean_up[name, max_length="3"]
 
         go():
-            🐆.retval = 🐭.shorten(name="maarten")
+            🐆.retval = 🐭.shorten(name="jane")
         """)
 
         # Run
@@ -174,7 +174,9 @@ def test_the_free_parameter_must_be_unambiguous():
 
         # Assert
         # `input` is free and takes the piped value; `style` falls back to its default.
-        assert eval(root_module, "🐭.by-naming-the-free-one()") == "/data/posix/input.json"
+        assert (
+            eval(root_module, "🐭.by-naming-the-free-one()") == "/data/posix/input.json"
+        )
         assert eval(root_module, "🐭.by-binding-the-rest()") == "/data/posix/input.json"
 
 

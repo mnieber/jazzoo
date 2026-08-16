@@ -173,10 +173,7 @@ def test_dependencies_run_before_the_body():
 
         # Assert
         assert [d.name for d in debug.dependencies] == ["_helper"]
-        assert (
-            eval(root_module, '🐭.debug(name="maarten")')
-            == "Running debug for: maarten"
-        )
+        assert eval(root_module, '🐭.debug(name="jane")') == "Running debug for: jane"
 
 
 def test_dependency_arguments_may_reference_globals_and_parameters():
@@ -380,10 +377,7 @@ def test_a_local_function_does_not_overwrite_the_callers_retval():
         root_module = parse_module(jazzoo_fn)
 
         # Assert
-        assert (
-            eval(root_module, '🐭.help(who="maarten")')
-            == "Hello maarten! / outer output"
-        )
+        assert eval(root_module, '🐭.help(who="jane")') == "Hello jane! / outer output"
 
 
 def test_a_positional_argument_is_an_argument_error():
