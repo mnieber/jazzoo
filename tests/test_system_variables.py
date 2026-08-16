@@ -12,7 +12,7 @@ import pytest
 
 from jazzoo.modules.errors import ResolutionError
 from jazzoo.modules.rules.parse_module import parse_module
-from jazzoo.modules.rules.eval import eval
+from jazzoo.modules.rules.evaluate import evaluate
 from jazzoo.runtime.utils.test_utils import save_fixture
 
 
@@ -35,9 +35,9 @@ def test_the_module_variables_describe_the_current_file():
         root_module = parse_module(jazzoo_fn)
 
         # Assert
-        assert eval(root_module, "🐭.basename()") == "test_module_vars.jaz"
-        assert eval(root_module, "🐭.path()") == jazzoo_fn
-        assert eval(root_module, "🐭.dirname()") == os.path.dirname(jazzoo_fn)
+        assert evaluate(root_module, "🐭.basename()") == "test_module_vars.jaz"
+        assert evaluate(root_module, "🐭.path()") == jazzoo_fn
+        assert evaluate(root_module, "🐭.dirname()") == os.path.dirname(jazzoo_fn)
 
 
 def test_the_module_path_is_absolute():
@@ -52,7 +52,7 @@ def test_the_module_path_is_absolute():
 
         # Run
         root_module = parse_module(jazzoo_fn)
-        path, dirname = eval(root_module, "🐭.go()").split("|")
+        path, dirname = evaluate(root_module, "🐭.go()").split("|")
 
         # Assert
         assert os.path.isabs(path)
@@ -85,8 +85,12 @@ def test_the_module_variables_are_per_module():
         root_module = parse_module(jazzoo_fn)
 
         # Assert
-        assert eval(root_module, "🐭.from-the-library()") == "module_vars_library.jaz"
-        assert eval(root_module, "🐭.from-here()") == "test_module_vars_per_module.jaz"
+        assert (
+            evaluate(root_module, "🐭.from-the-library()") == "module_vars_library.jaz"
+        )
+        assert (
+            evaluate(root_module, "🐭.from-here()") == "test_module_vars_per_module.jaz"
+        )
         # The two files really are different files.
         assert library_fn != jazzoo_fn
 
@@ -111,9 +115,9 @@ def test_the_root_module_variables_describe_the_entry_point():
         root_module = parse_module(jazzoo_fn)
 
         # Assert
-        assert eval(root_module, "🐭.basename()") == "test_root_module_vars.jaz"
-        assert eval(root_module, "🐭.path()") == jazzoo_fn
-        assert eval(root_module, "🐭.dirname()") == os.path.dirname(jazzoo_fn)
+        assert evaluate(root_module, "🐭.basename()") == "test_root_module_vars.jaz"
+        assert evaluate(root_module, "🐭.path()") == jazzoo_fn
+        assert evaluate(root_module, "🐭.dirname()") == os.path.dirname(jazzoo_fn)
 
 
 def test_the_root_module_variables_are_the_same_in_every_module():
@@ -135,7 +139,7 @@ def test_the_root_module_variables_are_the_same_in_every_module():
 
         # Run
         root_module = parse_module(jazzoo_fn)
-        root_basename, module_basename = eval(root_module, "🐭.go()").split("|")
+        root_basename, module_basename = evaluate(root_module, "🐭.go()").split("|")
 
         # Assert
         # The line runs inside the library, but the root module is the entry point.
@@ -154,7 +158,7 @@ def test_the_root_module_variables_agree_with_each_other():
 
         # Run
         root_module = parse_module(jazzoo_fn)
-        path, dirname, basename = eval(root_module, "🐭.go()").split("|")
+        path, dirname, basename = evaluate(root_module, "🐭.go()").split("|")
 
         # Assert
         assert os.path.isabs(path)
@@ -185,7 +189,7 @@ def test_the_system_variables_are_constant_for_a_run():
         # Assert
         # Blocks ran in between, but ⚙️.module did not change.
         assert (
-            eval(root_module, "🐭.go()")
+            evaluate(root_module, "🐭.go()")
             == "test_system_vars_constant.jaz/test_system_vars_constant.jaz"
         )
 
@@ -206,8 +210,8 @@ def test_system_variables_can_be_used_in_expressions():
         root_module = parse_module(jazzoo_fn)
 
         # Assert
-        assert eval(root_module, "🐭.joined()").endswith("/build/output")
-        assert eval(root_module, "🐭.piped()") == "test_system_vars_in_expressions"
+        assert evaluate(root_module, "🐭.joined()").endswith("/build/output")
+        assert evaluate(root_module, "🐭.piped()") == "test_system_vars_in_expressions"
 
 
 def test_an_unknown_system_variable_is_a_resolution_error():
@@ -227,6 +231,6 @@ def test_an_unknown_system_variable_is_a_resolution_error():
 
         # Assert
         with pytest.raises(ResolutionError):
-            eval(root_module, "🐭.go()")
+            evaluate(root_module, "🐭.go()")
         with pytest.raises(ResolutionError):
-            eval(root_module, "🐭.top-level()")
+            evaluate(root_module, "🐭.top-level()")

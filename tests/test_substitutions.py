@@ -2,7 +2,7 @@ import pytest
 
 from jazzoo.modules.errors import JazzooError, ResolutionError
 from jazzoo.modules.rules.parse_module import parse_module
-from jazzoo.modules.rules.eval import eval
+from jazzoo.modules.rules.evaluate import evaluate
 from jazzoo.runtime.utils.test_utils import save_fixture
 
 
@@ -22,7 +22,7 @@ def test_bare_references_are_substituted():
         root_module = parse_module(jazzoo_fn)
 
         # Assert
-        assert eval(root_module, "🐭.debug()") == "log level: high for user: me"
+        assert evaluate(root_module, "🐭.debug()") == "log level: high for user: me"
 
 
 def test_hyphens_are_part_of_variable_names():
@@ -42,7 +42,7 @@ def test_hyphens_are_part_of_variable_names():
 
         # Assert
         # The `--log-level=` prefix is literal text; only 🐐.log-level is substituted.
-        assert eval(root_module, "🐭.debug()") == "--log-level=high"
+        assert evaluate(root_module, "🐭.debug()") == "--log-level=high"
 
 
 def test_braced_references_when_adjacent_to_text():
@@ -60,7 +60,7 @@ def test_braced_references_when_adjacent_to_text():
         root_module = parse_module(jazzoo_fn)
 
         # Assert
-        assert eval(root_module, "🐭.debug()") == "log level: high-setting"
+        assert evaluate(root_module, "🐭.debug()") == "log level: high-setting"
 
 
 def test_braces_without_sigils_are_left_alone():
@@ -76,7 +76,10 @@ def test_braces_without_sigils_are_left_alone():
         root_module = parse_module(jazzoo_fn)
 
         # Assert
-        assert eval(root_module, "🐭.debug()") == "a {{ plain }} brace and a { single } one"
+        assert (
+            evaluate(root_module, "🐭.debug()")
+            == "a {{ plain }} brace and a { single } one"
+        )
 
 
 def test_escaped_sigil_suppresses_substitution():
@@ -96,7 +99,7 @@ def test_escaped_sigil_suppresses_substitution():
 
         # Assert
         # The escaped reference is literal; the unescaped one is substituted.
-        assert eval(root_module, "🐭.debug()") == "with 🐭.tracing set to: on"
+        assert evaluate(root_module, "🐭.debug()") == "with 🐭.tracing set to: on"
 
 
 def test_backslash_terminates_a_variable_name():
@@ -116,7 +119,7 @@ def test_backslash_terminates_a_variable_name():
 
         # Assert
         # Without the backslash this would look for a variable named `tracing.com`.
-        assert eval(root_module, "🐭.debug()") == "on.com"
+        assert evaluate(root_module, "🐭.debug()") == "on.com"
 
 
 def test_escaping_inside_braces_yields_a_literal_braced_reference():
@@ -135,7 +138,7 @@ def test_escaping_inside_braces_yields_a_literal_braced_reference():
 
         # Assert
         assert (
-            eval(root_module, "🐭.debug()")
+            evaluate(root_module, "🐭.debug()")
             == "Jazzoo supports the {{ 🐐.log-level }}-setting syntax"
         )
 
@@ -156,7 +159,7 @@ def test_all_three_namespaces_substitute():
         root_module = parse_module(jazzoo_fn)
 
         # Assert
-        assert eval(root_module, "🐭.debug()") == "g m l"
+        assert evaluate(root_module, "🐭.debug()") == "g m l"
 
 
 def test_system_variables_substitute():
@@ -172,7 +175,7 @@ def test_system_variables_substitute():
         root_module = parse_module(jazzoo_fn)
 
         # Assert
-        assert eval(root_module, "🐭.debug()") == "running test_system_vars.jaz"
+        assert evaluate(root_module, "🐭.debug()") == "running test_system_vars.jaz"
 
 
 def test_substitution_happens_inside_shebang_blocks():
@@ -191,7 +194,7 @@ def test_substitution_happens_inside_shebang_blocks():
         root_module = parse_module(jazzoo_fn)
 
         # Assert
-        assert eval(root_module, "🐭.debug()") == "hello from python"
+        assert evaluate(root_module, "🐭.debug()") == "hello from python"
 
 
 def test_braced_reference_names_a_python_variable():
@@ -212,7 +215,7 @@ def test_braced_reference_names_a_python_variable():
         root_module = parse_module(jazzoo_fn)
 
         # Assert
-        assert eval(root_module, "🐭.debug()") == "bar"
+        assert evaluate(root_module, "🐭.debug()") == "bar"
 
 
 def test_values_are_substituted_without_escaping():
@@ -233,7 +236,7 @@ def test_values_are_substituted_without_escaping():
         # Assert
         # The value splits into two shell words - this is what makes fragments like
         # 🐆.dry-run work, and is also why untrusted values need ⚙️.sh-quote.
-        assert eval(root_module, "🐭.debug()") == "--dry-run --verbose"
+        assert evaluate(root_module, "🐭.debug()") == "--dry-run --verbose"
 
 
 def test_sh_quote_renders_a_value_as_one_shell_word():
@@ -260,9 +263,9 @@ def test_sh_quote_renders_a_value_as_one_shell_word():
 
         # Assert
         # Quoted, the value is one word rather than two.
-        assert eval(root_module, "🐭.count-words()") == "2"
+        assert evaluate(root_module, "🐭.count-words()") == "2"
         # The metacharacters are inert - no second command runs.
-        assert eval(root_module, "🐭.stays-literal()") == "; echo pwned"
+        assert evaluate(root_module, "🐭.stays-literal()") == "; echo pwned"
 
 
 def test_env_variables_are_substituted(monkeypatch):
@@ -282,7 +285,7 @@ def test_env_variables_are_substituted(monkeypatch):
         root_module = parse_module(jazzoo_fn)
 
         # Assert
-        assert eval(root_module, "🐭.debug()") == "high and yes"
+        assert evaluate(root_module, "🐭.debug()") == "high and yes"
 
 
 def test_an_unset_reference_is_a_resolution_error(monkeypatch):
@@ -305,9 +308,9 @@ def test_an_unset_reference_is_a_resolution_error(monkeypatch):
 
         # Assert
         with pytest.raises(ResolutionError):
-            eval(root_module, "🐭.from-env()")
+            evaluate(root_module, "🐭.from-env()")
         with pytest.raises(ResolutionError):
-            eval(root_module, "🐭.from-global()")
+            evaluate(root_module, "🐭.from-global()")
 
 
 def test_question_mark_marks_a_reference_as_possibly_absent(monkeypatch):
@@ -329,14 +332,14 @@ def test_question_mark_marks_a_reference_as_possibly_absent(monkeypatch):
         root_module = parse_module(jazzoo_fn)
 
         # Assert
-        assert eval(root_module, "🐭.debug()") == "[]"
+        assert evaluate(root_module, "🐭.debug()") == "[]"
         # An empty string is falsy, so the flag is not added.
-        assert eval(root_module, "🐭.as-a-flag()") == "[]"
+        assert evaluate(root_module, "🐭.as-a-flag()") == "[]"
 
         # And when it is set, it resolves normally.
         monkeypatch.setenv("JAZZOO_CI", "1")
-        assert eval(root_module, "🐭.debug()") == "[1]"
-        assert eval(root_module, "🐭.as-a-flag()") == "[--ci]"
+        assert evaluate(root_module, "🐭.debug()") == "[1]"
+        assert evaluate(root_module, "🐭.as-a-flag()") == "[--ci]"
 
 
 def test_default_applies_when_the_value_is_empty(monkeypatch):
@@ -363,11 +366,11 @@ def test_default_applies_when_the_value_is_empty(monkeypatch):
         root_module = parse_module(jazzoo_fn)
 
         # Assert
-        assert eval(root_module, "🐭.when-empty()") == "info"
-        assert eval(root_module, "🐭.when-set()") == "debug"
+        assert evaluate(root_module, "🐭.when-empty()") == "info"
+        assert evaluate(root_module, "🐭.when-set()") == "debug"
         # Without `?`, absence is still an error - `:-` only covers emptiness.
         with pytest.raises(ResolutionError):
-            eval(root_module, "🐭.when-absent()")
+            evaluate(root_module, "🐭.when-absent()")
 
 
 def test_optional_with_default_covers_absent_and_empty(monkeypatch):
@@ -394,9 +397,9 @@ def test_optional_with_default_covers_absent_and_empty(monkeypatch):
         root_module = parse_module(jazzoo_fn)
 
         # Assert
-        assert eval(root_module, "🐭.when-absent()") == "info"
-        assert eval(root_module, "🐭.when-empty()") == "info"
-        assert eval(root_module, "🐭.when-set()") == "debug"
+        assert evaluate(root_module, "🐭.when-absent()") == "info"
+        assert evaluate(root_module, "🐭.when-empty()") == "info"
+        assert evaluate(root_module, "🐭.when-set()") == "debug"
 
 
 def test_markers_apply_to_every_namespace():
@@ -420,10 +423,10 @@ def test_markers_apply_to_every_namespace():
         root_module = parse_module(jazzoo_fn)
 
         # Assert
-        assert eval(root_module, "🐭.globals()") == "from-goat"
+        assert evaluate(root_module, "🐭.globals()") == "from-goat"
         # 🐭.assigned exists but is empty, so `:-` alone is enough.
-        assert eval(root_module, "🐭.modules()") == "from-mouse"
-        assert eval(root_module, "🐭.locals()") == "from-leopard"
+        assert evaluate(root_module, "🐭.modules()") == "from-mouse"
+        assert evaluate(root_module, "🐭.locals()") == "from-leopard"
 
 
 def test_defaults_may_be_bare_or_quoted(monkeypatch):
@@ -445,8 +448,8 @@ def test_defaults_may_be_bare_or_quoted(monkeypatch):
         root_module = parse_module(jazzoo_fn)
 
         # Assert
-        assert eval(root_module, "🐭.bare()") == "[hello]"
-        assert eval(root_module, "🐭.quoted()") == "[hello there]"
+        assert evaluate(root_module, "🐭.bare()") == "[hello]"
+        assert evaluate(root_module, "🐭.quoted()") == "[hello there]"
 
 
 def test_markers_work_in_braced_references(monkeypatch):
@@ -465,7 +468,7 @@ def test_markers_work_in_braced_references(monkeypatch):
         root_module = parse_module(jazzoo_fn)
 
         # Assert
-        assert eval(root_module, "🐭.debug()") == "info-setting"
+        assert evaluate(root_module, "🐭.debug()") == "info-setting"
 
 
 def test_backslash_terminates_the_name_before_a_marker(monkeypatch):
@@ -484,7 +487,7 @@ def test_backslash_terminates_the_name_before_a_marker(monkeypatch):
         root_module = parse_module(jazzoo_fn)
 
         # Assert
-        assert eval(root_module, "🐭.debug()") == "example.com?:-literal"
+        assert evaluate(root_module, "🐭.debug()") == "example.com?:-literal"
 
 
 def test_a_colon_after_a_reference_is_not_a_default(monkeypatch):
@@ -507,8 +510,8 @@ def test_a_colon_after_a_reference_is_not_a_default(monkeypatch):
         root_module = parse_module(jazzoo_fn)
 
         # Assert
-        assert eval(root_module, "🐭.port()") == "example.com:8080"
-        assert eval(root_module, "🐭.volume()") == "-v /home/me:/data"
+        assert evaluate(root_module, "🐭.port()") == "example.com:8080"
+        assert evaluate(root_module, "🐭.volume()") == "-v /home/me:/data"
 
 
 def test_system_variables_are_read_only():

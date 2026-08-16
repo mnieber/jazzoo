@@ -1,5 +1,5 @@
 from jazzoo.modules.rules.parse_module import parse_module
-from jazzoo.modules.rules.eval import eval
+from jazzoo.modules.rules.evaluate import evaluate
 from jazzoo.runtime.utils.test_utils import save_fixture
 
 
@@ -24,9 +24,9 @@ def test_each_jazzoo_mode_line_is_its_own_subprocess():
         # Assert
         # The `cd` affected only its own subprocess, so `pwd` runs where the target
         # started - anywhere but /tmp.
-        assert eval(root_module, "🐭.working-directory()") != "/tmp"
+        assert evaluate(root_module, "🐭.working-directory()") != "/tmp"
         # FOO was set in a shell that then exited.
-        assert eval(root_module, "🐭.shell-variables()") == "[]"
+        assert evaluate(root_module, "🐭.shell-variables()") == "[]"
 
     """Use an explicit shebang block whenever lines need to share state: it is one
     subprocess, so the cd applies."""
@@ -48,8 +48,8 @@ def test_each_jazzoo_mode_line_is_its_own_subprocess():
         root_module = parse_module(jazzoo_fn)
 
         # Assert
-        assert eval(root_module, "🐭.working-directory()") == "/tmp"
-        assert eval(root_module, "🐭.shell-variables()") == "[bar]"
+        assert evaluate(root_module, "🐭.working-directory()") == "/tmp"
+        assert evaluate(root_module, "🐭.shell-variables()") == "[bar]"
 
 
 def test_the_default_mode_is_equivalent_to_per_line_bash_blocks():
@@ -77,7 +77,9 @@ def test_the_default_mode_is_equivalent_to_per_line_bash_blocks():
         explicit_module = parse_module(explicit_fn)
 
         # Assert
-        assert eval(implicit_module, "🐭.help()") == eval(explicit_module, "🐭.help()")
+        assert evaluate(implicit_module, "🐭.help()") == evaluate(
+            explicit_module, "🐭.help()"
+        )
 
 
 def test_an_alternative_interpreter_runs_the_block():
@@ -96,7 +98,7 @@ def test_an_alternative_interpreter_runs_the_block():
         root_module = parse_module(jazzoo_fn)
 
         # Assert
-        assert eval(root_module, "🐭.help()") == "Tracing is: on, fyi"
+        assert evaluate(root_module, "🐭.help()") == "Tracing is: on, fyi"
 
 
 def test_a_bare_shebang_returns_to_the_default_mode():
@@ -117,7 +119,7 @@ def test_a_bare_shebang_returns_to_the_default_mode():
         root_module = parse_module(jazzoo_fn)
 
         # Assert
-        assert eval(root_module, "🐭.help()") == "back in jazzoo mode"
+        assert evaluate(root_module, "🐭.help()") == "back in jazzoo mode"
 
 
 def test_stdout_captures_the_last_block_and_output_strips_the_newline():
@@ -152,10 +154,10 @@ def test_stdout_captures_the_last_block_and_output_strips_the_newline():
         root_module = parse_module(jazzoo_fn)
 
         # Assert
-        assert eval(root_module, "🐭.raw()") == "[Test\n]"
-        assert eval(root_module, "🐭.trimmed()") == "[Test]"
+        assert evaluate(root_module, "🐭.raw()") == "[Test\n]"
+        assert evaluate(root_module, "🐭.trimmed()") == "[Test]"
         # Only a trailing newline is removed - there is nothing to strip here.
-        assert eval(root_module, "🐭.without_a_trailing_newline()") == "[Test]"
+        assert evaluate(root_module, "🐭.without_a_trailing_newline()") == "[Test]"
 
 
 def test_each_block_replaces_the_previous_stdout():
@@ -180,7 +182,7 @@ def test_each_block_replaces_the_previous_stdout():
         # Assert
         # Each jazzoo-mode line is its own block, so by the last line ⚙️.output is
         # what the line before it echoed.
-        assert eval(root_module, "🐭.help()") == "Last message was: Test"
+        assert evaluate(root_module, "🐭.help()") == "Last message was: Test"
 
 
 def test_stdout_is_not_affected_by_calls_to_other_functions():
@@ -208,7 +210,7 @@ def test_stdout_is_not_affected_by_calls_to_other_functions():
 
         # Assert
         # The callee's echo did not overwrite the caller's ⚙️.stdout.
-        assert eval(root_module, "🐭.help()") == "caller output"
+        assert evaluate(root_module, "🐭.help()") == "caller output"
 
 
 def test_sweeping_extracts_assignments_and_substitutes_references():
@@ -235,7 +237,9 @@ def test_sweeping_extracts_assignments_and_substitutes_references():
         # Assert
         # Each print sees the value assigned above it, and the assignment lines
         # themselves are gone from the Python that runs.
-        assert eval(root_module, "🐭.info()") == "first: hello.json\nsecond: bye.json"
+        assert (
+            evaluate(root_module, "🐭.info()") == "first: hello.json\nsecond: bye.json"
+        )
 
 
 def test_a_swept_assignment_outlives_its_block():
@@ -262,7 +266,7 @@ def test_a_swept_assignment_outlives_its_block():
         # Assert
         # The bash block sees the last value the Python block's sweep assigned.
         assert (
-            eval(root_module, "🐭.info()")
+            evaluate(root_module, "🐭.info()")
             == "The bye.json file was used in our Python shebang block"
         )
 
@@ -287,7 +291,8 @@ def test_indentation_does_not_affect_whether_a_line_is_an_assignment():
         # The assignment was extracted rather than executed three times, so the
         # substitution is static: the loop only prints the value.
         assert (
-            eval(root_module, "🐭.info()") == "in-loop.json\nin-loop.json\nin-loop.json"
+            evaluate(root_module, "🐭.info()")
+            == "in-loop.json\nin-loop.json\nin-loop.json"
         )
 
 
@@ -310,4 +315,4 @@ def test_a_braced_reference_passes_through_the_sweep():
 
         # Assert
         # `foo = "bar"` survived into the Python that ran.
-        assert eval(root_module, "🐭.info()") == "bar"
+        assert evaluate(root_module, "🐭.info()") == "bar"

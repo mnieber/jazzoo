@@ -19,7 +19,7 @@ from jazzoo.modules.errors import (
     ResolutionError,
 )
 from jazzoo.modules.rules.parse_module import parse_module
-from jazzoo.modules.rules.eval import eval
+from jazzoo.modules.rules.evaluate import evaluate
 from jazzoo.runtime.entrypoints.jazzoo import main
 from jazzoo.runtime.utils.test_utils import save_fixture
 
@@ -120,7 +120,7 @@ def test_a_run_time_error_carries_its_source_location():
         # Run
         root_module = parse_module(jazzoo_fn)
         with pytest.raises(ExecutionError) as excinfo:
-            eval(root_module, "🐭.run()")
+            evaluate(root_module, "🐭.run()")
 
         # Assert
         assert excinfo.value.filename == jazzoo_fn
@@ -148,7 +148,7 @@ def test_an_error_is_attributed_to_the_module_that_contains_it():
         # Run
         root_module = parse_module(jazzoo_fn)
         with pytest.raises(ExecutionError) as excinfo:
-            eval(root_module, "🐭.go()")
+            evaluate(root_module, "🐭.go()")
 
         # Assert
         # The failing line lives in the library, not in the file that called it.
