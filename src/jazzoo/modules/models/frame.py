@@ -29,6 +29,14 @@ class Frame:
         if sigil is Sigil.GOAT:
             return self.globals.get(name, ABSENT)
         if sigil is Sigil.LEOPARD:
+            if name == "retval" and "retval" not in self.locals:
+                # Until the body assigns it, 🐆.retval has no value of its own and
+                # falls back to ⚙️.output (design section 384).
+                from jazzoo.expressions.utils.strip_one_newline import (
+                    strip_one_newline,
+                )
+
+                return strip_one_newline(self.stdout)
             return self.locals.get(name, ABSENT)
         if sigil is Sigil.MOUSE:
             return self.module.namespace.get(name, ABSENT)
