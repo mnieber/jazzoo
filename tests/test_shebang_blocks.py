@@ -3,8 +3,6 @@ import pytest
 from jazzoo import evaluate, parse_module
 from jazzoo.runtime.utils.test_utils import save_fixture
 
-pytestmark = pytest.mark.stage(1)
-
 
 def test_each_jazzoo_mode_line_is_its_own_subprocess():
     """In the default jazzoo execution mode, every line runs in its own shell

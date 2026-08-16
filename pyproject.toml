@@ -19,9 +19,6 @@ where = ["src"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-markers = [
-    "stage(n): the implementation stage of implementation_plan.md that makes this test pass",
-]
 
 [build-system]
 requires = ["setuptools>=45", "wheel"]

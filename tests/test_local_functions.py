@@ -17,7 +17,6 @@ from jazzoo import (
 from jazzoo.runtime.utils.test_utils import save_fixture
 
 
-@pytest.mark.stage(6)
 def test_a_local_function_is_called_with_named_arguments():
     """Local functions declare parameters and are called with named arguments exactly
     like 🐭 functions."""
@@ -43,7 +42,6 @@ def test_a_local_function_is_called_with_named_arguments():
         )
 
 
-@pytest.mark.stage(6)
 def test_a_local_function_takes_parameter_defaults():
     """A local function's parameters may have defaults, like any other function."""
     if True:
@@ -63,7 +61,6 @@ def test_a_local_function_takes_parameter_defaults():
         assert evaluate(root_module, "🐭.help()") == "Hello world!"
 
 
-@pytest.mark.stage(6)
 def test_a_positional_argument_to_a_local_function_is_an_argument_error():
     """Arguments are always named, in local functions too."""
     if True:
@@ -81,7 +78,6 @@ def test_a_positional_argument_to_a_local_function_is_an_argument_error():
             parse_module(jazzoo_fn)
 
 
-@pytest.mark.stage(6)
 def test_a_missing_argument_to_a_local_function_is_an_argument_error():
     """A local function's required parameters are validated like any other."""
     if True:
@@ -99,7 +95,6 @@ def test_a_missing_argument_to_a_local_function_is_an_argument_error():
             parse_module(jazzoo_fn)
 
 
-@pytest.mark.stage(6)
 def test_a_local_function_has_a_fresh_local_namespace():
     """Local functions have their own fresh 🐆 namespace - variables set inside do not
     leak to the parent."""
@@ -125,7 +120,6 @@ def test_a_local_function_has_a_fresh_local_namespace():
         assert evaluate(root_module, "🐭.help()") == "child/parent"
 
 
-@pytest.mark.stage(6)
 def test_arguments_are_passed_explicitly_not_inherited():
     """A local function does not see the enclosing function's 🐆 variables - arguments
     are passed explicitly."""
@@ -166,7 +160,6 @@ def test_arguments_are_passed_explicitly_not_inherited():
             evaluate(root_module, "🐭.help()")
 
 
-@pytest.mark.stage(6)
 def test_a_local_function_sees_module_and_global_variables():
     """Only 🐆 is fresh: 🐭 resolves against the defining file and 🐐 is global, so
     both are visible inside a local function."""
@@ -190,7 +183,6 @@ def test_a_local_function_sees_module_and_global_variables():
         assert evaluate(root_module, "🐭.help()") == "high/on"
 
 
-@pytest.mark.stage(6)
 def test_a_local_function_is_not_visible_outside_its_enclosing_function():
     """Local functions are only accessible within the enclosing function - they are
     not 🐭 functions and not targets."""
@@ -217,7 +209,6 @@ def test_a_local_function_is_not_visible_outside_its_enclosing_function():
         assert {f.name for f in get_targets(root_module)} == {"help", "other"}
 
 
-@pytest.mark.stage(6)
 def test_calling_a_local_function_from_another_function_is_a_resolution_error():
     """A local function defined in one function cannot be called from another."""
     if True:
@@ -238,7 +229,6 @@ def test_calling_a_local_function_from_another_function_is_a_resolution_error():
             parse_module(jazzoo_fn)
 
 
-@pytest.mark.stage(6)
 def test_local_functions_support_shebang_blocks():
     """Local functions support the same body forms as regular functions: shell lines,
     assignments, and shebang blocks."""
@@ -268,7 +258,6 @@ def test_local_functions_support_shebang_blocks():
         assert evaluate(root_module, "🐭.with-an-assignment()") == "Hello jane"
 
 
-@pytest.mark.stage(6)
 def test_local_functions_nest():
     """Local functions support nested local functions."""
     if True:
@@ -291,7 +280,6 @@ def test_local_functions_nest():
         assert evaluate(root_module, "🐭.help()") == "inner: jane"
 
 
-@pytest.mark.stage(6)
 def test_a_nested_local_function_is_scoped_to_its_own_parent():
     """A nested local function is scoped to the function that defines it, so the
     outermost function cannot call it."""
@@ -313,7 +301,6 @@ def test_a_nested_local_function_is_scoped_to_its_own_parent():
             parse_module(jazzoo_fn)
 
 
-@pytest.mark.stage(6)
 def test_a_local_function_may_call_module_functions():
     """A local function can call 🐭 functions, which resolve against the defining
     file as they do anywhere else."""
@@ -338,7 +325,6 @@ def test_a_local_function_may_call_module_functions():
         assert evaluate(root_module, "🐭.help()") == "helper: jane"
 
 
-@pytest.mark.stage(1)
 def test_the_at_marker_suppresses_console_output(capsys):
     """jazzoo prints each command to the console so the caller can see what is being
     executed. Prefixing the line with `@` suppresses that."""
@@ -370,7 +356,6 @@ def test_the_at_marker_suppresses_console_output(capsys):
         assert 'echo "Hello"' not in quiet_console.out
 
 
-@pytest.mark.stage(6)
 def test_the_at_marker_applies_inside_a_local_function(capsys):
     """The `@` marker works on the lines of a local function body too."""
     if True:

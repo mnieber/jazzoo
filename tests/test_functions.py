@@ -15,7 +15,6 @@ from jazzoo import (
 from jazzoo.runtime.utils.test_utils import save_fixture
 
 
-@pytest.mark.stage(1)
 def test_function_without_parameters():
     """A function with no parameters is a target and has an empty parameter list."""
     if True:
@@ -36,7 +35,6 @@ def test_function_without_parameters():
         assert fn in get_targets(root_module)
 
 
-@pytest.mark.stage(1)
 def test_parameters_and_defaults():
     """Parameters are always named. A parameter either has a default value, or is
     required - in which case its default is None."""
@@ -58,7 +56,6 @@ def test_parameters_and_defaults():
         assert fn.parameters[1].default == "release"
 
 
-@pytest.mark.stage(1)
 def test_arguments_are_resolved_into_local_variables():
     """At call time the arguments are validated against the parameters, and the
     resolved values are read from the 🐆 namespace by the body."""
@@ -81,7 +78,6 @@ def test_arguments_are_resolved_into_local_variables():
         )
 
 
-@pytest.mark.stage(1)
 def test_private_functions_are_not_targets():
     """A [private] function is not a target: it is not listed by `jaz --list` and
     cannot be invoked from the CLI, but it remains callable from within .jaz files."""
@@ -116,7 +112,6 @@ def test_private_functions_are_not_targets():
         assert get_targets(root_module) == [debug]
 
 
-@pytest.mark.stage(1)
 def test_mid_body_call_to_module_function():
     """Functions in the current module can be called mid-body using the 🐭 sigil."""
     if True:
@@ -138,7 +133,6 @@ def test_mid_body_call_to_module_function():
         assert evaluate(root_module, "🐭.debug()") == "Internal helper: anonymous"
 
 
-@pytest.mark.stage(4)
 def test_mid_body_call_to_imported_module():
     """Calls to imported modules use the module alias."""
     if True:
@@ -163,7 +157,6 @@ def test_mid_body_call_to_imported_module():
         assert evaluate(root_module, "🐭.deploy()") == "building myapp"
 
 
-@pytest.mark.stage(1)
 def test_dependencies_run_before_the_body():
     """Dependencies are declared after the colon, before the body, and run first."""
     if True:
@@ -191,7 +184,6 @@ def test_dependencies_run_before_the_body():
         )
 
 
-@pytest.mark.stage(1)
 def test_dependency_arguments_may_reference_globals_and_parameters():
     """Dependency arguments may reference 🐐, 🐭 and the function's own parameters."""
     if True:
@@ -216,7 +208,6 @@ def test_dependency_arguments_may_reference_globals_and_parameters():
         assert evaluate(root_module, "🐭.debug()") == "high on me!"
 
 
-@pytest.mark.stage(1)
 def test_function_returns_the_output_of_its_last_step():
     """Every step sets 🐆.retval from its stdout, so a function returns the output
     of the last step that ran."""
@@ -247,7 +238,6 @@ def test_function_returns_the_output_of_its_last_step():
         assert evaluate(root_module, "🐭.two-steps()") == "second"
 
 
-@pytest.mark.stage(1)
 def test_stdout_is_the_value_for_every_interpreter():
     """A shebang block returns whatever it writes to stdout, in any interpreter."""
     if True:
@@ -270,7 +260,6 @@ def test_stdout_is_the_value_for_every_interpreter():
         assert evaluate(root_module, "🐭.from-python()") == "/etc/jazzoo.conf"
 
 
-@pytest.mark.stage(1)
 def test_retval_strips_one_trailing_newline():
     """⚙️.stdout is the raw stdout; ⚙️.output is the same with a single trailing
     newline removed."""
@@ -300,7 +289,6 @@ def test_retval_strips_one_trailing_newline():
         assert evaluate(root_module, "🐭.check()") == "one\ntwo\n"
 
 
-@pytest.mark.stage(1)
 def test_explicit_retval_assignment_overrides_the_last_step():
     """A body can assign 🐆.retval explicitly to return something other than its
     last step's output."""
@@ -328,7 +316,6 @@ def test_explicit_retval_assignment_overrides_the_last_step():
         assert evaluate(root_module, "🐭.keep-earlier-output()") == "the value I want"
 
 
-@pytest.mark.stage(1)
 def test_retvals_are_local_to_the_main_function():
     """A call that is not assigned silently discards any return value."""
     if True:
@@ -351,7 +338,6 @@ def test_retvals_are_local_to_the_main_function():
         assert evaluate(root_module, "🐭.debug()") == "own value"
 
 
-@pytest.mark.stage(1)
 def test_local_variables_do_not_leak_to_the_caller():
     """🐆 variables are scoped to the function invocation and do not leak to the caller."""
     if True:
@@ -375,7 +361,6 @@ def test_local_variables_do_not_leak_to_the_caller():
         assert evaluate(root_module, "🐭.debug()") == "mine"
 
 
-@pytest.mark.stage(6)
 def test_a_local_function_does_not_overwrite_the_callers_retval():
     """A local function has a fresh 🐆 namespace, including 🐆.retval and ⚙️.stdout:
     its own steps do not overwrite the enclosing function's."""
@@ -405,7 +390,6 @@ def test_a_local_function_does_not_overwrite_the_callers_retval():
         )
 
 
-@pytest.mark.stage(1)
 def test_a_positional_argument_is_an_argument_error():
     """Within .jaz files all arguments must be named, so a positional argument at a
     call site is an ArgumentError - raised at parse time, before anything runs."""
@@ -425,7 +409,6 @@ def test_a_positional_argument_is_an_argument_error():
             parse_module(jazzoo_fn)
 
 
-@pytest.mark.stage(1)
 def test_a_missing_required_argument_is_an_argument_error():
     """A parameter without a default is required; a call that does not supply an
     argument for it is an ArgumentError at parse time."""
@@ -446,7 +429,6 @@ def test_a_missing_required_argument_is_an_argument_error():
             parse_module(jazzoo_fn)
 
 
-@pytest.mark.stage(1)
 def test_an_unknown_argument_name_is_an_argument_error():
     """A call supplying an argument the function has no parameter for is an
     ArgumentError."""
@@ -466,7 +448,6 @@ def test_an_unknown_argument_name_is_an_argument_error():
             parse_module(jazzoo_fn)
 
 
-@pytest.mark.stage(1)
 def test_a_call_to_an_unknown_function_is_a_resolution_error():
     """A call to a function that does not exist is a ResolutionError at parse time."""
     if True:
@@ -481,7 +462,6 @@ def test_a_call_to_an_unknown_function_is_a_resolution_error():
             parse_module(jazzoo_fn)
 
 
-@pytest.mark.stage(1)
 def test_a_call_to_an_unknown_module_is_a_resolution_error():
     """A call through a namespace alias that was never imported is a
     ResolutionError - unknown modules and namespaces resolve like unknown
@@ -498,7 +478,6 @@ def test_a_call_to_an_unknown_module_is_a_resolution_error():
             parse_module(jazzoo_fn)
 
 
-@pytest.mark.stage(1)
 def test_a_shebang_block_exiting_non_zero_is_an_execution_error():
     """A shebang block that exits non-zero is an ExecutionError. This is a run-time
     error: the file parses, and the failure surfaces only when the target runs."""
@@ -524,7 +503,6 @@ def test_a_shebang_block_exiting_non_zero_is_an_execution_error():
             evaluate(root_module, "🐭.failing-command()")
 
 
-@pytest.mark.stage(1)
 def test_a_run_time_error_aborts_the_remaining_body(tmp_path):
     """A run-time error aborts the whole run: jazzoo does not continue with the
     remaining lines of the body. Nothing is rolled back - steps that already ran
@@ -553,7 +531,6 @@ def test_a_run_time_error_aborts_the_remaining_body(tmp_path):
         assert not os.path.exists(after)
 
 
-@pytest.mark.stage(1)
 def test_a_failing_dependency_aborts_later_dependencies_and_the_body(tmp_path):
     """A run-time error in a dependency aborts the run: later dependencies do not
     run, and neither does the body of the target that triggered them."""
@@ -590,7 +567,6 @@ def test_a_failing_dependency_aborts_later_dependencies_and_the_body(tmp_path):
         assert not os.path.exists(body)
 
 
-@pytest.mark.stage(1)
 def test_a_name_may_not_be_both_a_variable_and_a_function():
     """A reference names only a sigil and a name, so it does not say whether to look
     in a scope's variables or its functions. A scope may not define both under the
@@ -619,7 +595,6 @@ def test_a_name_may_not_be_both_a_variable_and_a_function():
             parse_module(function_first)
 
 
-@pytest.mark.stage(5)
 def test_a_curried_function_may_not_shadow_an_existing_name():
     """A curry expression assigns a function to a variable, so it collides with an
     existing function of the same name like any other assignment would."""
@@ -656,7 +631,6 @@ def test_a_curried_function_may_not_shadow_an_existing_name():
         assert evaluate(root_module, "🐭.go()") == "myapp/dev"
 
 
-@pytest.mark.stage(1)
 def test_two_functions_may_not_share_a_name():
     """Two functions in one scope may not share a name either - the same ambiguity."""
     if True:
@@ -674,7 +648,6 @@ def test_two_functions_may_not_share_a_name():
             parse_module(jazzoo_fn)
 
 
-@pytest.mark.stage(4)
 def test_the_uniqueness_rule_applies_per_scope():
     """The rule applies per scope, so a local 🐆.foo may shadow a module-level 🐭.foo -
     they are different scopes, and their sigils tell them apart."""

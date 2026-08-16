@@ -7,13 +7,9 @@ rely on the documented default-file rules.
 
 import os
 
-import pytest
-
 from jazzoo import ArgumentError
 from jazzoo.runtime.entrypoints.jazzoo import main
 from jazzoo.runtime.utils.test_utils import save_fixture
-
-pytestmark = pytest.mark.stage(7)
 
 
 def test_a_target_runs_with_named_arguments(capsys):

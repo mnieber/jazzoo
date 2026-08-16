@@ -10,12 +10,8 @@ file. A getter/setter pair crosses both at once: the setter mutates the callee's
 module scope, and the caller has a same-named 🐭 that must not move.
 """
 
-import pytest
-
 from jazzoo import evaluate, get_module_by_path, parse_module
 from jazzoo.runtime.utils.test_utils import save_fixture
-
-pytestmark = pytest.mark.stage(4)
 
 
 def test_an_imported_setter_writes_the_defining_modules_scope():

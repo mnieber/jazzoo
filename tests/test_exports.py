@@ -3,8 +3,6 @@ import pytest
 from jazzoo import get_function_by_path, get_targets, parse_module
 from jazzoo.runtime.utils.test_utils import save_fixture
 
-pytestmark = pytest.mark.stage(4)
-
 # A library module used as the export source. It exports two of its own
 # functions (bar, okay), re-exports one function from helper.jaz (some_target),
 # and privately imports another (other).

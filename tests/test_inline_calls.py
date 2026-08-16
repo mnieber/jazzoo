@@ -9,12 +9,8 @@ A `(` must follow the name directly. A space before it means the parenthesis is
 ordinary text, which is what keeps `echo "Hello 🐆.who (see notes)"` a shell line.
 """
 
-import pytest
-
 from jazzoo import evaluate, parse_module
 from jazzoo.runtime.utils.test_utils import save_fixture
-
-pytestmark = pytest.mark.stage(2)
 
 
 def test_a_call_substitutes_inline_like_a_reference():

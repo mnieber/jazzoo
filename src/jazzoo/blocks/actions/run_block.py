@@ -1,14 +1,12 @@
-import logging
 import os
 import stat
 import subprocess
+import sys
 import tempfile
 import typing as T
 
 from jazzoo.errors import ExecutionError
 from jazzoo.settings import DEFAULT_SHEBANG
-
-logger = logging.getLogger(__name__)
 
 
 def run_block(
@@ -43,8 +41,12 @@ def run_block(
     finally:
         os.unlink(handle.name)
 
+    # The block's own output goes to the console as well as being captured for
+    # ⚙️.stdout, so a target behaves like the commands it runs.
+    if completed.stdout:
+        print(completed.stdout, end="")
     if completed.stderr:
-        logger.debug("block stderr: %s", completed.stderr.rstrip())
+        print(completed.stderr, end="", file=sys.stderr)
 
     if completed.returncode != 0:
         message = completed.stderr.strip() or f"command failed: {body.strip()}"
