@@ -1,0 +1,89 @@
+import re
+import typing as T
+
+from jazzoo.errors import ParseError
+from jazzoo.modules.models.import_statement import ImportedSymbol, ImportStatement
+
+_IMPORT_RE = re.compile(
+    r"^from\s+(?P<path>\S+)\s+(?P<kind>import|export)\s+(?P<rest>.*)$"
+)
+
+# `<name>` or `<name> as <alias>`
+_SYMBOL_RE = re.compile(
+    r"^(?P<name>\*|[A-Za-z_][A-Za-z0-9_-]*)"
+    r"(?:\s+as\s+(?P<alias>[A-Za-z_][A-Za-z0-9_-]*))?$"
+)
+
+
+def _parse_symbols(text: str) -> T.Tuple[T.List[ImportedSymbol], bool]:
+    """Parse the symbol list, which may be a single name or a parenthesised tuple."""
+    text = text.strip()
+    if text.startswith("("):
+        closing = text.rfind(")")
+        if closing == -1:
+            raise ParseError(f"unterminated symbol list: {text}")
+        inner = text[1:closing]
+    else:
+        inner = text
+
+    symbols: T.List[ImportedSymbol] = []
+    is_wildcard = False
+    for chunk in inner.split(","):
+        chunk = chunk.strip()
+        if not chunk:
+            continue
+        match = _SYMBOL_RE.match(chunk)
+        if match is None:
+            raise ParseError(f"cannot parse imported symbol: {chunk}")
+        name = match.group("name")
+        if name == "*":
+            is_wildcard = True
+            continue
+        symbols.append(
+            ImportedSymbol(name=name, alias=match.group("alias") or name)
+        )
+    return symbols, is_wildcard
+
+
+def parse_import_statement(
+    text: str, filename: str, line: int
+) -> ImportStatement:
+    """Parse one `from <path> import|export ...` line.
+
+    `import` places the symbols under a mandatory namespace alias and keeps them
+    private; `export` lands them flat in 🐭 and makes them targets.
+    """
+    match = _IMPORT_RE.match(text.strip())
+    if match is None:
+        raise ParseError(f"cannot parse import: {text}", filename=filename, line=line)
+
+    rest = match.group("rest").strip()
+    is_export = match.group("kind") == "export"
+
+    alias: T.Optional[str] = None
+    if not is_export:
+        # The trailing `as <namespace>` is mandatory for import, and is whatever
+        # follows the last `as` outside the tuple.
+        closing = rest.rfind(")")
+        tail_start = closing + 1 if closing != -1 else 0
+        tail = rest[tail_start:]
+        tail_match = re.search(r"\s+as\s+([A-Za-z_][A-Za-z0-9_-]*)\s*$", tail)
+        if tail_match is None:
+            raise ParseError(
+                "an import must end with `as <namespace>`",
+                filename=filename,
+                line=line,
+            )
+        alias = tail_match.group(1)
+        rest = rest[:tail_start] + tail[: tail_match.start()]
+
+    symbols, is_wildcard = _parse_symbols(rest)
+    return ImportStatement(
+        path=match.group("path"),
+        symbols=symbols,
+        is_wildcard=is_wildcard,
+        is_export=is_export,
+        alias=alias,
+        filename=filename,
+        line=line,
+    )
