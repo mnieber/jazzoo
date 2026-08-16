@@ -37,12 +37,109 @@ Declared at the top level of a `.jaz` file:
 
 ### Types
 
-All values are strings. There are no integers.
-Unquoted values are treated as bare strings: `🐆.x = hello` is equivalent to `🐆.x = "hello"`.
+A variable holds a JSON value: a string, a number, a boolean, `null`, an array, or an
+object. Most values in practice are strings, and a value written without quotes is a
+bare string — `🐆.x = hello` is equivalent to `🐆.x = "hello"`.
+
+Jazzoo does no arithmetic. A number is a value it can hold and pass around, not one it
+can compute with: there is no `+`, and `==` compares the rendered strings. Numbers
+exist so that a JSON document can round-trip through jazzoo unchanged.
+
+### Structured values
+
+A variable can hold an object or an array, and a dotted name reaches inside it:
+
+```
+🐆.config.name = "jane"
+🐆.config.port = 8080
+🐆.retval = 🐆.config.name        # "jane"
+```
+
+Assigning to a path creates the intermediate objects, so the two lines above are
+enough to build `{"name": "jane", "port": 8080}` — `🐆.config` need not be declared
+first. Assigning to a path under a value that is not an object replaces it.
+
+Array elements are reached by index, written as an ordinary path segment:
+
+```
+🐆.hosts = ["a.example.com", "b.example.com"]
+🐆.first = 🐆.hosts.0
+```
+
+A path that does not exist is unresolvable, exactly like an unset variable: it raises
+a `ResolutionError` unless marked with `?` (see section 4).
+
+```
+🐆.maybe = 🐆.config.nickname?          # "" when absent
+🐆.level  = 🐆.config.log-level?:-info  # "info" when absent or empty
+```
+
+Only `🐐`, `🐭` and `🐆` hold structured values. `⚙️` is a fixed set of built-ins, and
+`⚙️.env` values are always strings, because that is what the environment provides.
+
+### Rendering a value as text
+
+Substitution always produces text (section 4), so every value has a string rendering:
+
+| Value       | Renders as                      |
+| ----------- | ------------------------------- |
+| string      | the string itself, unquoted     |
+| number      | its JSON form: `8080`, `1.5`    |
+| boolean     | `true` / `false`                |
+| `null`      | the empty string                |
+| array/object | compact JSON, no spaces        |
+
+```
+🐆.config.name = "jane"
+🐆.config.port = 8080
+
+echo 🐆.config.name    # jane
+echo 🐆.config.port    # 8080
+echo 🐆.config         # {"name":"jane","port":8080}
+```
+
+A scalar renders bare rather than as JSON, so `echo 🐆.config.name` prints `jane` and
+not `"jane"`. This is what keeps the common case — a variable holding a string — behaving
+exactly as it did before structured values existed.
+
+Rendering a container yields JSON that a downstream tool such as `jq` can consume. The
+braces and quotes are spliced into the line as text and are **not** escaped for the
+interpreter, so section 4's warning about untrusted values applies with extra force
+here: a container rendering is live shell syntax. Use `⚙️.sh-quote` when the value did
+not come from the `.jaz` file itself.
+
+### Parsing and emitting JSON
+
+Two pipe operators cross between text and structure:
+
+- `⚙️.parse` reads a JSON string and yields the value it describes
+- `⚙️.json` renders any value as JSON — unlike plain substitution, a string comes back
+  quoted, so the result is always valid JSON
+
+```
+🐆.config = 🐭.load-config() | ⚙️.parse   # stdout of load-config, parsed
+🐆.name   = 🐆.config.name                # reach into it
+🐆.text   = 🐆.config | ⚙️.json           # back to a JSON string
+```
+
+`⚙️.parse` raises an `ExecutionError` if the text is not valid JSON, and is the only
+way structure enters jazzoo from outside — a command's stdout is text until it is
+parsed.
 
 ### Truthiness
 
-In ternary expressions, a string value is falsy if its lowercased form is in `["0", "false", "no", ""]`. All other strings are truthy. This allows natural use of env-var-style boolean flags.
+In ternary expressions a value is falsy when it is:
+
+- the boolean `false`, or `null`
+- an empty array or an empty object
+- the number `0`
+- a string whose lowercased form is in `["0", "false", "no", ""]`
+
+Everything else is truthy. The string rule allows natural use of env-var-style boolean
+flags, and the others make `"yes" if 🐆.config.items else "no"` mean what it looks like.
+
+Note that truthiness is decided on the value, not on its rendering — an empty array is
+falsy even though it renders as the non-empty text `[]`.
 
 ### System variables
 
@@ -105,6 +202,18 @@ echo "Running test with \🐭.tracing set to: 🐭.tracing\.com"  # prints .com 
 ```
 
 This prints the literal emoji and `.tracing` text for the escaped reference, and substitutes the unescaped one.
+
+A `\` is **required** to end a name before a literal dot, because a dot otherwise
+continues the name into a structured lookup (section 3):
+
+```
+🐭.tracing\.com    # the value of 🐭.tracing, then the text ".com"
+🐭.tracing.com     # the `com` field of 🐭.tracing - a ResolutionError if there is none
+```
+
+A reference still ends on its own at any character that cannot start a path segment,
+so only a following dot needs the escape. `🐭.tracing/com`, `🐭.tracing-com` and
+`🐭.tracing:com` are unambiguous as written.
 
 To produce a literal `{{ 🐐.log-level }}` string:
 
@@ -242,6 +351,8 @@ Other pipe operators are:
 - ⚙️.ext: yields the extension
 - ⚙️.stem: yields the path except for the extension
 - ⚙️.sh-quote: renders the value as a single, safely quoted POSIX shell word (see section 4)
+- ⚙️.parse: parses a JSON string into a structured value (see section 3)
+- ⚙️.json: renders any value as a JSON string (see section 3)
 
 ---
 
@@ -683,6 +794,8 @@ The rest are **run-time** errors, raised while a target executes:
 | --------------------------------------------------------- | ------------------- |
 | A shebang block exits non-zero                            | `ExecutionError`    |
 | A reference that cannot be resolved, without a `?` marker | `ResolutionError`   |
+| A path into a value that has no such field or index       | `ResolutionError`   |
+| `⚙️.parse` given text that is not valid JSON              | `ExecutionError`    |
 | A load-time circular import (see section 14)              | `ModuleImportError` |
 
 A run-time error **aborts the whole run** — jazzoo does not continue with the remaining lines of the body, with later dependencies, or with the target that triggered a dependency. Nothing is rolled back: steps that already ran have already had their effects.
@@ -713,7 +826,9 @@ Jazzoo's parse tree is structured as nested scopes. The entry-point `.jaz` file 
 ```python
 class Variable:
     name: str
-    value: str
+    # Any JSON value: str, int, float, bool, None, list or dict. A dotted
+    # reference reaches into a list or dict; see section 3.
+    value: T.Any
 
 class Scope:
     variables: T.List[Variable]
@@ -766,4 +881,16 @@ The rule applies per scope, so a local `🐆.foo` may shadow a module-level `�
 ## 14. Open Questions
 
 - **`set shell`**: Should jazzoo support configuring the default shell (e.g. bash vs sh vs fish)? Currently unspecified.
+- **Structured values are specified but not yet implemented.** Section 3 describes JSON
+  values, dotted paths and `⚙️.parse`/`⚙️.json`; the current implementation still treats
+  every value as a string and stops a name at the first dot. Landing it means:
+  - the reference scanner continues a name across dots for `🐐`/`🐭`/`🐆`, which is the
+    breaking half — `🐭.bare.com` currently means `🐭.bare` then `.com`, and will mean a
+    field lookup. `🐭.bare\.com` is the migration, and it needs to work in expression
+    position as well as in shell lines, where today it already does.
+  - assignment parses a dotted left-hand side and creates intermediate objects
+  - rendering splits scalar (bare) from container (compact JSON), per section 3
+  - `is_truthy` takes a value rather than a string, so `null`, `[]` and `{}` are falsy
+  - a call path and a field path become lexically identical, so `🐭.a.b` is resolved as a
+    function first and a field second — the one place the two namespaces overlap
 - **Circular imports**: Circular imports are allowed. Modules are cached by resolved file path after first load; a circular import receives the cached partially-initialized module. Circular references used only at call time (mid-body function calls) are safe. Circular references at load time — module-level variable assignments that call into a module not yet fully initialized — are a runtime error. This is the same model as TypeScript (live bindings resolved at access time), which is more predictable than Python's approach (copied values resolved at import time, where failures depend on statement order).
