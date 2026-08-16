@@ -9,6 +9,7 @@ from jazzoo import (
 from jazzoo.runtime.utils.test_utils import save_fixture
 
 
+@pytest.mark.stage(1)
 def test_bare_references_are_substituted():
     """Jazzoo variables can be referenced directly in shell lines and strings,
     without any escaping."""
@@ -28,6 +29,7 @@ def test_bare_references_are_substituted():
         assert evaluate(root_module, "🐭.debug()") == "log level: high for user: me"
 
 
+@pytest.mark.stage(1)
 def test_hyphens_are_part_of_variable_names():
     """The `-` character is valid in variable names, so a shell option name and the
     variable name can be identical."""
@@ -48,6 +50,7 @@ def test_hyphens_are_part_of_variable_names():
         assert evaluate(root_module, "🐭.debug()") == "--log-level=high"
 
 
+@pytest.mark.stage(1)
 def test_braced_references_when_adjacent_to_text():
     """`{{ }}` delimits a reference that is adjacent to other text."""
     if True:
@@ -66,6 +69,7 @@ def test_braced_references_when_adjacent_to_text():
         assert evaluate(root_module, "🐭.debug()") == "log level: high-setting"
 
 
+@pytest.mark.stage(1)
 def test_braces_without_sigils_are_left_alone():
     """Braces that contain no sigil are ignored by jazzoo and pass through."""
     if True:
@@ -85,6 +89,7 @@ def test_braces_without_sigils_are_left_alone():
         )
 
 
+@pytest.mark.stage(1)
 def test_escaped_sigil_suppresses_substitution():
     """Prefixing the sigil with `\\` suppresses substitution, printing the literal
     emoji and name instead."""
@@ -105,6 +110,7 @@ def test_escaped_sigil_suppresses_substitution():
         assert evaluate(root_module, "🐭.debug()") == "with 🐭.tracing set to: on"
 
 
+@pytest.mark.stage(1)
 def test_backslash_terminates_a_variable_name():
     """A `\\` after a reference ends the variable name, so the text that follows is
     literal even though it would otherwise extend the name."""
@@ -125,6 +131,7 @@ def test_backslash_terminates_a_variable_name():
         assert evaluate(root_module, "🐭.debug()") == "on.com"
 
 
+@pytest.mark.stage(1)
 def test_escaping_inside_braces_yields_a_literal_braced_reference():
     """`{{ \\🐐.x }}` produces the literal text `{{ 🐐.x }}`."""
     if True:
@@ -146,6 +153,7 @@ def test_escaping_inside_braces_yields_a_literal_braced_reference():
         )
 
 
+@pytest.mark.stage(1)
 def test_all_three_namespaces_substitute():
     """🐐, 🐭 and 🐆 references all substitute, each against its own scope."""
     if True:
@@ -165,6 +173,7 @@ def test_all_three_namespaces_substitute():
         assert evaluate(root_module, "🐭.debug()") == "g m l"
 
 
+@pytest.mark.stage(3)
 def test_system_variables_substitute():
     """⚙️ system variables substitute like any other reference."""
     if True:
@@ -181,6 +190,7 @@ def test_system_variables_substitute():
         assert evaluate(root_module, "🐭.debug()") == "running test_system_vars.jaz"
 
 
+@pytest.mark.stage(1)
 def test_substitution_happens_inside_shebang_blocks():
     """Substitution applies to shebang block lines too, not just jazzoo-mode lines."""
     if True:
@@ -200,6 +210,7 @@ def test_substitution_happens_inside_shebang_blocks():
         assert evaluate(root_module, "🐭.debug()") == "hello from python"
 
 
+@pytest.mark.stage(1)
 def test_braced_reference_names_a_python_variable():
     """A braced reference is not a leading sigil, so it passes through the sweep as
     a regular line - which is how a Python variable gets a name from a jazzoo value."""
@@ -221,6 +232,7 @@ def test_braced_reference_names_a_python_variable():
         assert evaluate(root_module, "🐭.debug()") == "bar"
 
 
+@pytest.mark.stage(1)
 def test_values_are_substituted_without_escaping():
     """Substitution is textual: jazzoo does not quote or escape what it splices, so
     a value containing interpreter syntax becomes interpreter syntax."""
@@ -242,6 +254,7 @@ def test_values_are_substituted_without_escaping():
         assert evaluate(root_module, "🐭.debug()") == "--dry-run --verbose"
 
 
+@pytest.mark.stage(2)
 def test_sh_quote_renders_a_value_as_one_shell_word():
     """⚙️.sh-quote renders a value as a single, safely quoted POSIX shell word, so it
     cannot expand, split, or terminate the surrounding command."""
@@ -271,6 +284,7 @@ def test_sh_quote_renders_a_value_as_one_shell_word():
         assert evaluate(root_module, "🐭.stays-literal()") == "; echo pwned"
 
 
+@pytest.mark.stage(3)
 def test_env_variables_are_substituted(monkeypatch):
     """⚙️.env.NAME refers to an environment variable, and substitutes like any
     other reference. All-caps is a convention, not a requirement."""
@@ -291,6 +305,7 @@ def test_env_variables_are_substituted(monkeypatch):
         assert evaluate(root_module, "🐭.debug()") == "high and yes"
 
 
+@pytest.mark.stage(3)
 def test_an_unset_reference_is_a_resolution_error(monkeypatch):
     """By default every reference must resolve: an unset variable raises a
     ResolutionError rather than substituting an empty string."""
@@ -316,6 +331,7 @@ def test_an_unset_reference_is_a_resolution_error(monkeypatch):
             evaluate(root_module, "🐭.from-global()")
 
 
+@pytest.mark.stage(3)
 def test_question_mark_marks_a_reference_as_possibly_absent(monkeypatch):
     """`?` resolves an absent reference to the empty string instead of raising."""
     if True:
@@ -345,6 +361,7 @@ def test_question_mark_marks_a_reference_as_possibly_absent(monkeypatch):
         assert evaluate(root_module, "🐭.as-a-flag()") == "[--ci]"
 
 
+@pytest.mark.stage(3)
 def test_default_applies_when_the_value_is_empty(monkeypatch):
     """`:-` supplies a default used when the value is empty. The reference must
     still exist."""
@@ -376,6 +393,7 @@ def test_default_applies_when_the_value_is_empty(monkeypatch):
             evaluate(root_module, "🐭.when-absent()")
 
 
+@pytest.mark.stage(3)
 def test_optional_with_default_covers_absent_and_empty(monkeypatch):
     """`?:-` combines both: the default applies when the reference is absent or
     empty."""
@@ -405,6 +423,7 @@ def test_optional_with_default_covers_absent_and_empty(monkeypatch):
         assert evaluate(root_module, "🐭.when-set()") == "debug"
 
 
+@pytest.mark.stage(3)
 def test_markers_apply_to_every_namespace():
     """`?` and `:-` apply uniformly to 🐐, 🐭, 🐆 and ⚙️.env."""
     if True:
@@ -432,6 +451,7 @@ def test_markers_apply_to_every_namespace():
         assert evaluate(root_module, "🐭.locals()") == "from-leopard"
 
 
+@pytest.mark.stage(3)
 def test_defaults_may_be_bare_or_quoted(monkeypatch):
     """A default may be a bare string or a quoted one; bare defaults end at the
     first whitespace."""
@@ -455,6 +475,7 @@ def test_defaults_may_be_bare_or_quoted(monkeypatch):
         assert evaluate(root_module, "🐭.quoted()") == "[hello there]"
 
 
+@pytest.mark.stage(3)
 def test_markers_work_in_braced_references(monkeypatch):
     """Both markers are part of the reference syntax, so they work in braced
     positions as well as bare ones."""
@@ -474,6 +495,7 @@ def test_markers_work_in_braced_references(monkeypatch):
         assert evaluate(root_module, "🐭.debug()") == "info-setting"
 
 
+@pytest.mark.stage(3)
 def test_backslash_terminates_the_name_before_a_marker(monkeypatch):
     """`\\` still terminates the variable name, so a `?:-` after it is literal text
     rather than a marker."""
@@ -493,6 +515,7 @@ def test_backslash_terminates_the_name_before_a_marker(monkeypatch):
         assert evaluate(root_module, "🐭.debug()") == "example.com?:-literal"
 
 
+@pytest.mark.stage(3)
 def test_a_colon_after_a_reference_is_not_a_default(monkeypatch):
     """`:-` was chosen over a bare `:` so that the colons that follow references
     routinely in shell lines keep their literal meaning."""
@@ -517,6 +540,7 @@ def test_a_colon_after_a_reference_is_not_a_default(monkeypatch):
         assert evaluate(root_module, "🐭.volume()") == "-v /home/me:/data"
 
 
+@pytest.mark.stage(3)
 def test_system_variables_are_read_only():
     """All ⚙️ variables are read-only - a .jaz file can never assign to ⚙️."""
     if True:

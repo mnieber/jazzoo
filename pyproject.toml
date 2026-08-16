@@ -2,19 +2,26 @@
 name = "jazzoo"
 version = "0.1.0"
 readme = "README.md"
-dependencies = []
+dependencies = ["dataclassy", "lark"]
 
 [project.optional-dependencies]
 dev = ["pytest"]
 
 [project.scripts]
 jazzoo = "jazzoo.runtime.entrypoints.jazzoo:main"
+jaz = "jazzoo.runtime.entrypoints.jazzoo:main"
 
 [tool.setuptools.package-dir]
 "" = "src"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "stage(n): the implementation stage of implementation_plan.md that makes this test pass",
+]
 
 [build-system]
 requires = ["setuptools>=45", "wheel"]

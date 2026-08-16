@@ -1,5 +1,9 @@
+import pytest
+
 from jazzoo import evaluate, parse_module
 from jazzoo.runtime.utils.test_utils import save_fixture
+
+pytestmark = pytest.mark.stage(2)
 
 
 def test_all_values_are_strings():

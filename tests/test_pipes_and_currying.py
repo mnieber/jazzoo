@@ -8,6 +8,8 @@ from jazzoo import (
 )
 from jazzoo.runtime.utils.test_utils import save_fixture
 
+pytestmark = pytest.mark.stage(5)
+
 # A library module of small string helpers, used as pipe stages.
 save_fixture("""# helpers.jaz
 make-full-path(input, style="posix"):
