@@ -1,10 +1,15 @@
 import re
 import typing as T
 
-from jazzoo.errors import ArgumentError, ResolutionError
+from jazzoo.enums import Sigil
+from jazzoo.errors import ArgumentError, ParseError, ResolutionError
 from jazzoo.functions.models.function import Function
 from jazzoo.modules.models.module import Module
-from jazzoo.modules.rules.parse_source import _ASSIGNMENT_RE, parse_call_arguments
+from jazzoo.modules.rules.parse_source import (
+    _ASSIGNMENT_RE,
+    _SIGIL_TEXTS,
+    parse_call_arguments,
+)
 
 # A call is only a call when it is the whole line, or the whole right-hand side of
 # an assignment. Scanning shell text for anything call-shaped would misread
@@ -39,6 +44,16 @@ def _validate_function(function: Function, module: Module) -> None:
         for block_line in block.lines:
             trimmed = block_line.text.strip()
             assignment = _ASSIGNMENT_RE.match(trimmed)
+            if assignment is not None:
+                # ⚙️ is read-only everywhere, including inside a body. Bodies are
+                # opaque to the parser, so the check belongs here rather than in
+                # parse_source.
+                if _SIGIL_TEXTS[assignment.group("sigil")] is Sigil.SYSTEM:
+                    raise ParseError(
+                        "cannot assign to the read-only ⚙️ namespace",
+                        filename=block.filename,
+                        line=block_line.line,
+                    )
             candidate = assignment.group("rhs").strip() if assignment else trimmed
             match = _CALL_RE.match(candidate)
             if match is None:
