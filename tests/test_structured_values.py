@@ -206,6 +206,31 @@ def test_a_container_renders_into_a_shell_line():
         assert evaluate(root_module, "🐭.build()") == '{"name":"jane"}'
 
 
+def test_a_rendered_container_is_consumable_by_a_json_tool():
+    """The point of rendering a container as JSON is that a downstream tool can
+    read it, so the rendering has to be valid JSON in a real pipeline."""
+    if True:
+        # Config
+        jazzoo_fn = save_fixture("""# test_container_to_json_tool.jaz
+        [private]
+        _document():
+            #!/usr/bin/env bash
+            echo '{"a":[1,{"c":true}],"b":2}'
+
+        go():
+            🐆.doc = 🐭._document() | ⚙️.parse
+            #!/usr/bin/env bash
+            echo '🐆.doc' | python3 -c 'import json,sys; print(json.load(sys.stdin)["a"][1]["c"])'
+        """)
+
+        # Run
+        root_module = parse_module(jazzoo_fn)
+
+        # Assert
+        # Parsed by jazzoo, rendered back out, and re-parsed by another tool.
+        assert evaluate(root_module, "🐭.go()") == "True"
+
+
 def test_parse_reads_a_json_string_into_a_value():
     """⚙️.parse turns a command's stdout into a structured value."""
     if True:
