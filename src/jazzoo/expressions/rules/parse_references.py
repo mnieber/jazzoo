@@ -62,15 +62,34 @@ def _match_sigil(text: str, pos: int) -> T.Optional[str]:
     return None
 
 
-def _scan_name(text: str, pos: int) -> T.Tuple[T.List[str], int]:
-    """Read the dotted name after a sigil. A `\\` terminates the name.
+def _scan_name(
+    text: str, pos: int, allow_dots: bool = False
+) -> T.Tuple[T.List[str], int]:
+    """Read the name after a sigil. A `\\` terminates the name.
 
     A reference is always `<sigil>.<name>`, so the leading dot is required; without
     it the sigil is just an emoji in the text.
+
+    Names themselves are letters, numbers, hyphens and underscores - never dots. A
+    further dot is therefore literal text, which is what makes `🐭.bare.com` the
+    variable `bare` followed by ".com". `allow_dots` is set only for ⚙️, whose
+    built-in names really are dotted (`⚙️.module.basename`), and for a call path,
+    where the dots separate module aliases (`🐭.docker.build`).
     """
     if pos >= len(text) or text[pos] != ".":
         return [], pos
     pos += 1
+
+    if not allow_dots:
+        start = pos
+        while pos < len(text) and text[pos] in _NAME_CHARS:
+            pos += 1
+        name = text[start:pos]
+        # A name may contain hyphens but not end on one: in `🐆.target-🐆.mode`
+        # the trailing hyphen is separator text.
+        trimmed = name.rstrip("-")
+        pos -= len(name) - len(trimmed)
+        return ([trimmed] if trimmed else []), pos
 
     parts: T.List[str] = []
     current = ""
@@ -150,7 +169,11 @@ def parse_references(
                 sigil = _match_sigil(probe, 0)
                 if sigil is not None:
                     offset = inner_start + inner.index(stripped) + (1 if escaped else 0)
-                    parts, after = _scan_name(text, offset + len(sigil))
+                    parts, after = _scan_name(
+                        text,
+                        offset + len(sigil),
+                        allow_dots=_SIGIL_BY_TEXT[sigil] is Sigil.SYSTEM,
+                    )
                     if parts:
                         is_optional, default, after = _scan_markers(text, after)
                         matches.append(
@@ -175,17 +198,25 @@ def parse_references(
         probe_pos = pos + 1 if escaped else pos
         sigil = _match_sigil(text, probe_pos)
         if sigil is not None:
-            parts, after = _scan_name(text, probe_pos + len(sigil))
-            # A `(` directly after the name makes this an inline call. A space
-            # before the paren means the paren is ordinary text.
-            if parts and not escaped and after < len(text) and text[after] == "(":
-                call_end = _read_call_arguments(text, after)
+            is_system = _SIGIL_BY_TEXT[sigil] is Sigil.SYSTEM
+            name_start = probe_pos + len(sigil)
+
+            # A call path may be dotted (`🐭.docker.build`), so scan the dotted form
+            # first and keep it only if a `(` really follows.
+            dotted_parts, dotted_after = _scan_name(text, name_start, allow_dots=True)
+            if (
+                dotted_parts
+                and not escaped
+                and dotted_after < len(text)
+                and text[dotted_after] == "("
+            ):
+                call_end = _read_call_arguments(text, dotted_after)
                 if call_end is not None:
                     matches.append(
                         ReferenceMatch(
                             reference=Reference(
                                 sigil=_SIGIL_BY_TEXT[sigil],
-                                parts=parts,
+                                parts=dotted_parts,
                                 filename=filename,
                                 line=line,
                             ),
@@ -196,6 +227,8 @@ def parse_references(
                     )
                     pos = call_end
                     continue
+
+            parts, after = _scan_name(text, name_start, allow_dots=is_system)
 
             if parts:
                 if escaped:
