@@ -72,7 +72,9 @@ def resolve_import(
         return
 
     # A private import: the symbols live under a namespace sub-module.
-    namespace = _get_or_create_namespace(into, statement.alias, source)
+    namespace = _get_or_create_namespace(
+        into, statement.alias, source, statement.line
+    )
     for function, alias in selected:
         bound = copy.copy(function)
         bound.name = alias
@@ -80,7 +82,7 @@ def resolve_import(
 
 
 def _get_or_create_namespace(
-    into: Module, alias: str, source: Module
+    into: Module, alias: str, source: Module, line: T.Optional[int] = None
 ) -> Module:
     """The sub-module an alias names, created on first use.
 
@@ -99,6 +101,7 @@ def _get_or_create_namespace(
         namespace=source.namespace,
         variables=[],
         is_initialized=source.is_initialized,
+        imported_at_line=line,
     )
     into.modules.append(namespace)
     return namespace

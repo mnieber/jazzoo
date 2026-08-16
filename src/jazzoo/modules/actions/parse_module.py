@@ -169,31 +169,34 @@ def _check_name_collisions(parsed, module: Module) -> None:
     that is what names something in this scope: `🐭.docker.build` collides with a
     `docker` namespace but not with a module-level `build`.
     """
-    seen: T.Set[str] = set()
+    # Every declaration this scope makes, as (line, name), so the error can point at
+    # whichever of a colliding pair came second in the file.
+    declarations: T.List[T.Tuple[int, str]] = []
+
     for function in module.functions:
-        if function.name in seen:
-            raise ParseError(
-                f"'{function.name}' is already defined in this scope",
-                filename=function.filename,
-                line=function.line,
-            )
-        seen.add(function.name)
+        declarations.append((function.line or 0, function.name))
 
     for child in module.modules:
-        if child.name in seen:
-            raise ParseError(
-                f"'{child.name}' is already defined in this scope",
-                filename=module.filename,
-            )
-        seen.add(child.name)
+        declarations.append((child.imported_at_line or 0, child.name))
 
+    # A variable may be assigned more than once - `🐭.cfg = "x"` then
+    # `🐭.cfg.name = "y"` is a re-assignment, not a redeclaration - so each variable
+    # contributes one declaration, at the line it first appears.
+    first_assignment: T.Dict[str, int] = {}
     for assignment in parsed.assignments:
         if assignment.sigil is not Sigil.MOUSE:
             continue
+        # Only the first segment names something in this scope.
         name = assignment.name.split(".")[0]
+        first_assignment.setdefault(name, assignment.line or 0)
+    declarations.extend((line, name) for name, line in first_assignment.items())
+
+    seen: T.Set[str] = set()
+    for line, name in sorted(declarations):
         if name in seen:
             raise ParseError(
                 f"'{name}' is already defined in this scope",
-                filename=assignment.filename,
-                line=assignment.line,
+                filename=module.filename,
+                line=line,
             )
+        seen.add(name)
