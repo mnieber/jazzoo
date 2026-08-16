@@ -594,6 +594,145 @@ def test_empty_composes_into_a_condition():
         assert evaluate(root_module, "🐭.go()") == "got: no"
 
 
+def test_bool_captures_a_truthiness_decision_as_a_value():
+    """⚙️.bool yields truthiness as a boolean, so the decision can be stored and
+    passed on rather than only consumed by a ternary."""
+    if True:
+        # Config
+        jazzoo_fn = save_fixture("""# test_bool_operator.jaz
+        check(flag):
+            🐆.retval = 🐆.flag | ⚙️.bool
+        """)
+
+        # Run
+        root_module = parse_module(jazzoo_fn)
+
+        # Assert
+        # The same rule a ternary applies, handed back as a value.
+        for truthy in ["yes", "1", "true", "anything", "off"]:
+            assert evaluate(root_module, f'🐭.check(flag="{truthy}")') == "true"
+        for falsy in ["", "no", "false", "0", "NO", "False"]:
+            assert evaluate(root_module, f'🐭.check(flag="{falsy}")') == "false"
+
+
+def test_bool_is_total_over_structured_values():
+    """Every value maps to a boolean; nothing raises."""
+    if True:
+        # Config
+        jazzoo_fn = save_fixture("""# test_bool_structured.jaz
+        empty-array():
+            🐆.v = []
+            🐆.retval = 🐆.v | ⚙️.bool
+
+        full-array():
+            🐆.v = ["a"]
+            🐆.retval = 🐆.v | ⚙️.bool
+
+        nothing():
+            🐆.v = null
+            🐆.retval = 🐆.v | ⚙️.bool
+
+        a-boolean():
+            🐆.v = true
+            🐆.retval = 🐆.v | ⚙️.bool
+
+        zero():
+            🐆.v = 0
+            🐆.retval = 🐆.v | ⚙️.bool
+        """)
+
+        # Run
+        root_module = parse_module(jazzoo_fn)
+
+        # Assert
+        assert evaluate(root_module, "🐭.empty-array()") == "false"
+        assert evaluate(root_module, "🐭.full-array()") == "true"
+        assert evaluate(root_module, "🐭.nothing()") == "false"
+        assert evaluate(root_module, "🐭.a-boolean()") == "true"
+        assert evaluate(root_module, "🐭.zero()") == "false"
+
+
+def test_bool_yields_a_real_boolean():
+    """The result is a boolean value, not the text "true" - so it is itself truthy
+    or falsy, and survives ⚙️.json as a JSON boolean."""
+    if True:
+        # Config
+        jazzoo_fn = save_fixture("""# test_bool_is_a_boolean.jaz
+        round-trip():
+            🐆.flag = "yes" | ⚙️.bool
+            🐆.retval = 🐆.flag | ⚙️.json
+
+        used-as-a-condition():
+            🐆.flag = "no" | ⚙️.bool
+            🐆.retval = "on" if 🐆.flag else "off"
+        """)
+
+        # Run
+        root_module = parse_module(jazzoo_fn)
+
+        # Assert
+        # ⚙️.json quotes a string but not a boolean, so this distinguishes them.
+        assert evaluate(root_module, "🐭.round-trip()") == "true"
+        assert evaluate(root_module, "🐭.used-as-a-condition()") == "off"
+
+
+def test_bool_and_empty_answer_different_questions():
+    """⚙️.empty is not the negation of ⚙️.bool: they disagree on the env-var
+    spellings, which is why both exist."""
+    if True:
+        # Config
+        jazzoo_fn = save_fixture("""# test_bool_vs_empty.jaz
+        compare(value):
+            🐆.as-bool = 🐆.value | ⚙️.bool
+            🐆.as-empty = 🐆.value | ⚙️.empty
+            🐆.retval = "bool=🐆.as-bool empty=🐆.as-empty"
+        """)
+
+        # Run
+        root_module = parse_module(jazzoo_fn)
+
+        # Assert
+        # "no" is falsy but not empty - the one place the two come apart.
+        assert (
+            evaluate(root_module, '🐭.compare(value="no")')
+            == "bool=false empty=false"
+        )
+        # An empty string is both.
+        assert (
+            evaluate(root_module, '🐭.compare(value="")')
+            == "bool=false empty=true"
+        )
+        # A non-empty, truthy value is neither.
+        assert (
+            evaluate(root_module, '🐭.compare(value="hello")')
+            == "bool=true empty=false"
+        )
+
+
+def test_bool_reads_an_environment_variable(monkeypatch):
+    """The case ⚙️.bool is for: an env var whose spelling is not known in advance."""
+    if True:
+        # Config
+        jazzoo_fn = save_fixture("""# test_bool_from_env.jaz
+        go():
+            🐆.retval = ⚙️.env.JAZZOO_CI_FLAG? | ⚙️.bool
+        """)
+
+        # Run
+        root_module = parse_module(jazzoo_fn)
+
+        # Assert
+        for spelling in ["1", "true", "yes"]:
+            monkeypatch.setenv("JAZZOO_CI_FLAG", spelling)
+            assert evaluate(root_module, "🐭.go()") == "true"
+        for spelling in ["0", "false", "no", ""]:
+            monkeypatch.setenv("JAZZOO_CI_FLAG", spelling)
+            assert evaluate(root_module, "🐭.go()") == "false"
+        # Absent, with `?`, is falsy too.
+        monkeypatch.delenv("JAZZOO_CI_FLAG", raising=False)
+        assert evaluate(root_module, "🐭.go()") == "false"
+
+
 def test_a_call_path_and_a_field_path_do_not_collide():
     """`🐭.a.b` is lexically a module-alias call and a field lookup at once. A call
     wins - it is the only reading with a trailing `()` - and a same-named variable
