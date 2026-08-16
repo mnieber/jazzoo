@@ -27,7 +27,7 @@ def test_all_values_are_strings():
         jazzoo_fn = save_fixture("""# test_bare_strings.jaz
         🐭.bare = hello
         🐭.quoted = "hello"
-        🐭.also-bare = 🐭.bare.com
+        🐭.also-bare = 🐭.bare\\.com
 
         bare-fn():
             🐆.x = hello
@@ -42,6 +42,8 @@ def test_all_values_are_strings():
 
         # Assert
         assert evaluate(root_module, "🐭.bare-fn()") == "hello"
+        # A dot continues the name into a structured lookup, so a literal dotted
+        # suffix needs the `\` that ends the name.
         assert evaluate(root_module, "🐭.also-bare") == "hello.com"
         assert evaluate(root_module, "🐭.module-level-fn()") == "hello/hello"
 
