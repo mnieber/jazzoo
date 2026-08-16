@@ -4,6 +4,7 @@ import typing as T
 from jazzoo.enums import Sigil
 from jazzoo.errors import ResolutionError
 from jazzoo.expressions.models.reference import Reference
+from jazzoo.expressions.rules.get_by_path import get_by_path
 from jazzoo.expressions.utils.strip_one_newline import strip_one_newline
 from jazzoo.modules.models.absent import ABSENT
 
@@ -34,16 +35,19 @@ def _system_value(reference: Reference, context) -> T.Any:
     return ABSENT
 
 
-def resolve_reference(reference: Reference, context) -> str:
+def resolve_reference(reference: Reference, context) -> T.Any:
     """Resolve one reference against the current namespace state.
 
-    Honours the `?` marker (absent resolves to "") and the `:-` marker (a default
-    used when the value is empty).
+    A dotted name walks into a structured value: the first segment names the
+    variable and the rest is a path into it. Honours the `?` marker (absent
+    resolves to "") and the `:-` marker (a default used when the value is empty).
     """
     if reference.sigil is Sigil.SYSTEM:
         value = _system_value(reference, context)
     else:
-        value = context.lookup(reference.sigil, reference.name)
+        value = context.lookup(reference.sigil, reference.parts[0])
+        if value is not ABSENT and len(reference.parts) > 1:
+            value = get_by_path(value, reference.parts[1:])
 
     if value is ABSENT:
         if reference.default is not None and reference.is_optional:
@@ -55,10 +59,6 @@ def resolve_reference(reference: Reference, context) -> str:
             filename=reference.filename,
             line=reference.line,
         )
-
-    if not isinstance(value, str):
-        # A function value used where a string is wanted: stage 5 territory.
-        return value
 
     if value == "" and reference.default is not None:
         return reference.default

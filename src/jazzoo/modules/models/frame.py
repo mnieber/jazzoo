@@ -42,13 +42,23 @@ class Frame:
             return self.module.namespace.get(name, ABSENT)
         return ABSENT
 
-    def assign(self, sigil: Sigil, name: str, value: T.Any) -> None:
+    def _namespace_for(self, sigil: Sigil) -> T.Optional[T.Dict[str, T.Any]]:
         if sigil is Sigil.GOAT:
-            self.globals[name] = value
-        elif sigil is Sigil.LEOPARD:
-            self.locals[name] = value
-        elif sigil is Sigil.MOUSE:
-            self.module.namespace[name] = value
+            return self.globals
+        if sigil is Sigil.LEOPARD:
+            return self.locals
+        if sigil is Sigil.MOUSE:
+            return self.module.namespace
+        return None
+
+    def assign(self, sigil: Sigil, name: str, value: T.Any) -> None:
+        """Assign a value, creating intermediate objects for a dotted name."""
+        from jazzoo.expressions.rules.get_by_path import set_by_path
+
+        namespace = self._namespace_for(sigil)
+        if namespace is None:
+            return
+        set_by_path(namespace, name.split("."), value)
 
     def child(self, module=None) -> "Frame":
         """A fresh frame for a callee: new 🐆 scope and its own ⚙️.stdout."""

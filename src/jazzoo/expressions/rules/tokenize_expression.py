@@ -90,6 +90,22 @@ def tokenize_expression(source: str) -> T.List[Token]:
                 tokens.append(
                     Token(kind="call", text=source[start:pos], position=start)
                 )
+            elif pos < len(source) and source[pos] == "\\":
+                # A `\` ends the name; the text after it is a literal suffix, and
+                # belongs to this same reference token.
+                pos += 1
+                while (
+                    pos < len(source)
+                    and not source[pos].isspace()
+                    and source[pos] not in "|/"
+                ):
+                    if any(source.startswith(x, pos) for x in _SIGIL_STARTS):
+                        break
+                    pos += 1
+                tokens.append(
+                    Token(kind="reference", text=source[start:pos], position=start)
+                )
+                continue
             else:
                 if pos < len(source) and source[pos] in "?":
                     pos += 1
@@ -120,9 +136,33 @@ def tokenize_expression(source: str) -> T.List[Token]:
             pos += 1
             continue
 
-        if char == "[":
-            # A curry expression; read to the matching bracket (stage 5).
+        if char in "[{":
+            # `[` after a reference is a curry; anywhere else it opens a JSON
+            # array. `{` always opens a JSON object.
+            is_curry = char == "[" and bool(tokens) and tokens[-1].kind == "reference"
+            closing = "]" if char == "[" else "}"
             depth, start = 0, pos
+            if not is_curry:
+                quote = None
+                while pos < len(source):
+                    c = source[pos]
+                    if quote is not None:
+                        if c == quote:
+                            quote = None
+                    elif c in "\"'":
+                        quote = c
+                    elif c == char:
+                        depth += 1
+                    elif c == closing:
+                        depth -= 1
+                        if depth == 0:
+                            pos += 1
+                            break
+                    pos += 1
+                tokens.append(
+                    Token(kind="json", text=source[start:pos], position=start)
+                )
+                continue
             while pos < len(source):
                 if source[pos] == "[":
                     depth += 1

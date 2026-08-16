@@ -86,7 +86,15 @@ def _load_module(
 
     frame = Frame(module=module, root_module=root, globals_=_GLOBALS)
     for assignment in parsed.assignments:
-        value = evaluate_expression(assignment.rhs, frame)
+        try:
+            value = evaluate_expression(assignment.rhs, frame)
+        except ParseError as error:
+            # Attribute the error to the assignment, not to jazzoo's internals.
+            raise ParseError(
+                error.message,
+                filename=error.filename or assignment.filename,
+                line=error.line if error.line is not None else assignment.line,
+            ) from None
         frame.assign(assignment.sigil, assignment.name, value)
 
     module.is_initialized = True
