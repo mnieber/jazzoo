@@ -765,9 +765,9 @@ def test_a_call_path_and_a_field_path_do_not_collide():
         assert evaluate(root_module, "🐭.as-a-field()") == "from the variable"
 
 
-def test_a_variable_wins_over_a_namespace_of_the_same_name():
-    """When the same dotted name is both a field path and a call path, a trailing
-    `()` settles it; a bare reference resolves the variable."""
+def test_a_variable_may_not_share_a_name_with_a_namespace():
+    """A dotted name is both a field path and a call path, so rather than pick a
+    winner jazzoo forbids the collision - in either order."""
     if True:
         # Config
         save_fixture("""# same_name_lib.jaz
@@ -776,27 +776,59 @@ def test_a_variable_wins_over_a_namespace_of_the_same_name():
             echo "the function"
         """)
 
-        jazzoo_fn = save_fixture("""# test_same_name_collision.jaz
+        namespace_first = save_fixture("""# test_namespace_then_variable.jaz
         from ./same_name_lib.jaz import build as docker
 
         🐭.docker.build = "the field"
+        """)
 
-        as-a-call():
-            🐆.retval = 🐭.docker.build()
+        variable_first = save_fixture("""# test_variable_then_namespace.jaz
+        🐭.docker = "a string"
 
-        as-a-field():
-            🐆.retval = 🐭.docker.build
+        from ./same_name_lib.jaz import build as docker
+        """)
+
+        # Run / Assert
+        with pytest.raises(ParseError):
+            parse_module(namespace_first)
+        with pytest.raises(ParseError):
+            parse_module(variable_first)
+
+
+def test_only_the_first_segment_names_something_in_the_scope():
+    """A path's later segments live inside a value, so `🐭.docker.build` collides
+    with a `docker` namespace but not with a module-level `build`."""
+    if True:
+        # Config
+        save_fixture("""# first_segment_lib.jaz
+        build():
+            #!/usr/bin/env bash
+            echo "the imported function"
+        """)
+
+        jazzoo_fn = save_fixture("""# test_first_segment.jaz
+        from ./first_segment_lib.jaz import build as tools
+
+        🐭.settings.build = "the field"
+
+        build():
+            #!/usr/bin/env bash
+            echo "the local function"
+
+        go():
+            🐆.retval = "🐭.settings.build/🐭.tools.build()/🐭.build()"
         """)
 
         # Run
         root_module = parse_module(jazzoo_fn)
 
         # Assert
-        # The call form is unambiguous.
-        assert evaluate(root_module, "🐭.as-a-call()") == "the function"
-        # The bare form prefers the variable, which is declared in this file rather
-        # than arriving from an import.
-        assert evaluate(root_module, "🐭.as-a-field()") == "the field"
+        # Three different `build`s, none of which collide: a field, a function in a
+        # namespace, and a module-level function.
+        assert (
+            evaluate(root_module, "🐭.go()")
+            == "the field/the imported function/the local function"
+        )
 
 
 def test_a_module_variable_holds_structure_across_an_import():

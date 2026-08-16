@@ -162,8 +162,13 @@ def _attach_module(function, module: Module) -> None:
 
 
 def _check_name_collisions(parsed, module: Module) -> None:
-    """A scope may not define a variable and a function under the same name, nor
-    two functions with the same name (design section 13)."""
+    """A name denotes one of a variable, a function or a namespace - never two.
+
+    A reference names only a sigil and a name, so `🐭.foo` does not say which to look
+    in (design section 13). Only the first segment of a dotted name is checked, since
+    that is what names something in this scope: `🐭.docker.build` collides with a
+    `docker` namespace but not with a module-level `build`.
+    """
     seen: T.Set[str] = set()
     for function in module.functions:
         if function.name in seen:
@@ -174,12 +179,21 @@ def _check_name_collisions(parsed, module: Module) -> None:
             )
         seen.add(function.name)
 
+    for child in module.modules:
+        if child.name in seen:
+            raise ParseError(
+                f"'{child.name}' is already defined in this scope",
+                filename=module.filename,
+            )
+        seen.add(child.name)
+
     for assignment in parsed.assignments:
         if assignment.sigil is not Sigil.MOUSE:
             continue
-        if assignment.name in seen:
+        name = assignment.name.split(".")[0]
+        if name in seen:
             raise ParseError(
-                f"'{assignment.name}' is already defined in this scope",
+                f"'{name}' is already defined in this scope",
                 filename=assignment.filename,
                 line=assignment.line,
             )
