@@ -61,10 +61,10 @@ These are constant for the lifetime of a run:
 
 These are read-only but **not** constant — jazzoo updates them as a function body runs (see section 6):
 
-| Variable      | Value                                                        |
-| ------------- | ------------------------------------------------------------ |
-| `⚙️.stdout`   | Stdout of the last shebang block in the current function     |
-| `⚙️.output`   | `⚙️.stdout` minus its trailing newline, if it has one        |
+| Variable    | Value                                                    |
+| ----------- | -------------------------------------------------------- |
+| `⚙️.stdout` | Stdout of the last shebang block in the current function |
+| `⚙️.output` | `⚙️.stdout` minus its trailing newline, if it has one    |
 
 ### Environment variables
 
@@ -128,7 +128,7 @@ By default every reference must resolve: an unset variable is a `ResolutionError
 🐐.log-level:-info
 ```
 
-Combined as `?:-`, the reference may be absent *and* has a default — the default applies when it is absent or empty:
+Combined as `?:-`, the reference may be absent _and_ has a default — the default applies when it is absent or empty:
 
 ```
 ⚙️.env.LOG_LEVEL?:-info
@@ -136,12 +136,12 @@ Combined as `?:-`, the reference may be absent *and* has a default — the defau
 
 The four forms:
 
-| Syntax                    | If absent          | If empty       |
-| ------------------------- | ------------------ | -------------- |
-| `⚙️.env.X`                | `ResolutionError`  | empty string   |
-| `⚙️.env.X?`               | empty string       | empty string   |
-| `⚙️.env.X:-y`             | `ResolutionError`  | `y`            |
-| `⚙️.env.X?:-y`            | `y`                | `y`            |
+| Syntax         | If absent         | If empty     |
+| -------------- | ----------------- | ------------ |
+| `⚙️.env.X`     | `ResolutionError` | empty string |
+| `⚙️.env.X?`    | empty string      | empty string |
+| `⚙️.env.X:-y`  | `ResolutionError` | `y`          |
+| `⚙️.env.X?:-y` | `y`               | `y`          |
 
 A default may be a bare string or a quoted one; bare defaults end at the first whitespace, so quote anything containing spaces:
 
@@ -197,7 +197,7 @@ list-branch(name):
 
 Note that `⚙️.sh-quote` is a jazzoo pipe, evaluated in an expression before the line runs — it is not a shell pipeline. Applying it inside a shell line would be read by the shell, not by jazzoo.
 
-`⚙️.sh-quote` produces a *shell* word. It is not correct for Python, JSON, or any other interpreter, and applying it there yields a literal `'…'` string.
+`⚙️.sh-quote` produces a _shell_ word. It is not correct for Python, JSON, or any other interpreter, and applying it there yields a literal `'…'` string.
 
 ---
 
@@ -400,7 +400,7 @@ Note that the last line would have changed 🐆.retval if the assignment above i
 
 ### Parameters
 
-A function declares *parameters*; a caller supplies *arguments* for them. A parameter may have a default value or be required (no default). Arguments are always named:
+A function declares _parameters_; a caller supplies _arguments_ for them. A parameter may have a default value or be required (no default). Arguments are always named:
 
 ```
 build(target, mode="release"):
@@ -581,16 +581,31 @@ from ./foo.jaz export *                             # 🐭.<all exported functio
 ```
 jaz <target> [arg=value ...]   # run a target
 jaz --list                     # list available targets
-jaz --dry-run <target>         # show what would execute without running
+jaz --file <path>              # use <path> instead of the default file
 jaz --trace <target>           # on error, also print the stack trace
 ```
+
+### No dry-run mode
+
+Jazzoo has no `--dry-run`. A dry run would have to predict the commands a target
+issues without running them, and in jazzoo that is not decidable in general: a body
+can branch on `⚙️.output`, pass a called function's return value onwards, or compute
+a dependency argument — all of which need a command to have actually run. Since every
+jazzoo-mode line is its own subprocess and `⚙️.output` is re-read after each one, this
+is the main path rather than an edge case.
+
+A dry run could only cover straight-line bodies, and would have to either invent
+values or stop at the first undecidable point. Inventing them prints a plausible
+fiction that diverges from reality exactly when the script is complex enough to want
+checking, so the feature is omitted rather than made unreliable. `--list` covers
+discovering what a file offers, and `--trace` covers debugging a failure.
 
 ### Argument passing
 
 Arguments are always named:
 
 ```
-jaz debug name=maarten
+jaz debug name=jane
 ```
 
 As a convenience, an argument for the first declared parameter of a target may be passed positionally at the CLI:
@@ -648,27 +663,27 @@ Every error carries the `.jaz` file and line it is attributed to, so the message
 
 Errors are reported as early as they can be. Anything decidable from the parse tree alone is a **parse-time** error, raised when the file is loaded — before any subprocess runs, and regardless of which target was invoked. A `.jaz` file with a bad call site in one target therefore fails even when a different target is run, and `jaz --list` fails too. This is deliberate: mistakes surface immediately rather than when some rarely-used branch is first exercised.
 
-| Condition                                                        | Class           |
-| ---------------------------------------------------------------- | --------------- |
-| Syntax that does not parse                                        | `ParseError`    |
-| A positional argument in a `.jaz` file (`🐭.build("dev")`)        | `ArgumentError` |
-| A pipe stage leaving zero, or more than one, parameter unbound    | `ArgumentError` |
-| Binding an unknown parameter in a curry expression                | `ArgumentError` |
-| A call missing an argument for a required parameter               | `ArgumentError` |
-| A call supplying an argument for a parameter already bound by a curry | `ArgumentError` |
-| An import naming a file that does not exist                       | `ModuleImportError` |
-| An import naming a symbol the imported module does not export     | `ModuleImportError` |
-| A call to a function or module that does not exist                | `ResolutionError` |
+| Condition                                                             | Class               |
+| --------------------------------------------------------------------- | ------------------- |
+| Syntax that does not parse                                            | `ParseError`        |
+| A positional argument in a `.jaz` file (`🐭.build("dev")`)            | `ArgumentError`     |
+| A pipe stage leaving zero, or more than one, parameter unbound        | `ArgumentError`     |
+| Binding an unknown parameter in a curry expression                    | `ArgumentError`     |
+| A call missing an argument for a required parameter                   | `ArgumentError`     |
+| A call supplying an argument for a parameter already bound by a curry | `ArgumentError`     |
+| An import naming a file that does not exist                           | `ModuleImportError` |
+| An import naming a symbol the imported module does not export         | `ModuleImportError` |
+| A call to a function or module that does not exist                    | `ResolutionError`   |
 
 Variable references are **not** checked at parse time. `🐐` and `🐭` variables may be assigned from any function body in any module, so whether a given reference resolves depends on which targets and dependencies have run — it is not decidable from the parse tree.
 
 The rest are **run-time** errors, raised while a target executes:
 
-| Condition                                                     | Class            |
-| ------------------------------------------------------------- | ---------------- |
-| A shebang block exits non-zero                                 | `ExecutionError` |
-| A reference that cannot be resolved, without a `?` marker      | `ResolutionError`|
-| A load-time circular import (see section 14)                   | `ModuleImportError`  |
+| Condition                                                 | Class               |
+| --------------------------------------------------------- | ------------------- |
+| A shebang block exits non-zero                            | `ExecutionError`    |
+| A reference that cannot be resolved, without a `?` marker | `ResolutionError`   |
+| A load-time circular import (see section 14)              | `ModuleImportError` |
 
 A run-time error **aborts the whole run** — jazzoo does not continue with the remaining lines of the body, with later dependencies, or with the target that triggered a dependency. Nothing is rolled back: steps that already ran have already had their effects.
 
