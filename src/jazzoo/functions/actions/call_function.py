@@ -106,6 +106,15 @@ def _lookup_function(path: str, frame: Frame, call_site) -> Function:
     if path in local_functions:
         return local_functions[path]
 
+    # A variable may hold a function; calling it calls what it holds.
+    if "." not in path:
+        from jazzoo.functions.models.curried_function import CurriedFunction
+
+        for sigil in (Sigil.LEOPARD, Sigil.MOUSE, Sigil.GOAT):
+            held = frame.lookup(sigil, path)
+            if isinstance(held, CurriedFunction):
+                return held.function
+
     function = get_function_by_path(frame.module, path)
     if function is None:
         raise ResolutionError(
