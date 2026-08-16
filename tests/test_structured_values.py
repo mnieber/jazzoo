@@ -795,6 +795,63 @@ def test_a_variable_may_not_share_a_name_with_a_namespace():
             parse_module(variable_first)
 
 
+def test_a_module_variable_may_be_assigned_more_than_once():
+    """Assigning a variable again is a re-assignment, not a redeclaration, so the
+    uniqueness rule does not fire on it."""
+    if True:
+        # Config
+        jazzoo_fn = save_fixture("""# test_reassignment.jaz
+        🐭.cfg = "replaced"
+        🐭.cfg.name = "jane"
+        🐭.plain = "first"
+        🐭.plain = "second"
+
+        go():
+            🐆.retval = "🐭.cfg.name/🐭.plain"
+        """)
+
+        # Run
+        root_module = parse_module(jazzoo_fn)
+
+        # Assert
+        # The second assignment wins, and assigning into a path replaces a scalar.
+        assert evaluate(root_module, "🐭.go()") == "jane/second"
+
+
+def test_a_collision_points_at_the_second_declaration():
+    """The error names the line of whichever declaration came second in the file,
+    since that is the one to remove."""
+    if True:
+        # Config
+        save_fixture("""# second_decl_lib.jaz
+        build():
+            #!/usr/bin/env bash
+            echo "fn"
+        """)
+
+        import_first = save_fixture("""# test_import_then_variable.jaz
+        from ./second_decl_lib.jaz import build as docker
+
+        🐭.docker = "x"
+        """)
+
+        variable_first = save_fixture("""# test_variable_then_import.jaz
+        🐭.docker = "x"
+
+        from ./second_decl_lib.jaz import build as docker
+        """)
+
+        # Run / Assert
+        with pytest.raises(ParseError) as import_first_error:
+            parse_module(import_first)
+        with pytest.raises(ParseError) as variable_first_error:
+            parse_module(variable_first)
+
+        # Both fixtures put the second declaration on line 3.
+        assert import_first_error.value.line == 3
+        assert variable_first_error.value.line == 3
+
+
 def test_only_the_first_segment_names_something_in_the_scope():
     """A path's later segments live inside a value, so `🐭.docker.build` collides
     with a `docker` namespace but not with a module-level `build`."""

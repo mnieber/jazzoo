@@ -12,6 +12,9 @@ class Module(Scope):
     # Sub-modules keyed by the alias an import bound them to.
     modules: T.List["Module"] = []
     name: str = ""
+    # Where the import that bound this alias appears in the importing file, so a
+    # name collision can point at whichever declaration came second.
+    imported_at_line: T.Optional[int] = None
     # The 🐭 namespace: values assigned at module level, keyed by name.
     namespace: T.Dict[str, T.Any] = {}
     # False while the module's own top-level assignments are still running, which is

@@ -971,6 +971,11 @@ foo():              # error: `foo` is already defined in this scope
     echo "hello"
 ```
 
+The error is attributed to whichever of the two came **second** in the file, since
+that is the declaration to remove. Assigning a variable again is not a second
+declaration — `🐭.cfg = "x"` followed by `🐭.cfg.name = "y"` is a re-assignment, and
+only the first mention counts as the declaration.
+
 This covers currying too, since a curry expression assigns a function to a variable:
 
 ```
