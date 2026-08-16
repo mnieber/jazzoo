@@ -4,7 +4,6 @@ import pytest
 
 from jazzoo.modules.errors import ModuleImportError
 from jazzoo.modules.rules.parse_module import parse_module
-from jazzoo.modules.rules.get_child_module_by_name import get_child_module_by_name
 from jazzoo.modules.rules.get_module_by_path import get_module_by_path
 from jazzoo.modules.rules.get_function_by_path import get_function_by_path
 from jazzoo.modules.rules.get_targets import get_targets
@@ -46,7 +45,7 @@ def test_single_import():
 
         # Run
         root_module = parse_module(jazzoo_fn)
-        baz_module = get_child_module_by_name(root_module, "baz")
+        baz_module = get_module_by_path(root_module, "baz")
         fn = get_function_by_path(root_module, "baz.bar")
 
         # Assert
@@ -107,7 +106,7 @@ def test_resolve_module_symbols():
         from ./foo.jaz import bar as baz
         """)
         root_module = parse_module(root_module_fn)
-        foo_module = get_child_module_by_name(root_module, "baz")
+        foo_module = get_module_by_path(root_module, "baz")
 
         # Same-named 🐭.test in both scopes; each resolves independently.
         assert evaluate(root_module, "🐭.test") == "caller"
@@ -131,7 +130,7 @@ def test_global_symbols_are_shared_across_modules():
 
         # Run
         root_module = parse_module(jazzoo_fn)
-        glob_module = get_child_module_by_name(root_module, "g")
+        glob_module = get_module_by_path(root_module, "g")
 
         # Assert
         assert evaluate(root_module, "🐐.shared") == "from-root"
