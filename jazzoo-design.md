@@ -317,6 +317,19 @@ A reference still ends on its own at any character that cannot start a path segm
 so only a following dot needs the escape. `🐭.tracing/com`, `🐭.tracing-com` and
 `🐭.tracing:com` are unambiguous as written.
 
+A dot only continues the name when what follows it could actually begin a segment —
+a letter, a digit or an underscore. A dot followed by anything else is ordinary text,
+which is what lets a reference end a sentence without an escape:
+
+```
+echo "Hello 🐆.name."              # "Hello jane."
+echo "Hello 🐆.name. Welcome"      # "Hello jane. Welcome"
+echo "🐆.dir./config"              # the value, then "./config"
+```
+
+Only `🐭.tracing.com` — a dot followed immediately by a name character — needs the
+escape, because that really is indistinguishable from a field lookup.
+
 To produce a literal `{{ 🐐.log-level }}` string:
 
 ```

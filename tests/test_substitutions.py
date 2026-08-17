@@ -144,6 +144,67 @@ def test_backslash_terminates_a_variable_name():
             evaluate(root_module, "🐭.debug()")
 
 
+def test_a_dot_that_cannot_start_a_segment_is_literal_text():
+    """A dot only continues the name when what follows could begin a segment, so a
+    reference can end a sentence without an escape."""
+    if True:
+        # Config
+        jazzoo_fn = save_fixture("""# test_sentence_dot.jaz
+        greet(name="jane", dir="/tmp"):
+            🐆.retval = "Hello 🐆.name."
+
+        mid-sentence(name="jane"):
+            🐆.retval = "Hello 🐆.name. Welcome"
+
+        before-a-slash(dir="/tmp"):
+            🐆.retval = "🐆.dir./config"
+
+        before-a-hyphen(name="jane"):
+            🐆.retval = "🐆.name.-suffix"
+        """)
+
+        # Run
+        root_module = parse_module(jazzoo_fn)
+
+        # Assert
+        assert evaluate(root_module, "🐭.greet()") == "Hello jane."
+        assert evaluate(root_module, "🐭.mid-sentence()") == "Hello jane. Welcome"
+        assert evaluate(root_module, "🐭.before-a-slash()") == "/tmp./config"
+        # A hyphen cannot start a segment, the same reason a name may not end on one.
+        assert evaluate(root_module, "🐭.before-a-hyphen()") == "jane.-suffix"
+
+
+def test_a_dot_before_a_name_character_is_still_a_lookup():
+    """The escape is only needed where the dot really is indistinguishable from a
+    field lookup - a dot followed immediately by a name character."""
+    if True:
+        # Config
+        jazzoo_fn = save_fixture("""# test_dot_before_name_char.jaz
+        🐭.host = "example"
+
+        needs-the-escape():
+            🐆.retval = "🐭.host.com"
+
+        digit-is-a-segment():
+            🐆.hosts = ["a", "b"]
+            🐆.retval = 🐆.hosts.1
+
+        underscore-is-a-segment():
+            🐆.cfg._private = "hidden"
+            🐆.retval = 🐆.cfg._private
+        """)
+
+        # Run
+        root_module = parse_module(jazzoo_fn)
+
+        # Assert
+        # `host` holds a string, so it has no `com` field.
+        with pytest.raises(ResolutionError):
+            evaluate(root_module, "🐭.needs-the-escape()")
+        assert evaluate(root_module, "🐭.digit-is-a-segment()") == "b"
+        assert evaluate(root_module, "🐭.underscore-is-a-segment()") == "hidden"
+
+
 def test_the_name_terminator_works_in_expression_position():
     """A `\\` ends the name in an expression too, not only in a shell line - which is
     what makes the migration from the old dotted-suffix behaviour possible."""
