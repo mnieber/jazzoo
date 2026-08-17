@@ -16,6 +16,11 @@ _SIGIL_BY_TEXT["⚙"] = Sigil.SYSTEM
 # Hyphens and underscores are part of a name; a dot continues into the next part.
 _NAME_CHARS = set("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_")
 
+# A dot only continues the name when what follows could begin a segment. A hyphen
+# cannot start one, so `🐆.name.-b` ends at `name` and the rest is literal text -
+# the same reasoning that stops a name ending on a hyphen.
+_SEGMENT_START_CHARS = _NAME_CHARS - set("-")
+
 # Characters that end an unquoted default value, besides whitespace.
 _BARE_DEFAULT_TERMINATORS = set("\"'[]{}()")
 
@@ -89,7 +94,12 @@ def _scan_name(
         if char in _NAME_CHARS:
             current += char
             pos += 1
-        elif char == "." and current and pos + 1 < len(text) and text[pos + 1] in _NAME_CHARS:
+        elif (
+            char == "."
+            and current
+            and pos + 1 < len(text)
+            and text[pos + 1] in _SEGMENT_START_CHARS
+        ):
             parts.append(current)
             current = ""
             pos += 1
