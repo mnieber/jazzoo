@@ -9,8 +9,13 @@ from jazzoo.modules.models.scope import Scope
 class Module(Scope):
     # Absolute path of the .jaz file this module was loaded from.
     filename: str = ""
-    # Sub-modules keyed by the alias an import bound them to.
+    # Sub-modules keyed by the alias an *import* bound them to. This is the surface
+    # a .jaz file can name: 🐭.ns.f() resolves through here.
     modules: T.List["Module"] = []
+    # Export layers keyed by the alias an *export* bound them to (design section 9).
+    # This is the surface the CLI can name: `jaz ns.f` resolves through here. The two
+    # are kept apart so one alias can serve both without ambiguity.
+    layers: T.List["Module"] = []
     name: str = ""
     # Where the import that bound this alias appears in the importing file, so a
     # name collision can point at whichever declaration came second.

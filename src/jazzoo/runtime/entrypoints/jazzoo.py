@@ -14,6 +14,7 @@ def _parse_args(argv: T.Optional[T.List[str]] = None):
     )
     parser.add_argument("--file", dest="file", default=None)
     parser.add_argument("--list", dest="list_targets", action="store_true")
+    parser.add_argument("--list-all", dest="list_all", action="store_true")
     parser.add_argument("--trace", dest="trace", action="store_true")
     parser.add_argument("--help", "-h", dest="help", action="store_true")
     parser.add_argument("rest", nargs="*")
@@ -67,11 +68,36 @@ def _split_target_arguments(
     return arguments
 
 
-def _print_targets(module) -> None:
-    from jazzoo.functions.rules.get_targets import get_targets
+def _print_listing(module, path: T.Optional[str]) -> int:
+    """Print what `--list` should show, optionally scoped to a dotted path.
 
-    for function in get_targets(module):
-        print(function.name)
+    With no path, the root module's own targets and layers. With one, whatever is at
+    that path: a layer's members, or a target's signature.
+    """
+    from jazzoo.functions.rules.format_signature import format_signature
+    from jazzoo.functions.rules.get_target_by_path import (
+        get_layer_by_path,
+        get_target_by_path,
+    )
+    from jazzoo.modules.rules.list_targets import list_one_level
+
+    if path is None:
+        for line in list_one_level(module):
+            print(line)
+        return 0
+
+    layer = get_layer_by_path(module, path)
+    if layer is not None:
+        for line in list_one_level(layer, prefix=path + "."):
+            print(line)
+        return 0
+
+    target = get_target_by_path(module, path)
+    if target is not None:
+        print(format_signature(target, path))
+        return 0
+
+    raise JazzooError(f"no such target: {path}", filename=module.filename)
 
 
 def _run(args) -> int:
@@ -85,9 +111,16 @@ def _run(args) -> int:
     module = parse_module(filename)
 
     tokens = list(args.rest)
-    if args.list_targets or not tokens:
-        _print_targets(module)
+
+    if args.list_all:
+        from jazzoo.modules.rules.list_targets import list_all
+
+        for line in list_all(module):
+            print(line)
         return 0
+
+    if args.list_targets or not tokens:
+        return _print_listing(module, tokens[0] if tokens else None)
 
     target_name, tokens = tokens[0], tokens[1:]
     target = get_target_by_path(module, target_name)
@@ -111,7 +144,10 @@ def _run(args) -> int:
 def main(argv: T.Optional[T.List[str]] = None) -> int:
     args = _parse_args(argv)
     if args.help:
-        print("usage: jaz [--list] [--file <path>] [--trace] <target> [arg=value ...]")
+        print(
+            "usage: jaz [--list [<path>]] [--list-all] [--file <path>] "
+            "[--trace] <target> [arg=value ...]"
+        )
         return 0
 
     try:

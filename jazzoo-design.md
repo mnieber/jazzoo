@@ -841,15 +841,36 @@ the trailing comma is what makes a one-symbol tuple.
 `export * as fe` needs no tuple, since `*` cannot be renamed and so has only one
 reading.
 
-Layers nest. A layer's members are whatever the exported module itself exports, so if
-`hello.jaz` in turn exports a `react` layer, that layer is reachable through this one:
+Layers nest, because a layer is itself an exported symbol. A module that exports a
+layer offers it under that name, and an importer may re-export it exactly as it would
+a function:
 
 ```
-jaz fe.react.build mode=dev
+from ./react.jaz export (build_react,) as react   # in fe.jaz
+from ./fe.jaz export (react,) as fe               # in the root file
 ```
+
+which gives:
+
+```
+jaz fe.react.build_react mode=dev
+```
+
+Naming a layer selects it whole — every target inside it comes along, at every depth.
+A layer may be renamed like any other symbol, which renames the path segment:
+
+```
+from ./fe.jaz export (react as r,) as fe          # jaz fe.r.build_react
+```
+
+`export *` carries every symbol the module exports, layers included, so
+`from ./fe.jaz export * as fe` reaches the same target without naming `react`.
 
 Each file only declares its own layer. The root file says that it exports `fe`, and
 `fe.jaz` says that it exports `react`; neither needs to know how deep the result goes.
+
+Because a layer and a function are both symbols, a module may not export both under
+one name; doing so is a `ParseError` in the module that declares the second one.
 
 Exporting into the same layer more than once **aggregates**, so a layer can be
 assembled from several files:
@@ -1051,6 +1072,7 @@ Errors are reported as early as they can be. Anything decidable from the parse t
 | An unquoted string in an expression (`🐆.x = hello`)                  | `ParseError`        |
 | Two of a variable, function or namespace sharing a name in one scope  | `ParseError`        |
 | Two exports landing the same name in one export layer                 | `ParseError`        |
+| A module exporting both a function and a layer under one name         | `ParseError`        |
 | A positional argument in a `.jaz` file (`🐭.build("dev")`)            | `ArgumentError`     |
 | A pipe stage leaving zero, or more than one, parameter unbound        | `ArgumentError`     |
 | Binding an unknown parameter in a curry expression                    | `ArgumentError`     |

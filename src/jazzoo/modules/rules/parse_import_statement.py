@@ -61,7 +61,13 @@ def parse_import_statement(
     is_export = match.group("kind") == "export"
 
     alias: T.Optional[str] = None
-    if not is_export:
+    if is_export:
+        # An export names a layer only in the tuple or wildcard form. A bare symbol
+        # before `as` is the rename form (`export bar as fe`), which must keep its
+        # meaning, so the alias is only taken when it cannot be a rename.
+        if rest.rfind(")") != -1 or rest.lstrip().startswith("*"):
+            alias, rest = _split_trailing_alias(rest)
+    else:
         alias, rest = _split_trailing_alias(rest)
         # The trailing `as <namespace>` is mandatory for import.
         if alias is None:
