@@ -514,6 +514,37 @@ works:
 
 Use an explicit shebang block whenever lines need to share state.
 
+### Comments
+
+A line whose first non-whitespace character is `#` is a jazzoo comment. It is discarded
+when the file is parsed, so it never reaches an interpreter:
+
+```
+build():
+    # fetch the sources first
+    git clone 🐆.url
+```
+
+The exception is `#!`, which stays a shebang and keeps its meaning from the previous
+section — including bare `#!` returning to jazzoo mode.
+
+Being discarded at parse time is what makes a comment inert everywhere it could
+otherwise have an effect. A comment is not substituted, so a reference inside one is
+just text and an unresolvable one is not an error. It is not echoed to the console. And
+it is not a block, so it leaves `⚙️.stdout` alone — adding a comment between a command and
+the line that reads its output does not change what that line sees.
+
+Comments are stripped only from jazzoo-mode lines. Inside a shebang block the body
+belongs to that interpreter, so a `#` line is passed through untouched and Python's or
+bash's own comments — including pragmas such as `# noqa` — survive the sweep.
+
+Only whole lines are comments. A `#` after other text on a line is part of that line,
+because it is ordinary syntax in the shells jazzoo drives:
+
+```
+grep '#define' 🐆.header      # this whole line is passed to the shell
+```
+
 ### The ⚙️.stdout and ⚙️.output values
 
 The ⚙️.stdout captures what the last shebang block in the current function wrote to stdout.

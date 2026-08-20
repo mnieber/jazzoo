@@ -229,6 +229,14 @@ def _parse_body(
             index += 1
             continue
 
+        if trimmed.startswith("#") and current.mode == BlockMode.JAZZOO:
+            # A full-line comment is dropped here, so it never becomes a block: it is
+            # not substituted, not echoed, and does not touch ⚙️.stdout. `#!` already
+            # returned above. Inside a shebang block the `#` belongs to that
+            # interpreter, so this only applies in jazzoo mode.
+            index += 1
+            continue
+
         is_quiet = trimmed.startswith("@")
         text = trimmed[1:] if is_quiet else raw.rstrip()
         if current.mode == BlockMode.SHEBANG and not is_quiet:
