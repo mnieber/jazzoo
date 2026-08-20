@@ -6,6 +6,7 @@ from jazzoo.errors import ArgumentError, ResolutionError
 from jazzoo.expressions.models.literal import Literal
 from jazzoo.expressions.models.path_join import PathJoin
 from jazzoo.expressions.models.pipe import Pipe
+from jazzoo.expressions.models.boolean import And, Not, Or
 from jazzoo.expressions.models.ternary import Comparison, Ternary
 from jazzoo.expressions.rules.apply_builtin_pipe import (
     apply_builtin_pipe,
@@ -111,6 +112,26 @@ def _evaluate_node(node: T.Any, frame) -> T.Any:
             render_value(_evaluate_node(node.right, frame)),
         )
 
+    if isinstance(node, Comparison):
+        # A comparison can now sit inside `and`/`or`, so it has to yield a value of
+        # its own rather than only being asked whether it holds.
+        return render_value(_evaluate_node(node.left, frame)) == render_value(
+            _evaluate_node(node.right, frame)
+        )
+
+    if isinstance(node, Or):
+        # Yields an operand, not a boolean, and leaves the right one unevaluated
+        # when the left already decides the answer.
+        left = _evaluate_node(node.left, frame)
+        return left if is_truthy(left) else _evaluate_node(node.right, frame)
+
+    if isinstance(node, And):
+        left = _evaluate_node(node.left, frame)
+        return _evaluate_node(node.right, frame) if is_truthy(left) else left
+
+    if isinstance(node, Not):
+        return not is_truthy(_evaluate_node(node.operand, frame))
+
     if isinstance(node, Ternary):
         if _is_condition_true(node.condition, frame):
             return _evaluate_node(node.value, frame)
@@ -193,10 +214,6 @@ def _resolve_reference_text(text: str, frame) -> T.Any:
 
 
 def _is_condition_true(node: T.Any, frame) -> bool:
-    if isinstance(node, Comparison):
-        left = render_value(_evaluate_node(node.left, frame))
-        right = render_value(_evaluate_node(node.right, frame))
-        return left == right
     return is_truthy(_evaluate_node(node, frame))
 
 

@@ -10,7 +10,7 @@ _NAME_CHARS = set(
     "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_."
 )
 
-_KEYWORDS = ("if", "else")
+_KEYWORDS = ("if", "else", "and", "or", "not")
 
 
 @dataclass
@@ -126,6 +126,11 @@ def tokenize_expression(source: str) -> T.List[Token]:
             pos += 2
             continue
 
+        if char in "()":
+            tokens.append(Token(kind=char, text=char, position=pos))
+            pos += 1
+            continue
+
         if char == "|":
             tokens.append(Token(kind="|", text="|", position=pos))
             pos += 1
@@ -177,7 +182,11 @@ def tokenize_expression(source: str) -> T.List[Token]:
 
         # A bare word: an unquoted string, or the `if`/`else` keywords.
         start = pos
-        while pos < len(source) and not source[pos].isspace() and source[pos] not in "|/[":
+        while (
+            pos < len(source)
+            and not source[pos].isspace()
+            and source[pos] not in "|/[()"
+        ):
             if any(source.startswith(s, pos) for s in _SIGIL_STARTS):
                 break
             if source.startswith("==", pos):
