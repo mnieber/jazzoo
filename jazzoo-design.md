@@ -468,6 +468,32 @@ marker already behaves:
 Because a ternary tests truthiness, using such a value as a condition gives the answer
 you would expect either way; the operand rule only matters when the result is kept.
 
+When the operands are functions, the result is a function, and it can be called or
+piped into like any other:
+
+```
+🐆.out = (🐭.fast or 🐭.slow)(input="x")
+🐆.out = "x" | (🐭.fast or 🐭.slow)
+```
+
+Which function a boolean yields is only known at run time, so a call through one is
+checked against **every** function it could reach: the call must be valid for all of
+them. That keeps a call site correct whichever operand wins, and it is checked at load
+time like any other call (section 12).
+
+For the same reason, every branch must yield a function for the value to be callable
+at all. A boolean whose operands are not all functions may still be assigned, rendered
+and passed around — only *calling* it is an error, because one branch would produce
+something uncallable:
+
+```
+🐆.thing = 🐭.some-string or 🐭.runner   # fine on its own
+🐆.thing(x="1")                          # error: 🐭.some-string is not a function
+```
+
+This is what keeps the value fallback in the previous section unaffected: `🐆.given or
+"anonymous"` involves no functions and is never called.
+
 `not` is different: it always yields a real boolean, since there is no operand to pass
 through.
 
@@ -1120,6 +1146,8 @@ Errors are reported as early as they can be. Anything decidable from the parse t
 | A pipe stage leaving zero, or more than one, parameter unbound        | `ArgumentError`     |
 | Binding an unknown parameter in a curry expression                    | `ArgumentError`     |
 | A call missing an argument for a required parameter                   | `ArgumentError`     |
+| A call through a boolean that some reachable function would reject    | `ArgumentError`     |
+| A call through a boolean whose branches are not all functions         | `ParseError`        |
 | A call supplying an argument for a parameter already bound by a curry | `ArgumentError`     |
 | An import naming a file that does not exist                           | `ModuleImportError` |
 | An import naming a symbol the imported module does not export         | `ModuleImportError` |
