@@ -441,7 +441,50 @@ Jazzoo supports chained ternary expressions modelled on Python syntax:
 🐆.x = "a" if 🐐.log-level == "high" else "b" if 🐐.log-level == "low" else ""
 ```
 
-Chaining is right-associative: `A if C1 else (B if C2 else C)`. Only string equality (`==`) is supported as a condition, plus bare variable truthiness testing.
+Chaining is right-associative: `A if C1 else (B if C2 else C)`. A condition is a
+boolean expression: string equality (`==`), bare truthiness, and the operators below.
+
+### Boolean operators
+
+`and`, `or` and `not` combine values by their truthiness (section 3), and parentheses
+group:
+
+```
+🐆.doit = "yes" if 🐆.foo or (🐆.bar and not 🐭.test) else "no"
+```
+
+Precedence follows Python, loosest first: `or`, then `and`, then `not`, then `==`. So
+`a or b and not c` reads as `a or (b and (not c))`, and parentheses override it.
+
+`and` and `or` yield **one of their operands**, not a plain boolean — `and` yields its
+left operand when that is falsy and otherwise its right, and `or` does the reverse.
+This is what makes `or` usable as a fallback, and it matches how the `?:-` default
+marker already behaves:
+
+```
+🐆.name = 🐆.given or "anonymous"    # the given name, or "anonymous" if it is empty
+```
+
+Because a ternary tests truthiness, using such a value as a condition gives the answer
+you would expect either way; the operand rule only matters when the result is kept.
+
+`not` is different: it always yields a real boolean, since there is no operand to pass
+through.
+
+```
+🐆.quiet = not 🐭.verbose            # true or false
+```
+
+Both operators **short-circuit**. `or` does not evaluate its right operand when the
+left is truthy, and `and` does not when the left is falsy. This matters because an
+operand may be a function call:
+
+```
+🐆.ok = 🐭.cheap-check() or 🐭.expensive-check()
+```
+
+Short-circuiting applies to resolution as well, so an unresolvable reference on the
+skipped side raises nothing.
 
 ### Path expressions
 

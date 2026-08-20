@@ -4,6 +4,7 @@ import typing as T
 from dataclassy import dataclass
 
 from jazzoo.errors import ParseError
+from jazzoo.expressions.models.boolean import And, Not, Or
 from jazzoo.expressions.models.literal import Literal
 from jazzoo.expressions.models.path_join import PathJoin
 from jazzoo.expressions.models.pipe import Pipe
@@ -59,7 +60,7 @@ class _Parser:
         return node
 
     def parse_ternary(self) -> T.Any:
-        value = self.parse_pipe()
+        value = self.parse_or()
         token = self.peek()
         if token is None or token.kind != "if":
             return value
@@ -75,6 +76,29 @@ class _Parser:
         )
 
     def parse_condition(self) -> T.Any:
+        return self.parse_or()
+
+    def parse_or(self) -> T.Any:
+        left = self.parse_and()
+        while self.peek() is not None and self.peek().kind == "or":
+            self.take()
+            left = Or(left=left, right=self.parse_and())
+        return left
+
+    def parse_and(self) -> T.Any:
+        left = self.parse_not()
+        while self.peek() is not None and self.peek().kind == "and":
+            self.take()
+            left = And(left=left, right=self.parse_not())
+        return left
+
+    def parse_not(self) -> T.Any:
+        if self.peek() is not None and self.peek().kind == "not":
+            self.take()
+            return Not(operand=self.parse_not())
+        return self.parse_comparison()
+
+    def parse_comparison(self) -> T.Any:
         left = self.parse_pipe()
         token = self.peek()
         if token is not None and token.kind == "==":
@@ -104,6 +128,19 @@ class _Parser:
         token = self.peek()
         if token is None:
             raise ParseError(f"unexpected end of expression: {self.source!r}")
+
+        if token.kind == "(":
+            # A group re-enters at the loosest boolean level, so parentheses can
+            # override any of the precedences below the ternary.
+            self.take()
+            inner = self.parse_or()
+            closing = self.peek()
+            if closing is None or closing.kind != ")":
+                raise ParseError(
+                    f"unbalanced parentheses in expression: {self.source!r}"
+                )
+            self.take()
+            return inner
 
         if token.kind == "string":
             self.take()
@@ -150,7 +187,8 @@ class _Parser:
 def parse_expression(source: str) -> T.Any:
     """Parse a jazzoo expression into a tree.
 
-    Precedence, loosest first: ternary, pipe, path join, primary.
+    Precedence, loosest first: ternary, or, and, not, ==, pipe, path join,
+    primary.
     """
     tokens = tokenize_expression(source)
     if not tokens:
