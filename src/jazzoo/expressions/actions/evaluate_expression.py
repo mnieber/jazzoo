@@ -14,6 +14,7 @@ from jazzoo.expressions.rules.apply_builtin_pipe import (
 )
 from jazzoo.expressions.rules.is_truthy import is_truthy
 from jazzoo.expressions.rules.parse_expression import (
+    CallValue,
     Call,
     Curry,
     JsonLiteral,
@@ -44,17 +45,7 @@ def evaluate_call(text: str, frame) -> str:
         raise ResolutionError(f"cannot parse call: {text}")
 
     path = match.group("path")
-    arguments = parse_call_arguments(match.group("args"), None, None)
-    for argument in arguments:
-        if argument.name is None:
-            raise ArgumentError(
-                f"arguments must be named in a .jaz file: {path}(...)"
-            )
-
-    resolved = {
-        argument.name: evaluate_expression(argument.value, frame)
-        for argument in arguments
-    }
+    resolved = _resolve_arguments(match.group("args"), path, frame)
 
     class _Site:
         filename = None
@@ -67,6 +58,40 @@ def evaluate_call(text: str, frame) -> str:
 
     target = _lookup_function(path, frame, _Site())
     return call_function(target, resolved, frame, evaluate_expression)
+
+
+def _resolve_arguments(args_text: str, path: str, frame) -> T.Dict[str, str]:
+    """Parse a call's argument text and evaluate each value.
+
+    Shared by a named call and by a call on a computed value, so both enforce the
+    same rule that arguments are named.
+    """
+    arguments = parse_call_arguments(args_text, None, None)
+    for argument in arguments:
+        if argument.name is None:
+            raise ArgumentError(
+                f"arguments must be named in a .jaz file: {path}(...)"
+            )
+    return {
+        argument.name: evaluate_expression(argument.value, frame)
+        for argument in arguments
+    }
+
+
+def call_value(value: T.Any, args_text: str, frame) -> str:
+    """Call whatever a computed expression produced.
+
+    The callee is not a name, so it cannot be looked up: it has to already be a
+    function value. Anything else is a ResolutionError, which is the same answer
+    calling a string by name gives.
+    """
+    if not isinstance(value, CurriedFunction):
+        raise ResolutionError(
+            f"cannot call a value that is not a function: {render_value(value)!r}"
+        )
+    return call_curried(
+        value, _resolve_arguments(args_text, "a computed function", frame), frame
+    )
 
 
 def call_curried(
@@ -110,6 +135,11 @@ def _evaluate_node(node: T.Any, frame) -> T.Any:
         return join_path(
             render_value(_evaluate_node(node.left, frame)),
             render_value(_evaluate_node(node.right, frame)),
+        )
+
+    if isinstance(node, CallValue):
+        return call_value(
+            _evaluate_node(node.target, frame), node.args, frame
         )
 
     if isinstance(node, Comparison):
@@ -248,6 +278,17 @@ def _apply_stage(stage: T.Any, value: str, frame) -> str:
         left = _apply_stage(stage.left, value, frame)
         return join_path(
             render_value(left), render_value(_evaluate_node(stage.right, frame))
+        )
+
+    if isinstance(stage, (And, Or, Not, CallValue, Ternary)):
+        # A computed stage: evaluate it, then pipe into whatever it produced. This
+        # is what lets `3 | (🐭.f1 or 🐭.f2)` choose a function and apply it.
+        produced = _evaluate_node(stage, frame)
+        if isinstance(produced, CurriedFunction):
+            return _pipe_into(produced, value, frame)
+        raise ResolutionError(
+            f"cannot pipe into a value that is not a function: "
+            f"{render_value(produced)!r}"
         )
 
     raise ResolutionError(f"cannot pipe into: {stage!r}")

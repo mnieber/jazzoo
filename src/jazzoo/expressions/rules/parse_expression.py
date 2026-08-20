@@ -25,6 +25,15 @@ class JsonLiteral:
 
 
 @dataclass
+class CallValue:
+    # `(expr)(args)`: the callee is computed, so it cannot be looked up by path the
+    # way a plain `🐭.f(args)` call is. The argument text is parsed at eval time,
+    # exactly as for Call.
+    target: T.Any
+    args: str
+
+
+@dataclass
 class Curry:
     target: T.Any
     text: str
@@ -130,16 +139,18 @@ class _Parser:
             raise ParseError(f"unexpected end of expression: {self.source!r}")
 
         if token.kind == "(":
-            # A group re-enters at the loosest boolean level, so parentheses can
-            # override any of the precedences below the ternary.
+            # A group re-enters at the very top of the grammar, so parentheses can
+            # override every precedence - a ternary included.
             self.take()
-            inner = self.parse_or()
+            inner = self.parse_ternary()
             closing = self.peek()
             if closing is None or closing.kind != ")":
                 raise ParseError(
                     f"unbalanced parentheses in expression: {self.source!r}"
                 )
             self.take()
+            while self.peek() is not None and self.peek().kind == "call-args":
+                inner = CallValue(target=inner, args=self.take().text)
             return inner
 
         if token.kind == "string":
@@ -168,7 +179,10 @@ class _Parser:
 
         if token.kind == "call":
             self.take()
-            return Call(text=token.text)
+            node: T.Any = Call(text=token.text)
+            while self.peek() is not None and self.peek().kind == "call-args":
+                node = CallValue(target=node, args=self.take().text)
+            return node
 
         if token.kind == "reference":
             self.take()

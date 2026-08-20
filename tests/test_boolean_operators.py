@@ -6,7 +6,7 @@ They combine values by truthiness, yield an operand rather than a plain boolean
 
 import pytest
 
-from jazzoo import ResolutionError, evaluate, parse_module
+from jazzoo import ArgumentError, ResolutionError, evaluate, parse_module
 from jazzoo.runtime.utils.test_utils import save_fixture
 
 
@@ -274,6 +274,206 @@ def test_boolean_operators_compose_with_the_rest_of_the_grammar():
         # Assert
         assert evaluate(root_module, "🐭.go()") == "loud"
         assert evaluate(root_module, "🐭.with-call()") == "y"
+
+
+def test_a_computed_function_value_can_be_called():
+    """`and` and `or` yield an operand, so when the operands are functions the
+    result is a function - and it can be called directly."""
+    if True:
+        # Config
+        jazzoo_fn = save_fixture("""# test_bool_call_result.jaz
+        🐭.absent = ""
+
+        [private]
+        f1(x="?"):
+            @echo "f1 got 🐆.x"
+
+        [private]
+        f2(x="?"):
+            @echo "f2 got 🐆.x"
+
+        picks-left():
+            🐆.retval = (🐭.f1 or 🐭.f2)(x="3")
+
+        picks-right():
+            🐆.retval = (🐭.absent or 🐭.f2)(x="3")
+        """)
+
+        # Run
+        root_module = parse_module(jazzoo_fn)
+
+        # Assert
+        assert evaluate(root_module, "🐭.picks-left()") == "f1 got 3"
+        assert evaluate(root_module, "🐭.picks-right()") == "f2 got 3"
+
+    """The same value may be stored first and called afterwards."""
+    if True:
+        # Config
+        jazzoo_fn = save_fixture("""# test_bool_call_stored.jaz
+        [private]
+        f1(x="?"):
+            @echo "f1 got 🐆.x"
+
+        [private]
+        f2(x="?"):
+            @echo "f2 got 🐆.x"
+
+        go():
+            🐆.chosen = 🐭.f1 or 🐭.f2
+            🐆.retval = 🐆.chosen(x="3")
+        """)
+
+        # Run
+        root_module = parse_module(jazzoo_fn)
+
+        # Assert
+        assert evaluate(root_module, "🐭.go()") == "f1 got 3"
+
+    """A curried operand keeps its bindings when the result is called."""
+    if True:
+        # Config
+        jazzoo_fn = save_fixture("""# test_bool_call_curried.jaz
+        🐭.absent = ""
+
+        [private]
+        f1(x, y="?"):
+            @echo "f1 🐆.x/🐆.y"
+
+        go():
+            🐆.retval = (🐭.absent or 🐭.f1[y="bound"])(x="3")
+        """)
+
+        # Run
+        root_module = parse_module(jazzoo_fn)
+
+        # Assert
+        assert evaluate(root_module, "🐭.go()") == "f1 3/bound"
+
+
+def test_a_computed_function_value_can_be_piped_into():
+    """A pipe stage may be a computed expression: it is evaluated, and the piped
+    value is applied to whatever function it produced."""
+    if True:
+        # Config
+        jazzoo_fn = save_fixture("""# test_bool_pipe_into.jaz
+        🐭.absent = ""
+
+        [private]
+        f1(x="?"):
+            @echo "f1 got 🐆.x"
+
+        [private]
+        f2(x="?"):
+            @echo "f2 got 🐆.x"
+
+        picks-left():
+            🐆.retval = "3" | (🐭.f1 or 🐭.f2)
+
+        picks-right():
+            🐆.retval = "3" | (🐭.absent or 🐭.f2)
+        """)
+
+        # Run
+        root_module = parse_module(jazzoo_fn)
+
+        # Assert
+        assert evaluate(root_module, "🐭.picks-left()") == "f1 got 3"
+        assert evaluate(root_module, "🐭.picks-right()") == "f2 got 3"
+
+
+def test_a_module_level_variable_may_hold_a_chosen_function():
+    """A module-level assignment from `and`/`or` holds the chosen function, exactly
+    as a plain alias does, and can be called through."""
+    if True:
+        # Config
+        jazzoo_fn = save_fixture("""# test_bool_module_level.jaz
+        [private]
+        f1(x="?"):
+            @echo "f1 got 🐆.x"
+
+        [private]
+        f2(x="?"):
+            @echo "f2 got 🐆.x"
+
+        🐭.chosen = 🐭.f1 or 🐭.f2
+
+        go():
+            🐆.retval = 🐭.chosen(x="3")
+        """)
+
+        # Run
+        root_module = parse_module(jazzoo_fn)
+
+        # Assert
+        assert evaluate(root_module, "🐭.go()") == "f1 got 3"
+
+
+def test_a_call_is_accepted_when_any_operand_would_accept_it():
+    """Which operand a boolean yields is a run-time question, so a call through such
+    a name is checked against every candidate rather than a single guess."""
+    if True:
+        # Config
+        # The left operand is not a function at all; the right one is.
+        jazzoo_fn = save_fixture("""# test_bool_alternatives.jaz
+        🐭.absent = ""
+
+        [private]
+        g1(y="?"):
+            @echo "g1:🐆.y"
+
+        go():
+            🐆.chosen = 🐭.absent or 🐭.g1
+            🐆.retval = 🐆.chosen(y="1")
+        """)
+
+        # Run
+        root_module = parse_module(jazzoo_fn)
+
+        # Assert
+        assert evaluate(root_module, "🐭.go()") == "g1:1"
+
+
+def test_a_call_no_operand_could_accept_is_still_an_error():
+    """Leniency is bounded: a call that no candidate could satisfy is an error at
+    load time, as any other bad call site is."""
+    if True:
+        # Config
+        jazzoo_fn = save_fixture("""# test_bool_alternatives_bad.jaz
+        [private]
+        f1(x="?"):
+            @echo "f1:🐆.x"
+
+        [private]
+        g1(y="?"):
+            @echo "g1:🐆.y"
+
+        go():
+            🐆.chosen = 🐭.f1 or 🐭.g1
+            🐆.retval = 🐆.chosen(zzz="1")
+        """)
+
+        # Run / Assert
+        with pytest.raises(ArgumentError):
+            parse_module(jazzoo_fn)
+
+
+def test_parentheses_may_hold_a_ternary():
+    """A group re-enters at the top of the grammar, so it may contain a ternary."""
+    if True:
+        # Config
+        jazzoo_fn = save_fixture("""# test_bool_paren_ternary.jaz
+        🐭.c = true
+        🐭.z = "fallback"
+
+        go():
+            🐆.retval = ("x" if 🐭.c else "y") or 🐭.z
+        """)
+
+        # Run
+        root_module = parse_module(jazzoo_fn)
+
+        # Assert
+        assert evaluate(root_module, "🐭.go()") == "x"
 
 
 def test_the_documented_example():
