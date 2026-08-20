@@ -6,7 +6,13 @@ They combine values by truthiness, yield an operand rather than a plain boolean
 
 import pytest
 
-from jazzoo import ArgumentError, ResolutionError, evaluate, parse_module
+from jazzoo import (
+    ArgumentError,
+    ParseError,
+    ResolutionError,
+    evaluate,
+    parse_module,
+)
 from jazzoo.runtime.utils.test_utils import save_fixture
 
 
@@ -408,9 +414,9 @@ def test_a_module_level_variable_may_hold_a_chosen_function():
         assert evaluate(root_module, "🐭.go()") == "f1 got 3"
 
 
-def test_a_call_is_accepted_when_any_operand_would_accept_it():
-    """Which operand a boolean yields is a run-time question, so a call through such
-    a name is checked against every candidate rather than a single guess."""
+def test_calling_a_value_that_may_not_be_a_function_is_an_error():
+    """A name is only safely callable when every branch yields a function. One that
+    may yield a non-function cannot always be called, so calling it is an error."""
     if True:
         # Config
         # The left operand is not a function at all; the right one is.
@@ -426,16 +432,59 @@ def test_a_call_is_accepted_when_any_operand_would_accept_it():
             🐆.retval = 🐆.chosen(y="1")
         """)
 
+        # Run / Assert
+        with pytest.raises(ParseError) as error:
+            parse_module(jazzoo_fn)
+        assert "is not a function" in error.value.message
+
+
+def test_a_mixed_value_that_is_never_called_is_fine():
+    """The check belongs to the call site: assigning such a value is fine, and only
+    calling through it is an error."""
+    if True:
+        # Config
+        jazzoo_fn = save_fixture("""# test_bool_mixed_uncalled.jaz
+        🐭.absent = ""
+
+        [private]
+        g1(y="?"):
+            @echo "g1:🐆.y"
+
+        go():
+            🐆.thing = 🐭.absent or 🐭.g1
+            @echo "assigned, never called"
+        """)
+
         # Run
         root_module = parse_module(jazzoo_fn)
 
         # Assert
-        assert evaluate(root_module, "🐭.go()") == "g1:1"
+        assert evaluate(root_module, "🐭.go()") == "assigned, never called"
 
 
-def test_a_call_no_operand_could_accept_is_still_an_error():
-    """Leniency is bounded: a call that no candidate could satisfy is an error at
-    load time, as any other bad call site is."""
+def test_a_pure_value_fallback_is_unaffected():
+    """`or` over plain values stays the documented fallback idiom - no function is
+    involved, so nothing is called and nothing is checked."""
+    if True:
+        # Config
+        jazzoo_fn = save_fixture("""# test_bool_value_fallback.jaz
+        🐭.given = ""
+
+        go():
+            🐆.name = 🐭.given or "anonymous"
+            🐆.retval = 🐆.name
+        """)
+
+        # Run
+        root_module = parse_module(jazzoo_fn)
+
+        # Assert
+        assert evaluate(root_module, "🐭.go()") == "anonymous"
+
+
+def test_every_candidate_must_accept_the_call():
+    """Which candidate runs is decided at run time, so every one of them must accept
+    the call - that is what makes it correct whichever operand wins."""
     if True:
         # Config
         jazzoo_fn = save_fixture("""# test_bool_alternatives_bad.jaz
@@ -455,6 +504,32 @@ def test_a_call_no_operand_could_accept_is_still_an_error():
         # Run / Assert
         with pytest.raises(ArgumentError):
             parse_module(jazzoo_fn)
+
+
+def test_a_call_only_one_candidate_accepts_is_rejected():
+    """A call correct for one operand but not the other is rejected at load time,
+    since the wrong one may be the one that runs."""
+    if True:
+        # Config
+        jazzoo_fn = save_fixture("""# test_bool_alternatives_partial.jaz
+        [private]
+        f1(x="?"):
+            @echo "f1:🐆.x"
+
+        [private]
+        g1(y="?"):
+            @echo "g1:🐆.y"
+
+        go():
+            🐆.chosen = 🐭.f1 or 🐭.g1
+            🐆.retval = 🐆.chosen(y="1")
+        """)
+
+        # Run / Assert
+        # `g1` would accept `y`, but `f1` would not - and either may win.
+        with pytest.raises(ArgumentError) as error:
+            parse_module(jazzoo_fn)
+        assert "no parameter named 'y'" in error.value.message
 
 
 def test_parentheses_may_hold_a_ternary():

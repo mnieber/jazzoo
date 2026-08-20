@@ -119,13 +119,14 @@ def _function_valued_locals(
             except Exception:
                 continue
 
-            alternatives = _boolean_operand_functions(node, module, {**outer, **found})
-            if alternatives is not None:
-                if alternatives:
-                    # The value is one of several functions, decided at run time, so
-                    # record every candidate rather than a single guess.
+            collected = _boolean_operand_functions(node, module, {**outer, **found})
+            if collected is not None:
+                functions, not_functions = collected
+                if functions:
+                    # One of several values, decided at run time. Assigning it is
+                    # fine; whether it can be *called* is settled at the call site.
                     found[assignment.group("name")] = _Alternatives(
-                        functions=alternatives
+                        functions=functions, not_functions=not_functions
                     )
                 continue
 
@@ -257,8 +258,10 @@ class _Alternatives:
     against the set, since which member is called is not decidable here.
     """
 
-    def __init__(self, functions: T.List[Function]):
+    def __init__(self, functions: T.List[Function], not_functions: T.List[str]):
         self.functions = functions
+        # Operands that name no function. Harmless until the value is called.
+        self.not_functions = not_functions
         # Enough of the CurriedFunction shape for the call path to treat it alike.
         self.function = functions[0]
         self.bound: T.Dict[str, str] = {}
@@ -324,13 +327,18 @@ def _validate_call(
 
 def _boolean_operand_functions(
     node: T.Any, module: Module, known: T.Dict[str, T.Any]
-) -> T.Optional[T.List[Function]]:
+) -> T.Optional[T.Tuple[T.List[Function], T.List[str]]]:
     """Every function a boolean expression could yield, or None if it is not one.
 
     `and` and `or` yield one of their operands, and which one is a run-time
-    question. Collecting them all lets a call through such a name be accepted when
-    *any* operand would accept it, rather than guessing a single representative and
-    rejecting calls the other operand would have allowed.
+    question. Collecting them all lets the call be checked against every function it
+    could reach, so a call site is only accepted when it is correct whichever
+    operand wins.
+
+    Operands that do not name a function are reported alongside the ones that do,
+    because a name is only safely callable when *every* branch yields a function.
+    The check itself belongs to the call site: assigning such a value is fine, and
+    only calling through it is an error.
     """
     from jazzoo.expressions.models.boolean import And, Or
     from jazzoo.expressions.rules.parse_expression import Curry, ReferenceText
@@ -341,6 +349,7 @@ def _boolean_operand_functions(
         return None
 
     found: T.List[Function] = []
+    not_functions: T.List[str] = []
     pending = [node]
     while pending:
         current = pending.pop()
@@ -350,9 +359,12 @@ def _boolean_operand_functions(
         if isinstance(current, Curry):
             current = current.target
         if not isinstance(current, ReferenceText):
+            # A literal operand - a string or number - can never be called.
+            not_functions.append(_operand_label(current))
             continue
         split = split_reference_path(current.text)
         if split is None:
+            not_functions.append(current.text)
             continue
         path = split[1]
         held = known.get(path)
@@ -362,7 +374,17 @@ def _boolean_operand_functions(
         )
         if function is not None:
             found.append(function)
-    return found
+        else:
+            not_functions.append(current.text)
+    return found, not_functions
+
+
+def _operand_label(node: T.Any) -> str:
+    """How a non-reference operand is named in an error message."""
+    text = getattr(node, "text", None)
+    if text is not None:
+        return f'"{text}"'
+    return str(getattr(node, "value", node))
 
 
 def _validate_against_alternatives(
@@ -372,11 +394,23 @@ def _validate_against_alternatives(
     filename: T.Optional[str],
     line: T.Optional[int],
 ) -> None:
-    """Accept the call when any candidate would accept it.
+    """Require every candidate to accept the call.
 
-    Rejecting on one candidate would flag calls that are correct for the operand
-    actually chosen, so only a call that no candidate could satisfy is an error.
+    Which candidate runs is decided at run time, so demanding that all of them
+    accept is what makes the call correct whichever one wins. Checking only that
+    *some* candidate accepts would make a boolean-valued name looser than a plain
+    one, which is the opposite of what load-time checking is for.
     """
+    if held.not_functions:
+        # Some branch yields a value that cannot be called at all, so the call is
+        # wrong whenever that branch wins.
+        names = ", ".join(sorted(set(held.not_functions)))
+        raise ParseError(
+            f"{path} cannot always be called: {names} is not a function",
+            filename=filename,
+            line=line,
+        )
+
     for name, _ in arguments:
         if name is None:
             raise ArgumentError(
@@ -388,19 +422,17 @@ def _validate_against_alternatives(
     supplied = {name for name, _ in arguments}
     for function in held.functions:
         declared = {p.name for p in function.parameters}
-        if not supplied <= declared:
-            continue
-        missing = [
-            p.name
-            for p in function.parameters
-            if p.default is None and p.name not in supplied
-        ]
-        if not missing:
-            return
-
-    names = " or ".join(sorted({f.name for f in held.functions}))
-    raise ArgumentError(
-        f"no function {path} could be called with these arguments ({names})",
-        filename=filename,
-        line=line,
-    )
+        for name in sorted(supplied - declared):
+            raise ArgumentError(
+                f"{function.name}() has no parameter named '{name}'",
+                filename=filename,
+                line=line,
+            )
+        for parameter in function.parameters:
+            if parameter.default is None and parameter.name not in supplied:
+                raise ArgumentError(
+                    f"{function.name}() is missing a value for "
+                    f"'{parameter.name}'",
+                    filename=filename,
+                    line=line,
+                )
