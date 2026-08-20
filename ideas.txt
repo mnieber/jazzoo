@@ -2,10 +2,4 @@ Ideas:
 
 - simple logic and arithmetic, e.g. `🐆.doit = "yes" if 🐆.foo > 2 or 🐆.bar else "no"`
 - lambda functions: 🐆.foo = (name="okay") => 🐭.log(🐆.name)
-- support `from hello.jaz export (build_fe as build,) as fe
-  - this allows the caller to use `jaz fe.build mode=dev`
-  - this works recursively, so if `fe` exports `react` then you may end up having `jaz fe.react.build mode=dev`
-  - you can list an exported layer using `jaz --list fe` or `jaz --list fe.build` or show the entire tree using `jaz --list-all`
-  - when you export `as fe` multiple times then it aggregates (however, collisions are an error)
-  - you can both export `as fe` and import `as fe` (jazzoo keeps them separate; a jazzoo file can only refer to imported functions)
 - support ⚙️.loadenv(filename)
