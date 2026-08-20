@@ -62,20 +62,14 @@ def parse_import_statement(
 
     alias: T.Optional[str] = None
     if not is_export:
-        # The trailing `as <namespace>` is mandatory for import, and is whatever
-        # follows the last `as` outside the tuple.
-        closing = rest.rfind(")")
-        tail_start = closing + 1 if closing != -1 else 0
-        tail = rest[tail_start:]
-        tail_match = re.search(r"\s+as\s+([A-Za-z_][A-Za-z0-9_-]*)\s*$", tail)
-        if tail_match is None:
+        alias, rest = _split_trailing_alias(rest)
+        # The trailing `as <namespace>` is mandatory for import.
+        if alias is None:
             raise ParseError(
                 "an import must end with `as <namespace>`",
                 filename=filename,
                 line=line,
             )
-        alias = tail_match.group(1)
-        rest = rest[:tail_start] + tail[: tail_match.start()]
 
     symbols, is_wildcard = _parse_symbols(rest)
     return ImportStatement(
@@ -87,3 +81,19 @@ def parse_import_statement(
         filename=filename,
         line=line,
     )
+
+
+def _split_trailing_alias(rest: str) -> T.Tuple[T.Optional[str], str]:
+    """Split a trailing `as <name>` off a symbol list.
+
+    The alias is whatever follows the last `as` *outside* the tuple, so a rename
+    inside the parentheses is left alone. Returns `(None, rest)` unchanged when
+    there is no trailing alias.
+    """
+    closing = rest.rfind(")")
+    tail_start = closing + 1 if closing != -1 else 0
+    tail = rest[tail_start:]
+    match = re.search(r"\s+as\s+([A-Za-z_][A-Za-z0-9_-]*)\s*$", tail)
+    if match is None:
+        return None, rest
+    return match.group(1), rest[:tail_start] + tail[: match.start()]

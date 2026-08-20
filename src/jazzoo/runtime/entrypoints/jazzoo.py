@@ -77,7 +77,7 @@ def _print_targets(module) -> None:
 def _run(args) -> int:
     from jazzoo.expressions.actions.evaluate_expression import evaluate_expression
     from jazzoo.functions.actions.call_function import call_function
-    from jazzoo.functions.rules.get_targets import get_targets
+    from jazzoo.functions.rules.get_target_by_path import get_target_by_path
     from jazzoo.modules.actions.parse_module import _GLOBALS, parse_module
     from jazzoo.modules.models.frame import Frame
 
@@ -90,9 +90,7 @@ def _run(args) -> int:
         return 0
 
     target_name, tokens = tokens[0], tokens[1:]
-    target = next(
-        (f for f in get_targets(module) if f.name == target_name), None
-    )
+    target = get_target_by_path(module, target_name)
     if target is None:
         raise JazzooError(
             f"no such target: {target_name}", filename=module.filename

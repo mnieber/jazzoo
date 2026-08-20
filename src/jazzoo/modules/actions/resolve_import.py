@@ -63,15 +63,30 @@ def resolve_import(
             selected.append((function, symbol.alias))
 
     if statement.is_export:
-        # Re-exported functions land flat in 🐭 and become targets of this module.
-        for function, alias in selected:
-            exported = copy.copy(function)
-            exported.name = alias
-            exported.is_target = True
-            into.functions.append(exported)
+        _bind_flat_export(selected, into)
         return
 
-    # A private import: the symbols live under a namespace sub-module.
+    _bind_private_import(selected, into, statement, source)
+
+
+def _bind_flat_export(
+    selected: T.List[T.Tuple[Function, str]], into: Module
+) -> None:
+    """Re-exported functions land flat in 🐭 and become targets of this module."""
+    for function, alias in selected:
+        exported = copy.copy(function)
+        exported.name = alias
+        exported.is_target = True
+        into.functions.append(exported)
+
+
+def _bind_private_import(
+    selected: T.List[T.Tuple[Function, str]],
+    into: Module,
+    statement: ImportStatement,
+    source: Module,
+) -> None:
+    """A private import: the symbols live under a namespace sub-module."""
     namespace = _get_or_create_namespace(
         into, statement.alias, source, statement.line
     )
