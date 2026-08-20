@@ -810,7 +810,7 @@ The imported module's `🐭` variables resolve against the imported file's scope
 
 ### Exporting into the module namespace (public)
 
-Exported functions land flat in `🐭` and become targets — visible to outside importers, the CLI, and `jaz --list`.
+Exported functions land flat in `🐭` and become targets — visible to outside importers, the CLI, and `jaz --list`. An export may instead group them under a layer; see the next section.
 
 ```
 from ./foo.jaz export bar                           # 🐭.bar()
@@ -822,6 +822,63 @@ from ./foo.jaz export *                             # 🐭.<all exported functio
 
 `export *` includes only functions that `foo.jaz` itself exports — it does not transitively pull in functions that `foo.jaz` imported privately.
 
+### Exporting into a namespace layer (public)
+
+An export may also name a namespace, which groups the exported functions under a
+layer instead of landing them flat:
+
+```
+from ./hello.jaz export (build_fe as build,) as fe      # jaz fe.build mode=dev
+from ./hello.jaz export (build, test) as fe             # jaz fe.build, jaz fe.test
+from ./hello.jaz export * as fe                         # jaz fe.<function>
+```
+
+Naming symbols into a layer **requires the tuple form**, because a bare symbol before
+`as` is already the rename form: `export bar as fe` exports `bar` under the name `fe`,
+and keeps that meaning. `export (bar,) as fe` is how the layer is asked for instead —
+the trailing comma is what makes a one-symbol tuple.
+
+`export * as fe` needs no tuple, since `*` cannot be renamed and so has only one
+reading.
+
+Layers nest. A layer's members are whatever the exported module itself exports, so if
+`hello.jaz` in turn exports a `react` layer, that layer is reachable through this one:
+
+```
+jaz fe.react.build mode=dev
+```
+
+Each file only declares its own layer. The root file says that it exports `fe`, and
+`fe.jaz` says that it exports `react`; neither needs to know how deep the result goes.
+
+Exporting into the same layer more than once **aggregates**, so a layer can be
+assembled from several files:
+
+```
+from ./frontend.jaz export (build,) as fe
+from ./styles.jaz export (lint,) as fe      # fe now has build and lint
+```
+
+Two exports landing the same name in one layer is a `ParseError`, attributed to the
+second statement, per the rule in section 13.
+
+### A layer alias and an import alias are separate
+
+The same name may be used for an import namespace and an export layer:
+
+```
+from ./hello.jaz import (build,) as fe      # 🐭.fe.build() - callable in this file
+from ./hello.jaz export (build,) as fe      # jaz fe.build - callable from the CLI
+```
+
+These do not collide, because they populate two different surfaces. A `.jaz` file can
+only refer to *imported* symbols, so `🐭.fe.build()` always means the import; the CLI
+can only reach *exported* symbols, so `jaz fe.build` always means the export. Neither
+surface can see the other, which is why one name can serve both without ambiguity.
+
+This is the one place where the section 13 uniqueness rule does not apply, and it is
+because an export layer is not something a `.jaz` file can name at all.
+
 ### Import/export semantics summary
 
 | Form                                 | Callable as              | CLI / `jaz --list` |
@@ -832,6 +889,12 @@ from ./foo.jaz export *                             # 🐭.<all exported functio
 | `from ./foo.jaz export bar`          | `🐭.bar()`               | ✓                  |
 | `from ./foo.jaz export bar as hello` | `🐭.hello()`             | ✓                  |
 | `from ./foo.jaz export *`            | `🐭.<function>()`        | ✓                  |
+| `from ./foo.jaz export (a,) as ns`   | `jaz ns.a` (CLI only)    | ✓ (under `ns`)     |
+| `from ./foo.jaz export * as ns`      | `jaz ns.<function>`      | ✓ (under `ns`)     |
+
+A layered export is reachable from the CLI only. To call it from within a `.jaz`
+file as well, import it under a namespace too — the two aliases are independent, and
+may share a name.
 
 ---
 
@@ -839,10 +902,70 @@ from ./foo.jaz export *                             # 🐭.<all exported functio
 
 ```
 jaz <target> [arg=value ...]   # run a target
-jaz --list                     # list available targets
+jaz --list [<path>]            # list targets, or describe what is at <path>
+jaz --list-all                 # list the entire target tree
 jaz --file <path>              # use <path> instead of the default file
 jaz --trace <target>           # on error, also print the stack trace
 ```
+
+### Targets in an export layer
+
+A target inside an export layer (section 9) is named by its dotted path:
+
+```
+jaz fe.build mode=dev
+jaz fe.react.build mode=dev
+```
+
+The path is resolved against export layers only. Import namespaces are not reachable
+from the CLI, so a name that exists solely as an import is `no such target`.
+
+### Listing
+
+`jaz --list` lists the root file's targets. An export layer appears as a single entry
+marked as a layer rather than being expanded, so the listing stays the size of the file
+that produced it:
+
+```
+$ jaz --list
+build
+test
+fe...          # a layer; use `jaz --list fe`
+```
+
+`jaz --list <path>` describes what is at that path. For a layer, that is its members —
+again one level deep:
+
+```
+$ jaz --list fe
+fe.build
+fe.test
+fe.react...
+```
+
+For a target, it is the signature, which is how a caller finds out what arguments it
+takes:
+
+```
+$ jaz --list fe.build
+fe.build(mode="release")
+```
+
+`jaz --list-all` walks the whole tree and lists every target at every depth:
+
+```
+$ jaz --list-all
+build
+test
+fe.build
+fe.test
+fe.react.build
+```
+
+Because circular imports are allowed (section 14), the walk tracks the modules it has
+already entered, keyed by resolved file path. A layer whose module has already been
+entered is skipped rather than descended into, so `--list-all` always terminates and
+never prints the same target twice.
 
 ### No dry-run mode
 
@@ -927,6 +1050,7 @@ Errors are reported as early as they can be. Anything decidable from the parse t
 | Syntax that does not parse                                            | `ParseError`        |
 | An unquoted string in an expression (`🐆.x = hello`)                  | `ParseError`        |
 | Two of a variable, function or namespace sharing a name in one scope  | `ParseError`        |
+| Two exports landing the same name in one export layer                 | `ParseError`        |
 | A positional argument in a `.jaz` file (`🐭.build("dev")`)            | `ArgumentError`     |
 | A pipe stage leaving zero, or more than one, parameter unbound        | `ArgumentError`     |
 | Binding an unknown parameter in a curry expression                    | `ArgumentError`     |
@@ -1040,6 +1164,11 @@ from ./docker.jaz import build as docker
 ```
 
 The rule applies per scope, so a local `🐆.foo` may shadow a module-level `🐭.foo` — they are different scopes, and their sigils tell them apart. What lives *inside* a namespace is a separate scope as well: `🐭.docker.build` and a module-level `🐭.build` do not collide, because only the first segment names something in this scope.
+
+Export layers (section 9) are outside this rule, because they are not part of any scope
+a `.jaz` file can name. A layer alias may therefore share a name with an import
+namespace, a variable, or a function, and two exports into one layer collide only with
+each other.
 
 ---
 
