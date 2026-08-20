@@ -119,6 +119,16 @@ def _function_valued_locals(
             except Exception:
                 continue
 
+            alternatives = _boolean_operand_functions(node, module, {**outer, **found})
+            if alternatives is not None:
+                if alternatives:
+                    # The value is one of several functions, decided at run time, so
+                    # record every candidate rather than a single guess.
+                    found[assignment.group("name")] = _Alternatives(
+                        functions=alternatives
+                    )
+                continue
+
             if isinstance(node, Curry):
                 target_text, brackets = node.target.text, node.text
             elif isinstance(node, ReferenceText):
@@ -240,6 +250,21 @@ def _find_function(
     return get_function_by_path(module, path)
 
 
+class _Alternatives:
+    """A name that holds one of several functions, chosen at run time.
+
+    It resolves - the name is callable - but its arguments can only be checked
+    against the set, since which member is called is not decidable here.
+    """
+
+    def __init__(self, functions: T.List[Function]):
+        self.functions = functions
+        # Enough of the CurriedFunction shape for the call path to treat it alike.
+        self.function = functions[0]
+        self.bound: T.Dict[str, str] = {}
+        self.explicitly_unbound: T.List[str] = []
+
+
 def _validate_call(
     path: str,
     arguments: T.List[T.Tuple[T.Optional[str], str]],
@@ -249,6 +274,13 @@ def _validate_call(
     line: T.Optional[int],
     function_valued: T.Dict[str, Function],
 ) -> None:
+    held_alternatives = function_valued.get(path)
+    if isinstance(held_alternatives, _Alternatives):
+        _validate_against_alternatives(
+            held_alternatives, path, arguments, filename, line
+        )
+        return
+
     target = _find_function(path, module, enclosing, function_valued)
     if target is None:
         raise ResolutionError(
@@ -288,3 +320,87 @@ def _validate_call(
                 filename=filename,
                 line=line,
             )
+
+
+def _boolean_operand_functions(
+    node: T.Any, module: Module, known: T.Dict[str, T.Any]
+) -> T.Optional[T.List[Function]]:
+    """Every function a boolean expression could yield, or None if it is not one.
+
+    `and` and `or` yield one of their operands, and which one is a run-time
+    question. Collecting them all lets a call through such a name be accepted when
+    *any* operand would accept it, rather than guessing a single representative and
+    rejecting calls the other operand would have allowed.
+    """
+    from jazzoo.expressions.models.boolean import And, Or
+    from jazzoo.expressions.rules.parse_expression import Curry, ReferenceText
+    from jazzoo.expressions.rules.split_reference_path import split_reference_path
+    from jazzoo.functions.rules.get_function_by_path import get_function_by_path
+
+    if not isinstance(node, (And, Or)):
+        return None
+
+    found: T.List[Function] = []
+    pending = [node]
+    while pending:
+        current = pending.pop()
+        if isinstance(current, (And, Or)):
+            pending.extend([current.left, current.right])
+            continue
+        if isinstance(current, Curry):
+            current = current.target
+        if not isinstance(current, ReferenceText):
+            continue
+        split = split_reference_path(current.text)
+        if split is None:
+            continue
+        path = split[1]
+        held = known.get(path)
+        function = (
+            held.function if held is not None
+            else get_function_by_path(module, path)
+        )
+        if function is not None:
+            found.append(function)
+    return found
+
+
+def _validate_against_alternatives(
+    held: "_Alternatives",
+    path: str,
+    arguments: T.List[T.Tuple[T.Optional[str], str]],
+    filename: T.Optional[str],
+    line: T.Optional[int],
+) -> None:
+    """Accept the call when any candidate would accept it.
+
+    Rejecting on one candidate would flag calls that are correct for the operand
+    actually chosen, so only a call that no candidate could satisfy is an error.
+    """
+    for name, _ in arguments:
+        if name is None:
+            raise ArgumentError(
+                f"arguments must be named in a .jaz file: {path}(...)",
+                filename=filename,
+                line=line,
+            )
+
+    supplied = {name for name, _ in arguments}
+    for function in held.functions:
+        declared = {p.name for p in function.parameters}
+        if not supplied <= declared:
+            continue
+        missing = [
+            p.name
+            for p in function.parameters
+            if p.default is None and p.name not in supplied
+        ]
+        if not missing:
+            return
+
+    names = " or ".join(sorted({f.name for f in held.functions}))
+    raise ArgumentError(
+        f"no function {path} could be called with these arguments ({names})",
+        filename=filename,
+        line=line,
+    )

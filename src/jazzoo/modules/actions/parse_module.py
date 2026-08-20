@@ -124,6 +124,7 @@ def _resolve_function_valued(parsed, module: Module) -> T.Dict[str, T.Any]:
         except Exception:
             continue
 
+        node = _function_valued_branch(node)
         if isinstance(node, Curry):
             target_text = node.target.text
             brackets = node.text
@@ -153,6 +154,19 @@ def _resolve_function_valued(parsed, module: Module) -> T.Dict[str, T.Any]:
         found[assignment.name] = curried
 
     return found
+
+
+def _function_valued_branch(node: T.Any) -> T.Any:
+    """The branch of a boolean expression that decides whether it is callable.
+
+    Shares the reasoning in validate_module's copy: `and` and `or` yield one of
+    their operands, so the left one stands in for a value only known at run time.
+    """
+    from jazzoo.expressions.models.boolean import And, Or
+
+    while isinstance(node, (And, Or)):
+        node = node.left
+    return node
 
 
 def _attach_module(function, module: Module) -> None:

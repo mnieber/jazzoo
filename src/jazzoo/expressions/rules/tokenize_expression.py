@@ -126,6 +126,14 @@ def tokenize_expression(source: str) -> T.List[Token]:
             pos += 2
             continue
 
+        if char == "(" and tokens and tokens[-1].kind in (")", "call-args", "call"):
+            # An argument list applied to the group that just closed. Reading it
+            # here keeps the text exact; the parser would otherwise have to
+            # reassemble it from tokens that have already lost their spacing.
+            args, pos = _read_call_arguments(source, pos)
+            tokens.append(Token(kind="call-args", text=args, position=pos))
+            continue
+
         if char in "()":
             tokens.append(Token(kind=char, text=char, position=pos))
             pos += 1
