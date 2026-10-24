@@ -2,6 +2,7 @@ import pytest
 
 from jazzoo import (
     JazzooError,
+    ParseError,
     ResolutionError,
     evaluate,
     parse_module,
@@ -64,6 +65,42 @@ def test_braced_references_when_adjacent_to_text():
 
         # Assert
         assert evaluate(root_module, "🐭.debug()") == "log level: high-setting"
+
+
+def test_braces_may_hold_an_expression():
+    """`{{ }}` holds any expression, not only a reference: a ternary, a boolean or a
+    pipe is evaluated and its value substituted. The quotes of a string literal
+    belong to jazzoo, so they are gone before the shell sees the line."""
+    if True:
+        # Config
+        jazzoo_fn = save_fixture("""# test_braced_expressions.jaz
+        run(cmd="", file="/tmp/build/app.tar.gz"):
+            echo "{{ 🐆.cmd if 🐆.cmd else "bash" }}|{{ 🐆.cmd or "sh" }}|{{ 🐆.file | ⚙️.basename }}"
+        """)
+
+        # Run
+        root_module = parse_module(jazzoo_fn)
+
+        # Assert
+        assert evaluate(root_module, "🐭.run()") == "bash|sh|app.tar.gz"
+        assert (
+            evaluate(root_module, '🐭.run(cmd="fish")') == "fish|fish|app.tar.gz"
+        )
+
+
+def test_a_malformed_braced_expression_is_a_parse_error():
+    """A braced expression is parsed when the file is loaded, so a malformed one is
+    a ParseError up front - it never renders as an empty string."""
+    if True:
+        # Config
+        jazzoo_fn = save_fixture("""# test_braced_malformed.jaz
+        run(cmd=""):
+            echo "{{ 🐆.cmd if 🐆.cmd }}"
+        """)
+
+        # Run and assert
+        with pytest.raises(ParseError):
+            parse_module(jazzoo_fn)
 
 
 def test_braces_without_sigils_are_left_alone():

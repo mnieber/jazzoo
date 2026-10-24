@@ -56,6 +56,27 @@ def test_parameters_and_defaults():
         assert fn.parameters[1].default == "release"
 
 
+def test_a_parameter_default_may_reference_a_variable():
+    """A default is an expression like any other right-hand side, so it may reference
+    a 🐐 or 🐭 variable. It resolves to that variable's value, not to its name."""
+    if True:
+        # Config
+        jazzoo_fn = save_fixture("""# test_param_default_reference.jaz
+        🐐.mode = "release"
+        🐭.target = "myapp"
+
+        build(target=🐭.target, mode=🐐.mode):
+            echo "🐆.target 🐆.mode"
+        """)
+
+        # Run
+        root_module = parse_module(jazzoo_fn)
+
+        # Assert
+        assert evaluate(root_module, "🐭.build()") == "myapp release"
+        assert evaluate(root_module, '🐭.build(mode="dev")') == "myapp dev"
+
+
 def test_arguments_are_resolved_into_local_variables():
     """At call time the arguments are validated against the parameters, and the
     resolved values are read from the 🐆 namespace by the body."""
@@ -206,6 +227,30 @@ def test_dependency_arguments_may_reference_globals_and_parameters():
 
         # Assert
         assert evaluate(root_module, "🐭.debug()") == "high on me!"
+
+
+def test_a_dependency_may_be_a_function_in_an_imported_namespace():
+    """A dependency names a function the same way a mid-body call does, minus the
+    sigil, so a function imported under a namespace is reached as `<alias>.<name>`."""
+    if True:
+        # Config
+        save_fixture("""# dependency_lib.jaz
+        prepare(name):
+            #!/usr/bin/env bash
+            🐐.prepared = "prepared 🐆.name"
+        """)
+        jazzoo_fn = save_fixture("""# test_dependency_in_namespace.jaz
+        from ./dependency_lib.jaz import prepare as lib
+
+        build(name="me"): lib.prepare(name=🐆.name)
+            echo "🐐.prepared!"
+        """)
+
+        # Run
+        root_module = parse_module(jazzoo_fn)
+
+        # Assert
+        assert evaluate(root_module, '🐭.build(name="jane")') == "prepared jane!"
 
 
 def test_function_returns_the_output_of_its_last_step():
