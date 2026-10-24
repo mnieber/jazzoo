@@ -1,6 +1,6 @@
 import pytest
 
-from jazzoo import get_function_by_path, get_targets, parse_module
+from jazzoo import evaluate, get_function_by_path, get_targets, parse_module
 from jazzoo.runtime.utils.test_utils import save_fixture
 
 # A library module used as the export source. It exports two of its own
@@ -143,3 +143,33 @@ def test_targets_and_re_exported_targets_are_listed():
         assert baz in get_targets(root_module)
         assert qux.is_target is True
         assert qux in get_targets(root_module)
+
+
+def test_an_exported_function_calls_into_its_own_module():
+    """An exported function keeps resolving its calls against the module that
+    defines it, so it can reach that module's private functions and imports -
+    whether as a dependency or as a mid-body call. The importer needs to export
+    nothing but the function itself."""
+    if True:
+        # Config
+        save_fixture("""# exported_caller.jaz
+        from ./helper.jaz import other as _h
+
+        [private]
+        _prepare():
+            #!/usr/bin/env bash
+            🐐.steps = "prepared"
+
+        build(): _prepare()
+            🐆.other = 🐭._h.other()
+            echo "🐐.steps 🐆.other"
+        """)
+        jazzoo_fn = save_fixture("""# test_exported_caller.jaz
+        from ./exported_caller.jaz export build
+        """)
+
+        # Run
+        root_module = parse_module(jazzoo_fn)
+
+        # Assert
+        assert evaluate(root_module, "🐭.build()") == "prepared other"

@@ -271,6 +271,38 @@ These are read-only but **not** constant — jazzoo updates them as a function b
 
 An environment variable that is not set cannot be resolved, and referencing it is a `ResolutionError` like any other unresolvable reference. Use the `?` marker (see section 4) to say that absence is expected.
 
+### Loading a dotenv file with `⚙️.loadenv`
+
+`⚙️.loadenv` reads a dotenv file and exports its variables into the environment:
+
+```
+⚙️.loadenv(path=⚙️.module.dirname / ".local.env")
+⚙️.loadenv(path=⚙️.module.dirname / "secrets.env", required=false)
+```
+
+It is a statement, not an expression: it yields no value, and its only effect is on
+the environment. After it runs, the variables are visible through `⚙️.env`, and every
+later subprocess inherits them, so a command can use them as ordinary `$VAR`s.
+
+It may appear at the top level of a module, where it runs when the module is loaded,
+or as a line in a function body, where it takes effect from that line on.
+
+The file holds `KEY=VALUE` lines. Blank lines and lines starting with `#` are skipped,
+and a value wrapped in single or double quotes loses its quotes.
+
+A variable that is **already set** in the environment keeps its value; the file only
+fills in what is missing. This lets the caller override the file for one run
+(`BLOGS_SHELL_COMMAND=bash jaz shell`), which is the same rule `just` and Docker
+Compose use.
+
+By default the file is required, and a missing file is an `ExecutionError`, so a
+misspelled path is caught. `required=false` makes the file optional: when it is
+missing nothing is loaded and no error is raised. This suits a per-developer override
+file that not everyone has.
+
+`⚙️.loadenv` is the one `⚙️` built-in with a side effect. It does not make `⚙️`
+assignable — it changes the process environment, which `⚙️.env` reads.
+
 ## 4. Variable Substitution
 
 ### Bare references
@@ -293,6 +325,22 @@ echo "Running test with log level: {{ 🐐.log-level }}-setting"
 ```
 
 Braces without sigils in it are ignored by jazzoo.
+
+Braces hold any expression (section 5), not only a reference. The expression is
+evaluated and its value substituted:
+
+```
+echo "shell: {{ 🐆.cmd if 🐆.cmd else "bash" }}"
+echo "fallback: {{ 🐆.cmd or "sh" }}"
+echo "file: {{ 🐆.path | ⚙️.basename }}"
+```
+
+The quotes of a string literal inside braces belong to jazzoo, so they are gone
+before the interpreter sees the line.
+
+A braced expression is parsed when the file is loaded. A malformed one, such as
+`{{ 🐆.cmd if 🐆.cmd }}`, is therefore a `ParseError` up front, rather than something
+that renders as an empty string when the line runs.
 
 ### Escaping
 
@@ -696,6 +744,47 @@ To assign a Python variable whose _name_ comes from a Jazzoo value, use a braced
 {{ 🐭.variable }} = "bar"   # e.g. foo = "bar"
 ```
 
+### Console output
+
+Jazzoo shows what it runs, the way `just` does. A jazzoo-mode line is echoed to the
+console before it runs, followed by its output. Prefix the line with `@` to hide the
+echo; the output is still shown:
+
+```
+build():
+    echo "starting"      # prints the command, then "starting"
+    @echo "starting"     # prints only "starting"
+```
+
+A shebang block is **not** echoed. Its swept body is a script, not a command, and
+printing it would bury the output under the source. Only what the block writes is
+shown.
+
+#### Quiet calls
+
+A call whose return value is used is **quiet**: neither the commands it runs nor
+their stdout reach the console. A value is used when the call is:
+
+- the right-hand side of an assignment: `🐆.ip = 🐭.host-ip()`
+- a stage in a pipe: `🐭.load-config() | ⚙️.parse`
+- an operand or an argument: `🐭.cheap() or 🐭.expensive()`
+- substituted inline into a line: `echo "ip: 🐭.host-ip()"`
+
+The output of such a call is data for the caller, not a message for the user, so it
+behaves like `$(...)` in a shell or a backtick in `just`. This matters most for
+module-level assignments, which run every time the module is loaded — including for
+`jaz --list` — and would otherwise print their output on every invocation.
+
+A call used as a statement is not quiet: a dependency, a mid-body call on its own
+line, or a target invoked from the CLI prints its commands and their output as usual.
+
+Quietness covers the whole call. Functions that a quiet call invokes as statements
+are quiet too, as they would be inside `$(...)`.
+
+Only stdout is held back. A quiet call's stderr still reaches the console, so its
+warnings and errors stay visible. Being quiet changes nothing about the value: the
+call's stdout is captured into `⚙️.stdout` and its return value exactly as before.
+
 ## 7. Functions
 
 ### Basic function
@@ -738,6 +827,21 @@ test():
     🐭.build(target="dev")   # correct
     🐭.build("dev")          # raises an error, arguments are always named
 ```
+
+A default is an expression, like the right-hand side of an assignment, so the usual
+rules apply: a string must be quoted, and a default may reference a `🐐` or `🐭`
+variable or `⚙️.env`:
+
+```
+🐭.default-mode = ⚙️.env.BUILD_MODE?:-release
+
+build(target, mode=🐭.default-mode):
+    cargo build --target=🐆.target --profile=🐆.mode
+```
+
+A default is evaluated each time the function is called without that argument, in
+the scope of the module that defines the function. It resolves to the variable's
+value, never to its name.
 
 ### Currying
 
@@ -854,7 +958,9 @@ They declare parameters and are called with named arguments exactly like `🐭` 
 ### Suppress console output
 
 In the above example, `jazzoo` will print the echo statement itself to the console so the caller can see what is being executed.
-This can be suppressed using `@echo "Hello 🐆.who! Tracing is: 🐭.tracing"`.
+This can be suppressed using `@echo "Hello 🐆.who! Tracing is: 🐭.tracing"`. Because
+`🐆.dump` is called for its value, the call is quiet anyway; see "Console output" in
+section 6.
 
 ---
 
@@ -876,6 +982,28 @@ from ./foo.jaz import * as foo                      # 🐭.foo.<all exported fun
 The trailing `as <namespace>` is mandatory. Without a tuple, the single symbol is placed under the namespace: `import bar as baz` makes the function callable as `🐭.baz.bar()`, not `🐭.baz()`.
 
 The imported module's `🐭` variables resolve against the imported file's scope, not the caller's. `🐐` globals are shared across all modules.
+
+The same holds for calls. A function resolves its dependencies and its mid-body calls
+against the module that defines it, wherever it is called or exported from. It can
+therefore call its own module's private functions and imported namespaces, and an
+importer only has to import or export the function itself:
+
+```
+# lib.jaz
+from ./helper.jaz import other as _h
+
+[private]
+_prepare():
+    echo "preparing"
+
+build(): _prepare()        # found in lib.jaz, not in the importer
+    🐭._h.other()          # likewise
+```
+
+```
+# jazzoo
+from ./lib.jaz export build   # `jaz build` works; _prepare and _h stay private
+```
 
 ### Exporting into the module namespace (public)
 
@@ -1139,6 +1267,7 @@ Errors are reported as early as they can be. Anything decidable from the parse t
 | --------------------------------------------------------------------- | ------------------- |
 | Syntax that does not parse                                            | `ParseError`        |
 | An unquoted string in an expression (`🐆.x = hello`)                  | `ParseError`        |
+| A malformed expression inside `{{ }}`                                 | `ParseError`        |
 | Two of a variable, function or namespace sharing a name in one scope  | `ParseError`        |
 | Two exports landing the same name in one export layer                 | `ParseError`        |
 | A module exporting both a function and a layer under one name         | `ParseError`        |
@@ -1163,6 +1292,7 @@ The rest are **run-time** errors, raised while a target executes:
 | A reference that cannot be resolved, without a `?` marker | `ResolutionError`   |
 | A path into a value that has no such field or index       | `ResolutionError`   |
 | `⚙️.parse` given text that is not valid JSON              | `ExecutionError`    |
+| `⚙️.loadenv` given a missing file, unless `required=false` | `ExecutionError`   |
 | A load-time circular import (see section 14)              | `ModuleImportError` |
 
 A run-time error **aborts the whole run** — jazzoo does not continue with the remaining lines of the body, with later dependencies, or with the target that triggered a dependency. Nothing is rolled back: steps that already ran have already had their effects.
@@ -1207,7 +1337,7 @@ class Module(Scope):
 
 class Parameter:
     name: str
-    default: T.Optional[str]    # None = required
+    default: T.Optional[Expression]  # None = required; evaluated at call time
 
 class Function(Scope):
     parameters: T.List[Parameter]
