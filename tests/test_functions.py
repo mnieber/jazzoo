@@ -36,8 +36,9 @@ def test_function_without_parameters():
 
 
 def test_parameters_and_defaults():
-    """Parameters are always named. A parameter either has a default value, or is
-    required - in which case its default is None."""
+    """Parameters are always named. A parameter either has a default, or is
+    required - in which case its default is None. A default is kept as the
+    expression it was written as, and evaluated when the function is called."""
     if True:
         # Config
         jazzoo_fn = save_fixture("""# test_params.jaz
@@ -53,7 +54,7 @@ def test_parameters_and_defaults():
         # Assert
         assert [p.name for p in fn.parameters] == ["target", "mode"]
         assert fn.parameters[0].default is None
-        assert fn.parameters[1].default == "release"
+        assert fn.parameters[1].default == '"release"'
 
 
 def test_a_parameter_default_may_reference_a_variable():

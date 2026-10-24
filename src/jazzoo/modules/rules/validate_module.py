@@ -31,12 +31,40 @@ def validate_module(
     function they hold, so a call through a curried name resolves.
     """
     for function in module.functions:
+        if function.module is not None and function.module is not module:
+            # An imported or exported function resolves its calls in the module
+            # that defines it, and was validated when that module was loaded.
+            continue
         _validate_function(function, module, function_valued or {})
+
+
+def validate_builtin_call(
+    name: str,
+    arguments: T.List[T.Tuple[T.Optional[str], str]],
+    filename: T.Optional[str],
+    line: T.Optional[int],
+) -> None:
+    """Check a call to a ⚙️ function against its parameters."""
+    from jazzoo.functions.actions.call_builtin_function import BUILTIN_PARAMETERS
+
+    parameters = BUILTIN_PARAMETERS.get(name)
+    if parameters is None:
+        raise ResolutionError(
+            f"no such function: ⚙️.{name}", filename=filename, line=line
+        )
+    _validate_arguments(
+        f"⚙️.{name}", f"⚙️.{name}", parameters, arguments, filename, line
+    )
 
 
 def _validate_function(
     function: Function, module: Module, function_valued: T.Dict[str, Function]
 ) -> None:
+    # A default is an expression, so an unquoted string in it is a ParseError.
+    for parameter in function.parameters:
+        if parameter.default is not None:
+            _validate_expression(parameter.default, function.filename, function.line)
+
     for dependency in function.dependencies:
         _validate_call(
             dependency.target_path,
@@ -67,6 +95,9 @@ def _validate_function(
                         filename=block.filename,
                         line=block_line.line,
                     )
+            _validate_braced_expressions(
+                block_line.text, block.filename, block_line.line
+            )
             candidate = assignment.group("rhs").strip() if assignment else trimmed
             if assignment is not None:
                 # An unquoted string on the right-hand side is a ParseError, and is
@@ -81,6 +112,14 @@ def _validate_function(
             if match is None:
                 continue
             arguments = parse_call_arguments(match.group("args"), None, None)
+            if _SIGIL_TEXTS[match.group("sigil")] is Sigil.SYSTEM:
+                validate_builtin_call(
+                    match.group("path"),
+                    [(a.name, a.value) for a in arguments],
+                    block.filename,
+                    block_line.line,
+                )
+                continue
             _validate_call(
                 match.group("path"),
                 [(a.name, a.value) for a in arguments],
@@ -167,6 +206,17 @@ def _validate_expression(
         raise ParseError(
             error.message, filename=filename, line=line
         ) from None
+
+
+def _validate_braced_expressions(
+    text: str, filename: T.Optional[str], line: T.Optional[int]
+) -> None:
+    """Parse the expressions written between braces in a body line."""
+    from jazzoo.expressions.rules.parse_references import parse_references
+
+    for match in parse_references(text, filename=filename, line=line):
+        if match.expression_text is not None:
+            _validate_expression(match.expression_text, filename, line)
 
 
 def _validate_pipes(
@@ -290,36 +340,49 @@ def _validate_call(
             f"no such function: {path}", filename=filename, line=line
         )
 
-    for name, _ in arguments:
-        if name is None:
-            raise ArgumentError(
-                f"arguments must be named in a .jaz file: {path}(...)",
-                filename=filename,
-                line=line,
-            )
-
-    supplied = {name for name, _ in arguments}
     held = function_valued.get(path)
     if held is not None:
-        for name in supplied:
+        for name, _ in arguments:
             if name in held.bound:
                 raise ArgumentError(
                     f"{target.name}() already has a value for '{name}' from currying",
                     filename=filename,
                     line=line,
                 )
-    declared = {p.name for p in target.parameters}
-    for name in supplied:
-        if name not in declared:
+    _validate_arguments(
+        path, target.name, target.parameters, arguments, filename, line
+    )
+
+
+def _validate_arguments(
+    path: str,
+    name: str,
+    parameters,
+    arguments: T.List[T.Tuple[T.Optional[str], str]],
+    filename: T.Optional[str],
+    line: T.Optional[int],
+) -> None:
+    for argument_name, _ in arguments:
+        if argument_name is None:
             raise ArgumentError(
-                f"{target.name}() has no parameter named '{name}'",
+                f"arguments must be named in a .jaz file: {path}(...)",
                 filename=filename,
                 line=line,
             )
-    for parameter in target.parameters:
+
+    supplied = {argument_name for argument_name, _ in arguments}
+    declared = {p.name for p in parameters}
+    for argument_name in supplied:
+        if argument_name not in declared:
+            raise ArgumentError(
+                f"{name}() has no parameter named '{argument_name}'",
+                filename=filename,
+                line=line,
+            )
+    for parameter in parameters:
         if parameter.default is None and parameter.name not in supplied:
             raise ArgumentError(
-                f"{target.name}() is missing a value for '{parameter.name}'",
+                f"{name}() is missing a value for '{parameter.name}'",
                 filename=filename,
                 line=line,
             )

@@ -31,6 +31,11 @@ _LOCAL_FUNCTION_RE = re.compile(
 
 _ATTRIBUTE_RE = re.compile(r"^\[(?P<name>[A-Za-z_][A-Za-z0-9_-]*)\]$")
 
+# `⚙️.<name>(args)` as a whole top-level line: a call to a ⚙️ function statement.
+_BUILTIN_CALL_RE = re.compile(
+    r"^(?:⚙️|⚙)\.(?P<name>[A-Za-z_][A-Za-z0-9_-]*)\((?P<args>[^)]*)\)$"
+)
+
 
 @dataclass
 class Assignment:
@@ -42,10 +47,22 @@ class Assignment:
 
 
 @dataclass
+class BuiltinCall:
+    # The whole `⚙️.name(args)` text, which is evaluated like any other call.
+    text: str
+    name: str
+    arguments: T.List[Argument] = []
+    filename: T.Optional[str] = None
+    line: T.Optional[int] = None
+
+
+@dataclass
 class ParsedSource:
     assignments: T.List[Assignment] = []
     functions: T.List[Function] = []
     imports: T.List[T.Any] = []
+    # Assignments and ⚙️ calls in file order, which is the order they run in.
+    statements: T.List[T.Union[Assignment, BuiltinCall]] = []
 
 
 def _indent_of(raw: str) -> int:
@@ -99,9 +116,7 @@ def parse_parameters(
             continue
         if "=" in chunk:
             name, _, default = chunk.partition("=")
-            parameters.append(
-                Parameter(name=name.strip(), default=_strip_quotes(default))
-            )
+            parameters.append(Parameter(name=name.strip(), default=default.strip()))
         else:
             parameters.append(Parameter(name=chunk, default=None))
     return parameters
@@ -261,7 +276,7 @@ def parse_source(source: str, filename: str) -> ParsedSource:
     Bodies are captured as opaque lines: phase 1 never inspects their contents
     (design section 11).
     """
-    result = ParsedSource(assignments=[], functions=[], imports=[])
+    result = ParsedSource(assignments=[], functions=[], imports=[], statements=[])
     entries = _join_continuations(source.splitlines())
 
     pending_attributes: T.List[str] = []
@@ -324,11 +339,27 @@ def parse_source(source: str, filename: str) -> ParsedSource:
                     filename=filename,
                     line=line_no,
                 )
-            result.assignments.append(
-                Assignment(
-                    sigil=sigil,
-                    name=assignment_match.group("name"),
-                    rhs=assignment_match.group("rhs").strip(),
+            assignment = Assignment(
+                sigil=sigil,
+                name=assignment_match.group("name"),
+                rhs=assignment_match.group("rhs").strip(),
+                filename=filename,
+                line=line_no,
+            )
+            result.assignments.append(assignment)
+            result.statements.append(assignment)
+            index += 1
+            continue
+
+        builtin_match = _BUILTIN_CALL_RE.match(trimmed)
+        if builtin_match:
+            result.statements.append(
+                BuiltinCall(
+                    text=trimmed,
+                    name=builtin_match.group("name"),
+                    arguments=parse_call_arguments(
+                        builtin_match.group("args"), filename, line_no
+                    ),
                     filename=filename,
                     line=line_no,
                 )

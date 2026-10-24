@@ -21,10 +21,15 @@ _STATEMENT_CALL_RE = re.compile(
 def bind_arguments(
     function: Function,
     arguments: T.Dict[str, str],
+    evaluate_default: T.Callable[[str], T.Any],
     filename: T.Optional[str] = None,
     line: T.Optional[int] = None,
 ) -> T.Dict[str, T.Any]:
-    """Validate arguments against parameters and produce the 🐆 variables."""
+    """Validate arguments against parameters and produce the 🐆 variables.
+
+    A default is an expression, evaluated by `evaluate_default` only when the
+    caller does not supply that argument.
+    """
     names = {p.name for p in function.parameters}
     for name in arguments:
         if name not in names:
@@ -39,7 +44,7 @@ def bind_arguments(
         if parameter.name in arguments:
             bound[parameter.name] = arguments[parameter.name]
         elif parameter.default is not None:
-            bound[parameter.name] = parameter.default
+            bound[parameter.name] = evaluate_default(parameter.default)
         else:
             raise ArgumentError(
                 f"{function.name}() is missing a value for '{parameter.name}'",
@@ -49,9 +54,10 @@ def bind_arguments(
     return bound
 
 
-def _echo(line_text: str, is_quiet: bool) -> None:
-    # jazzoo prints each command so the caller can see what runs; `@` hides it.
-    if not is_quiet:
+def _echo(line_text: str, is_quiet: bool, frame: Frame) -> None:
+    # jazzoo prints each command so the caller can see what runs; `@` hides it, and
+    # so does a quiet call.
+    if not is_quiet and not frame.is_quiet:
         print(line_text)
 
 
@@ -69,17 +75,25 @@ def call_function(
     🐆.retval explicitly - after which later blocks no longer change it.
     """
     call_frame = frame.child(module=function.module or frame.module)
-    call_frame.locals.update(
-        bind_arguments(function, arguments, filename=filename, line=line)
-    )
+    # Defaults resolve in the defining module, before any parameter is bound.
+    with call_frame.quietly():
+        bound = bind_arguments(
+            function,
+            arguments,
+            lambda source: evaluate_expression(source, call_frame),
+            filename=filename,
+            line=line,
+        )
+    call_frame.locals.update(bound)
     # Local functions defined in this body are callable by name within it.
     call_frame.local_functions = {f.name: f for f in function.functions}
 
     for dependency in function.dependencies:
-        dependency_arguments = {
-            argument.name: evaluate_expression(argument.value, call_frame)
-            for argument in dependency.arguments
-        }
+        with call_frame.quietly():
+            dependency_arguments = {
+                argument.name: evaluate_expression(argument.value, call_frame)
+                for argument in dependency.arguments
+            }
         target = _lookup_function(dependency.target_path, call_frame, dependency)
         call_function(
             target,
@@ -146,14 +160,15 @@ def _run_one_block(block, frame: Frame, evaluate_expression) -> None:
     removed, and every other line has its references substituted using the namespace
     state at that point. In jazzoo mode each remaining line is its own subprocess.
     """
-    swept: T.List[T.Tuple[str, int, bool]] = []
+    swept: T.List[T.Tuple[str, int]] = []
 
     for block_line in block.lines:
         trimmed = block_line.text.strip()
         assignment = _ASSIGNMENT_RE.match(trimmed)
         if assignment:
             sigil = _SIGIL_TEXTS[assignment.group("sigil")]
-            value = evaluate_expression(assignment.group("rhs").strip(), frame)
+            with frame.quietly():
+                value = evaluate_expression(assignment.group("rhs").strip(), frame)
             frame.assign(sigil, assignment.group("name"), value)
             continue
 
@@ -167,45 +182,59 @@ def _run_one_block(block, frame: Frame, evaluate_expression) -> None:
             # Each line is its own block, so it is substituted and run before the
             # next one is even looked at - which is what lets a line read the
             # ⚙️.output of the line above it.
-            text = substitute_references(
-                block_line.text,
-                lambda reference: _resolve(reference, frame),
+            text = _sweep_line(block_line, block, frame)
+            _echo(text, block_line.is_quiet, frame)
+            frame.stdout = run_block(
+                None,
+                text,
                 filename=block.filename,
                 line=block_line.line,
-                evaluate_call=lambda call_text: _evaluate_call(call_text, frame),
-            )
-            _echo(text, block_line.is_quiet)
-            frame.stdout = run_block(
-                None, text, filename=block.filename, line=block_line.line
+                is_quiet=frame.is_quiet,
             )
             continue
 
         # A shebang block is one subprocess, so the whole block is swept first and
         # every line sees the namespace state as of its own position in the sweep.
-        text = substitute_references(
-            block_line.text,
-            lambda reference: _resolve(reference, frame),
-            filename=block.filename,
-            line=block_line.line,
-            evaluate_call=lambda call_text: _evaluate_call(call_text, frame),
-        )
-        swept.append((text, block_line.line, block_line.is_quiet))
+        swept.append((_sweep_line(block_line, block, frame), block_line.line))
 
     if not swept:
         return
 
-    for text, _, is_quiet in swept:
-        _echo(text, is_quiet)
-    body = "\n".join(text for text, _, _ in swept)
+    # The swept body is a script rather than a command, so it is not echoed.
+    body = "\n".join(text for text, _ in swept)
     frame.stdout = run_block(
-        block.shebang, body, filename=block.filename, line=swept[0][1]
+        block.shebang,
+        body,
+        filename=block.filename,
+        line=swept[0][1],
+        is_quiet=frame.is_quiet,
     )
 
 
-def _evaluate_call(call_text: str, frame: Frame) -> str:
+def _sweep_line(block_line, block, frame: Frame) -> str:
+    return substitute_references(
+        block_line.text,
+        lambda reference: _resolve(reference, frame),
+        filename=block.filename,
+        line=block_line.line,
+        evaluate_call=lambda call_text: _evaluate_call(call_text, frame),
+        evaluate_braced=lambda source: _evaluate_braced(source, frame),
+    )
+
+
+def _evaluate_call(call_text: str, frame: Frame) -> T.Any:
     from jazzoo.expressions.actions.evaluate_expression import evaluate_call
 
-    return evaluate_call(call_text, frame)
+    # An inline call is substituted into the line, so its value is used.
+    with frame.quietly():
+        return evaluate_call(call_text, frame)
+
+
+def _evaluate_braced(source: str, frame: Frame) -> T.Any:
+    from jazzoo.expressions.actions.evaluate_expression import evaluate_expression
+
+    with frame.quietly():
+        return evaluate_expression(source, frame)
 
 
 def _resolve(reference, frame: Frame) -> str:

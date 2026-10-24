@@ -36,6 +36,10 @@ class ReferenceMatch:
     # Set when a `(` follows the name directly, making this a call rather than a
     # plain reference. Holds the whole `🐭.name(args)` text.
     call_text: T.Optional[str] = None
+    # Set when a brace group holds more than a single reference, e.g. a ternary.
+    # Holds the expression text between the braces; `reference` is then the first
+    # reference in it, which is only used for its location.
+    expression_text: T.Optional[str] = None
 
 
 def _read_call_arguments(text: str, pos: int) -> T.Optional[int]:
@@ -153,13 +157,38 @@ def _scan_markers(text: str, pos: int) -> T.Tuple[bool, T.Optional[str], int]:
     return is_optional, default, pos
 
 
+def _contains_sigil(text: str) -> bool:
+    return any(sigil in text for sigil in _SIGILS)
+
+
+def _expression_match(
+    expression_text: str,
+    start: int,
+    end: int,
+    filename: T.Optional[str],
+    line: T.Optional[int],
+) -> ReferenceMatch:
+    first = next(
+        match
+        for match in parse_references(expression_text, filename, line)
+        if match.reference is not None
+    )
+    return ReferenceMatch(
+        reference=first.reference,
+        start=start,
+        end=end,
+        expression_text=expression_text,
+    )
+
+
 def parse_references(
     text: str, filename: T.Optional[str] = None, line: T.Optional[int] = None
 ) -> T.List[ReferenceMatch]:
     """Find every jazzoo reference in a line, bare or braced.
 
     Braced references (`{{ ... }}`) are reported spanning the whole brace group, so
-    substitution replaces the braces too. Braces containing no sigil are not
+    substitution replaces the braces too. A brace group that holds more than one
+    reference is reported as an expression. Braces containing no sigil are not
     references and are left alone.
     """
     matches: T.List[ReferenceMatch] = []
@@ -175,11 +204,28 @@ def parse_references(
                 escaped = stripped.startswith("\\")
                 probe = stripped[1:] if escaped else stripped
                 sigil = _match_sigil(probe, 0)
+                if sigil is None and not escaped and _contains_sigil(stripped):
+                    # A sigil that is not at the start, as in `{{ not 🐆.x }}`.
+                    matches.append(
+                        _expression_match(stripped, pos, close + 2, filename, line)
+                    )
+                    pos = close + 2
+                    continue
                 if sigil is not None:
                     offset = inner_start + inner.index(stripped) + (1 if escaped else 0)
                     parts, after = _scan_name(text, offset + len(sigil))
                     if parts:
                         is_optional, default, after = _scan_markers(text, after)
+                        if not escaped and text[after:close].strip():
+                            # More follows the reference, so the group is an
+                            # expression rather than a reference.
+                            matches.append(
+                                _expression_match(
+                                    stripped, pos, close + 2, filename, line
+                                )
+                            )
+                            pos = close + 2
+                            continue
                         matches.append(
                             ReferenceMatch(
                                 reference=Reference(
