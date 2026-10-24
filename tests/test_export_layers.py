@@ -234,13 +234,13 @@ def test_exporting_into_the_same_layer_aggregates(capsys):
 
 
 def test_a_collision_within_one_layer_is_an_error():
-    """Two exports landing the same name in one layer is a ParseError, attributed to
-    the second statement."""
+    """Two exports landing different functions under the same name in one layer is
+    a ParseError, attributed to the second statement."""
     if True:
         # Config
         jazzoo_fn = save_fixture("""# test_layer_collision.jaz
         from ./lib.jaz export (build,) as fe
-        from ./lib.jaz export (build,) as fe
+        from ./styles.jaz export (lint as build,) as fe
         """)
 
         # Run / Assert
@@ -249,6 +249,32 @@ def test_a_collision_within_one_layer_is_an_error():
 
         # Attributed to the second declaration, which is the one to remove.
         assert error.value.line == 2
+
+
+def test_the_same_function_exported_into_a_layer_twice_is_one_target(capsys):
+    """When both exports trace back to the same function definition - directly or
+    through a module that re-exports it - they are one target, not a collision."""
+    if True:
+        # Config
+        save_fixture("""# relay.jaz
+        from ./lib.jaz export build
+        """)
+        jazzoo_fn = save_fixture("""# test_layer_same_function.jaz
+        from ./lib.jaz export (build,) as fe
+        from ./relay.jaz export (build,) as fe
+        from ./lib.jaz export (build,) as fe
+        """)
+
+        # Run
+        list_code = main(["--list", "fe", "--file", jazzoo_fn])
+        listing = capsys.readouterr().out.splitlines()
+        build_code = main(["fe.build", "mode=dev", "--file", jazzoo_fn])
+        build_out = capsys.readouterr().out
+
+        # Assert
+        assert list_code == 0
+        assert listing.count("fe.build") == 1
+        assert build_code == 0 and "build dev" in build_out
 
 
 def test_a_layer_alias_and_an_import_alias_are_separate(capsys):

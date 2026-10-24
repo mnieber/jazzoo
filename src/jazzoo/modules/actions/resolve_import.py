@@ -84,7 +84,7 @@ def resolve_import(
 
     if statement.is_export:
         if statement.alias is None:
-            _bind_flat_export(selected, into)
+            _bind_flat_export(selected, into, statement)
         else:
             _bind_layered_export(
                 selected, selected_layers, into, statement, source
@@ -94,13 +94,47 @@ def resolve_import(
     _bind_private_import(selected, into, statement, source)
 
 
+def _origin(function: Function) -> Function:
+    return function.origin or function
+
+
+def _bind_copy(
+    function: Function, alias: str, statement: ImportStatement
+) -> Function:
+    bound = copy.copy(function)
+    bound.name = alias
+    bound.origin = _origin(function)
+    bound.bound_at_line = statement.line
+    return bound
+
+
+def _find_bound(functions: T.List[Function], alias: str) -> T.Optional[Function]:
+    for function in functions:
+        if function.name == alias:
+            return function
+    return None
+
+
+def _is_same_definition(existing: T.Optional[Function], function: Function) -> bool:
+    """Whether a name is already bound to this very definition, e.g. because it
+    arrived along another path. Binding it again is then a no-op."""
+    return existing is not None and _origin(existing) is _origin(function)
+
+
 def _bind_flat_export(
-    selected: T.List[T.Tuple[Function, str]], into: Module
+    selected: T.List[T.Tuple[Function, str]],
+    into: Module,
+    statement: ImportStatement,
 ) -> None:
-    """Re-exported functions land flat in 🐭 and become targets of this module."""
+    """Re-exported functions land flat in 🐭 and become targets of this module.
+
+    A different function under a name that is already taken is left in place, so
+    the module's collision check can report whichever declaration came second.
+    """
     for function, alias in selected:
-        exported = copy.copy(function)
-        exported.name = alias
+        if _is_same_definition(_find_bound(into.functions, alias), function):
+            continue
+        exported = _bind_copy(function, alias, statement)
         exported.is_target = True
         into.functions.append(exported)
 
@@ -116,8 +150,8 @@ def _bind_layered_export(
 
     The layer is created on first use and reused afterwards, which is what makes
     repeated exports into one alias aggregate. A name may be taken by a function or
-    by a nested layer, so both are checked: two exports landing the same name in one
-    layer is a ParseError, attributed to the second statement.
+    by a nested layer, so both are checked: two exports landing different symbols
+    under one name in a layer is a ParseError, attributed to the second statement.
     """
     layer = _get_or_create_layer(into, statement.alias, source, statement.line)
 
@@ -128,9 +162,10 @@ def _bind_layered_export(
         layer.layers.append(_rebind_layer(nested, alias))
 
     for function, alias in selected:
+        if _is_same_definition(_find_bound(layer.functions, alias), function):
+            continue
         _check_free(layer, alias, statement)
-        exported = copy.copy(function)
-        exported.name = alias
+        exported = _bind_copy(function, alias, statement)
         exported.is_target = True
         layer.functions.append(exported)
 
@@ -195,9 +230,16 @@ def _bind_private_import(
         into, statement.alias, source, statement.line
     )
     for function, alias in selected:
-        bound = copy.copy(function)
-        bound.name = alias
-        namespace.functions.append(bound)
+        existing = _find_bound(namespace.functions, alias)
+        if _is_same_definition(existing, function):
+            continue
+        if existing is not None:
+            raise ParseError(
+                f"'{alias}' is already imported into '{statement.alias}'",
+                filename=statement.filename,
+                line=statement.line,
+            )
+        namespace.functions.append(_bind_copy(function, alias, statement))
 
 
 def _get_or_create_namespace(
