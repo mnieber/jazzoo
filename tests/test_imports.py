@@ -4,6 +4,7 @@ import pytest
 
 from jazzoo import (
     ModuleImportError,
+    ParseError,
     evaluate,
     get_function_by_path,
     get_module_by_path,
@@ -278,3 +279,43 @@ def test_load_time_circular_imports_are_a_module_import_error():
         # Run / Assert
         with pytest.raises(ModuleImportError):
             parse_module(jazzoo_fn)
+
+
+def test_the_same_function_imported_into_a_namespace_twice_is_one_function():
+    """Importing the same function definition into one namespace twice - here once
+    directly and once through a module that re-exports it - binds it once."""
+    if True:
+        # Config
+        save_fixture("""# relay_foo.jaz
+        from ./foo.jaz export bar
+        """)
+        jazzoo_fn = save_fixture("""# test_import_same_twice.jaz
+        from ./foo.jaz import bar as ns
+        from ./relay_foo.jaz import bar as ns
+        """)
+
+        # Run
+        root_module = parse_module(jazzoo_fn)
+        ns_module = get_module_by_path(root_module, "ns")
+
+        # Assert
+        assert [f.name for f in ns_module.functions] == ["bar"]
+        assert evaluate(root_module, "🐭.ns.bar()") == "mouse"
+
+
+def test_different_functions_imported_under_one_name_collide():
+    """Two different functions bound under one name in a namespace is a ParseError,
+    attributed to the second import - rather than the first one silently winning."""
+    if True:
+        # Config
+        jazzoo_fn = save_fixture("""# test_import_name_clash.jaz
+        from ./foo.jaz import okay as ns
+        from ./helper.jaz import (secret as okay,) as ns
+        """)
+
+        # Run / Assert
+        with pytest.raises(ParseError) as error:
+            parse_module(jazzoo_fn)
+
+        assert error.value.filename == jazzoo_fn
+        assert error.value.line == 2

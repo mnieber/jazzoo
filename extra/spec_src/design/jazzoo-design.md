@@ -1035,6 +1035,44 @@ from ./foo.jaz export *                             # 🐭.<all exported functio
 
 `export *` includes only functions that `foo.jaz` itself exports — it does not transitively pull in functions that `foo.jaz` imported privately.
 
+### The same function along more than one path
+
+A function may reach a module along several paths. In the common "diamond" shape, a
+module exports a function and also re-exports a module that exports it too:
+
+```
+# env-files.jaz
+compile-env-files():
+    python compile_env_files.py
+
+# build.jaz
+from ./env-files.jaz export compile-env-files
+
+build(): compile-env-files()
+    docker compose build
+
+# index.jaz
+from ./build.jaz export *         # build, compile-env-files
+from ./env-files.jaz export *     # compile-env-files again
+```
+
+Both copies of `compile-env-files` trace back to the same definition — the same
+function in the same file — so they are **one symbol**, and the second binding is a
+no-op. What counts is the definition, not the path or the alias it travelled under.
+The same holds for binding a function twice into one export layer, or into one
+private import namespace.
+
+Two **different** functions landing under the same name are still a `ParseError`,
+attributed to the import or export statement that brought in the second one:
+
+```
+from ./env-files.jaz export compile-env-files
+from ./legacy.jaz export compile-env-files     # error: a different function
+```
+
+This also applies to a private import namespace, where the first binding used to win
+silently.
+
 ### Exporting into a namespace layer (public)
 
 An export may also name a namespace, which groups the exported functions under a
@@ -1093,8 +1131,10 @@ from ./frontend.jaz export (build,) as fe
 from ./styles.jaz export (lint,) as fe      # fe now has build and lint
 ```
 
-Two exports landing the same name in one layer is a `ParseError`, attributed to the
-second statement, per the rule in section 13.
+Two exports landing different functions under the same name in one layer is a
+`ParseError`, attributed to the second statement, per the rule in section 13. The same
+function exported into a layer twice is one target (see "The same function along more
+than one path" above).
 
 ### A layer alias and an import alias are separate
 
@@ -1285,7 +1325,8 @@ Errors are reported as early as they can be. Anything decidable from the parse t
 | An unquoted string in an expression (`🐆.x = hello`)                  | `ParseError`        |
 | A malformed expression inside `{{ }}`                                 | `ParseError`        |
 | Two of a variable, function or namespace sharing a name in one scope  | `ParseError`        |
-| Two exports landing the same name in one export layer                 | `ParseError`        |
+| Two different functions bound under one name by imports or exports    | `ParseError`        |
+| Two exports landing different functions under one name in one layer   | `ParseError`        |
 | A module exporting both a function and a layer under one name         | `ParseError`        |
 | A positional argument in a `.jaz` file (`🐭.build("dev")`)            | `ArgumentError`     |
 | A pipe stage leaving zero, or more than one, parameter unbound        | `ArgumentError`     |
@@ -1401,6 +1442,10 @@ from ./docker.jaz import build as docker
 🐭.docker = "x"           # error: `docker` is already defined in this scope
 🐭.docker.port = "8080"   # error: same, the first segment is what collides
 ```
+
+A function bound more than once through imports or exports is declared once if every
+binding traces back to the same definition (section 9). The error is then about two
+*different* things under one name, which is what makes `🐭.foo` ambiguous.
 
 The rule applies per scope, so a local `🐆.foo` may shadow a module-level `🐭.foo` — they are different scopes, and their sigils tell them apart. What lives *inside* a namespace is a separate scope as well: `🐭.docker.build` and a module-level `🐭.build` do not collide, because only the first segment names something in this scope.
 

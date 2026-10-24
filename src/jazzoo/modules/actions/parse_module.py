@@ -208,7 +208,9 @@ def _check_name_collisions(parsed, module: Module) -> None:
     declarations: T.List[T.Tuple[int, str]] = []
 
     for function in module.functions:
-        declarations.append((function.line or 0, function.name))
+        # A function bound by an import or export is declared by that statement.
+        line = function.bound_at_line or function.line
+        declarations.append((line or 0, function.name))
 
     for child in module.modules:
         declarations.append((child.imported_at_line or 0, child.name))

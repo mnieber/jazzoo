@@ -1,6 +1,12 @@
 import pytest
 
-from jazzoo import evaluate, get_function_by_path, get_targets, parse_module
+from jazzoo import (
+    ParseError,
+    evaluate,
+    get_function_by_path,
+    get_targets,
+    parse_module,
+)
 from jazzoo.runtime.utils.test_utils import save_fixture
 
 # A library module used as the export source. It exports two of its own
@@ -173,3 +179,56 @@ def test_an_exported_function_calls_into_its_own_module():
 
         # Assert
         assert evaluate(root_module, "🐭.build()") == "prepared other"
+
+
+def test_a_function_exported_along_two_paths_is_one_target():
+    """A function may reach a module along more than one path - directly, and through
+    a module that re-exports it. When both trace back to the same definition they
+    are one target, not a name collision."""
+    if True:
+        # Config
+        save_fixture("""# diamond_base.jaz
+        compile():
+            echo "compiled"
+        """)
+        save_fixture("""# diamond_build.jaz
+        from ./diamond_base.jaz export compile
+
+        build(): compile()
+            echo "built"
+        """)
+        jazzoo_fn = save_fixture("""# test_export_diamond.jaz
+        from ./diamond_build.jaz export *
+        from ./diamond_base.jaz export *
+        """)
+
+        # Run
+        root_module = parse_module(jazzoo_fn)
+        names = [f.name for f in get_targets(root_module)]
+
+        # Assert
+        assert sorted(names) == ["build", "compile"]
+        assert evaluate(root_module, "🐭.compile()") == "compiled"
+        assert evaluate(root_module, "🐭.build()") == "built"
+
+
+def test_different_functions_exported_under_one_name_collide():
+    """Two different functions landing under the same name is still a ParseError,
+    attributed to the export statement that brought in the second one."""
+    if True:
+        # Config
+        save_fixture("""# other_compile.jaz
+        compile():
+            echo "the other compile"
+        """)
+        jazzoo_fn = save_fixture("""# test_export_name_clash.jaz
+        from ./diamond_base.jaz export compile
+        from ./other_compile.jaz export compile
+        """)
+
+        # Run / Assert
+        with pytest.raises(ParseError) as error:
+            parse_module(jazzoo_fn)
+
+        assert error.value.filename == jazzoo_fn
+        assert error.value.line == 2

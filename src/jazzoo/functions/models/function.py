@@ -24,3 +24,8 @@ class Function(Scope):
     module: T.Any = None
     filename: T.Optional[str] = None
     line: T.Optional[int] = None
+    # Set on the copy that an import or export binds: the definition it was copied
+    # from, and the line of the statement that bound it. Two copies with the same
+    # origin are one symbol.
+    origin: T.Optional["Function"] = None
+    bound_at_line: T.Optional[int] = None
