@@ -2,6 +2,7 @@ import pytest
 
 from jazzoo import (
     ArgumentError,
+    ParseError,
     ResolutionError,
     evaluate,
     parse_module,
@@ -43,6 +44,56 @@ def test_currying_binds_a_parameter():
 
         # Assert
         assert evaluate(root_module, "🐭.go()") == "/data/windows/input.json"
+
+
+def test_a_bound_value_is_an_expression_evaluated_at_curry_time():
+    """A bound value is an expression, like an argument, so it may reference a
+    variable - including a 🐆 local of the body that writes the curry. It is
+    evaluated once, where the brackets are written: changing the variable
+    afterwards does not change the curried function."""
+    if True:
+        # Config
+        jazzoo_fn = save_fixture("""# test_curry_binds_expression.jaz
+        from ./helpers.jaz import make-full-path as h
+
+        🐭.style = "windows"
+        🐭.build-styled = 🐭.h.make-full-path[style=🐭.style]
+
+        module-level():
+            🐭.style = "changed"
+            🐆.retval = 🐭.build-styled(input="input.json")
+
+        local():
+            🐆.style = "linux"
+            🐆.build = 🐭.h.make-full-path[style=🐆.style]
+            🐆.style = "changed"
+            🐆.retval = "input.json" | 🐆.build
+        """)
+
+        # Run
+        root_module = parse_module(jazzoo_fn)
+
+        # Assert
+        assert evaluate(root_module, "🐭.module-level()") == "/data/windows/input.json"
+        assert evaluate(root_module, "🐭.local()") == "/data/linux/input.json"
+
+
+def test_an_unquoted_string_in_a_curry_is_a_parse_error():
+    """A bound value follows the rules of any expression, so a string must be
+    quoted - and the mistake is reported when the file is loaded."""
+    if True:
+        # Config
+        jazzoo_fn = save_fixture("""# test_curry_unquoted.jaz
+        from ./helpers.jaz import make-full-path as h
+
+        go():
+            🐆.build = 🐭.h.make-full-path[style=windows]
+            🐆.retval = 🐆.build(input="input.json")
+        """)
+
+        # Run and assert
+        with pytest.raises(ParseError):
+            parse_module(jazzoo_fn)
 
 
 def test_currying_leaves_other_parameters_open():

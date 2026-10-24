@@ -191,14 +191,27 @@ def _evaluate_node(node: T.Any, frame) -> T.Any:
         return value
 
     if isinstance(node, Curry):
-        from jazzoo.functions.rules.parse_curry import parse_curry
-
         target = _resolve_function_value(node.target.text, frame)
         if target is None:
             raise ResolutionError(f"no such function: {node.target.text}")
-        return parse_curry(target.function, node.text)
+        return bind_curry(target.function, node.text, frame)
 
     raise ResolutionError(f"cannot evaluate expression node: {node!r}")
+
+
+def bind_curry(function, bracket_text: str, frame) -> CurriedFunction:
+    """Build a curried function and evaluate its bound values, once, in the scope
+    where the curry is written."""
+    from jazzoo.functions.rules.parse_curry import parse_curry
+
+    curried = parse_curry(function, bracket_text)
+    # A bound value is used by the curried function, so calls inside it are quiet.
+    with frame.quietly():
+        curried.bound = {
+            name: evaluate_expression(source, frame)
+            for name, source in curried.bound.items()
+        }
+    return curried
 
 
 def _resolve_function_value(text: str, frame) -> T.Optional[CurriedFunction]:
@@ -270,8 +283,6 @@ def _apply_stage(stage: T.Any, value: str, frame) -> str:
     A stage is either a built-in ⚙️ operator or a function value with exactly one
     unbound parameter, which the piped value fills.
     """
-    from jazzoo.functions.rules.parse_curry import get_free_parameters, parse_curry
-
     if isinstance(stage, ReferenceText):
         matches = parse_references(stage.text)
         if matches and matches[0].reference.sigil is Sigil.SYSTEM:
@@ -288,7 +299,7 @@ def _apply_stage(stage: T.Any, value: str, frame) -> str:
         target = _resolve_function_value(stage.target.text, frame)
         if target is None:
             raise ResolutionError(f"no such function: {stage.target.text}")
-        return _pipe_into(parse_curry(target.function, stage.text), value, frame)
+        return _pipe_into(bind_curry(target.function, stage.text, frame), value, frame)
 
     if isinstance(stage, PathJoin):
         # `a | ⚙️.abs / b` - the pipe applies to the join's left side only.

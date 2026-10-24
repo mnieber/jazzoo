@@ -853,6 +853,22 @@ Square brackets are used to create a curried function:
 
 You can think of this as creating a new function in which the `mode` parameter is bound to "dev". The caller may no longer supply an argument for `mode`.
 
+A bound value is an expression, like an argument, so a string must be quoted and a
+value may reference a variable — including a `🐆` local of the body that writes the
+curry:
+
+```
+build-for(user):
+    🐆.build = 🐭.build[mode=🐭.default-mode, target=🐆.user]
+```
+
+The bound values are evaluated **once, where the brackets are written**, not each
+time the curried function is called. Reassigning `🐭.default-mode` afterwards does not
+change `🐆.build`, and `🐆.user` keeps its value after the body that bound it has
+returned. This differs from a parameter default, which is evaluated on every call that
+omits it: a default belongs to the function, whereas a curry captures a value at one
+point in the caller.
+
 A bare parameter name inside the brackets does the opposite — it marks that parameter as explicitly **unbound**:
 
 ```

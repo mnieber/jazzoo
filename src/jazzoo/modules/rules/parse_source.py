@@ -99,13 +99,6 @@ def _split_top_level(text: str, separator: str) -> T.List[str]:
     return parts
 
 
-def _strip_quotes(text: str) -> str:
-    text = text.strip()
-    if len(text) >= 2 and text[0] == text[-1] and text[0] in "\"'":
-        return text[1:-1]
-    return text
-
-
 def parse_parameters(
     text: str, filename: str, line: int
 ) -> T.List[Parameter]:
