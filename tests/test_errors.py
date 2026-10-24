@@ -128,6 +128,34 @@ def test_a_run_time_error_carries_its_source_location():
         assert excinfo.value.message
 
 
+def test_an_error_in_a_jazzoo_statement_carries_its_source_location():
+    """A run-time error raised by jazzoo itself rather than by a subprocess - in an
+    assignment or a ⚙️ statement - is attributed to the body line it came from."""
+    if True:
+        # Config
+        # The ⚙️.parse assignment is on line 2, the ⚙️.loadenv statement on line 5.
+        jazzoo_fn = save_fixture("""# test_statement_error_location.jaz
+        bad-json():
+            🐆.config = "not json" | ⚙️.parse
+
+        missing-env():
+            ⚙️.loadenv(path="/no/such/file.env")
+        """)
+
+        # Run
+        root_module = parse_module(jazzoo_fn)
+        with pytest.raises(ExecutionError) as json_error:
+            evaluate(root_module, "🐭.bad-json()")
+        with pytest.raises(ExecutionError) as env_error:
+            evaluate(root_module, "🐭.missing-env()")
+
+        # Assert
+        assert json_error.value.filename == jazzoo_fn
+        assert json_error.value.line == 2
+        assert env_error.value.filename == jazzoo_fn
+        assert env_error.value.line == 5
+
+
 def test_an_error_is_attributed_to_the_module_that_contains_it():
     """The location points at the .jaz file the error is in, which is not necessarily
     the entry-point file."""

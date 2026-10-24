@@ -1,9 +1,9 @@
 import typing as T
 
-from jazzoo.errors import ArgumentError
+from jazzoo.errors import ArgumentError, ParseError
 from jazzoo.functions.models.curried_function import CurriedFunction
 from jazzoo.functions.models.function import Function
-from jazzoo.modules.rules.parse_source import _split_top_level, _strip_quotes
+from jazzoo.modules.rules.parse_source import _split_top_level
 
 
 def parse_curry(
@@ -16,6 +16,9 @@ def parse_curry(
 
     `name=value` binds a parameter; a bare `name` marks it explicitly unbound.
     Empty brackets bind nothing, which is why `f` and `f[]` are the same value.
+
+    A bound value is kept as its expression source. The caller evaluates it where
+    the curry is written - see `bind_curry`.
     """
     inner = bracket_text.strip()
     if inner.startswith("["):
@@ -40,13 +43,26 @@ def parse_curry(
                 line=line,
             )
         if separator:
-            bound[name] = _strip_quotes(value)
+            bound[name] = _check_expression(value.strip(), filename, line)
         else:
             explicitly_unbound.append(name)
 
     return CurriedFunction(
         function=function, bound=bound, explicitly_unbound=explicitly_unbound
     )
+
+
+def _check_expression(
+    source: str, filename: T.Optional[str], line: T.Optional[int]
+) -> str:
+    from jazzoo.expressions.rules.parse_expression import parse_expression
+
+    # A bound value follows the rules of any expression, e.g. strings are quoted.
+    try:
+        parse_expression(source)
+    except ParseError as error:
+        raise ParseError(error.message, filename=filename, line=line) from None
+    return source
 
 
 def get_free_parameters(curried: CurriedFunction) -> T.List[str]:

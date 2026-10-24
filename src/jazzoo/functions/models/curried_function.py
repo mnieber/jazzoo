@@ -10,7 +10,8 @@ if T.TYPE_CHECKING:
 class CurriedFunction:
     function: "Function"
     # Parameters bound by the curry expression; the caller may not re-supply these.
-    bound: T.Dict[str, str] = {}
+    # Holds expression sources until the curry is evaluated, and values after.
+    bound: T.Dict[str, T.Any] = {}
     # Parameters named bare in the brackets, i.e. explicitly left open. Empty
     # brackets and a bare function symbol both leave this empty, which is why
     # `f` and `f[]` are the same value.

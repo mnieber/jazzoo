@@ -1,9 +1,10 @@
+import contextlib
 import re
 import typing as T
 
 from jazzoo.blocks.actions.run_block import run_block
 from jazzoo.enums import BlockMode, Sigil
-from jazzoo.errors import ArgumentError
+from jazzoo.errors import ArgumentError, JazzooError
 from jazzoo.expressions.rules.substitute_references import substitute_references
 from jazzoo.expressions.utils.strip_one_newline import strip_one_newline
 from jazzoo.functions.models.function import Function
@@ -167,7 +168,7 @@ def _run_one_block(block, frame: Frame, evaluate_expression) -> None:
         assignment = _ASSIGNMENT_RE.match(trimmed)
         if assignment:
             sigil = _SIGIL_TEXTS[assignment.group("sigil")]
-            with frame.quietly():
+            with _located(block, block_line), frame.quietly():
                 value = evaluate_expression(assignment.group("rhs").strip(), frame)
             frame.assign(sigil, assignment.group("name"), value)
             continue
@@ -175,7 +176,8 @@ def _run_one_block(block, frame: Frame, evaluate_expression) -> None:
         # A line that is nothing but a jazzoo call is a mid-body call, not a shell
         # line. Its return value is discarded, and it leaves ⚙️.stdout alone.
         if _STATEMENT_CALL_RE.match(trimmed):
-            evaluate_expression(trimmed, frame)
+            with _located(block, block_line):
+                evaluate_expression(trimmed, frame)
             continue
 
         if block.mode == BlockMode.JAZZOO:
@@ -209,6 +211,19 @@ def _run_one_block(block, frame: Frame, evaluate_expression) -> None:
         line=swept[0][1],
         is_quiet=frame.is_quiet,
     )
+
+
+@contextlib.contextmanager
+def _located(block, block_line) -> T.Iterator[None]:
+    """Attribute an error that carries no source location to this body line."""
+    try:
+        yield
+    except JazzooError as error:
+        if error.filename is not None:
+            raise
+        raise type(error)(
+            error.message, filename=block.filename, line=block_line.line
+        ) from None
 
 
 def _sweep_line(block_line, block, frame: Frame) -> str:
