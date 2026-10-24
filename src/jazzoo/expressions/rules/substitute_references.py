@@ -10,12 +10,14 @@ def substitute_references(
     filename: T.Optional[str] = None,
     line: T.Optional[int] = None,
     evaluate_call: T.Optional[T.Callable[[str], str]] = None,
+    evaluate_braced: T.Optional[T.Callable[[str], T.Any]] = None,
 ) -> str:
     """Replace every jazzoo reference in `text` with its resolved value.
 
     Substitution is textual and values are not escaped - see design section 4.
     `resolve` takes a Reference and returns its string value; `evaluate_call`, when
-    given, evaluates an inline `🐭.name(args)` call.
+    given, evaluates an inline `🐭.name(args)` call, and `evaluate_braced` evaluates
+    an expression written between braces.
     """
     matches: T.List[ReferenceMatch] = parse_references(text, filename=filename, line=line)
     if not matches:
@@ -28,6 +30,12 @@ def substitute_references(
         if match.is_escaped:
             # Emit the reference literally, with the escaping backslash removed.
             out.append(text[match.start : match.end].replace("\\", "", 1))
+        elif match.expression_text is not None:
+            if evaluate_braced is None:
+                # No expression evaluator in this context: leave the text alone.
+                out.append(text[match.start : match.end])
+            else:
+                out.append(render_value(evaluate_braced(match.expression_text)))
         elif match.call_text is not None:
             if evaluate_call is None:
                 # No call evaluator in this context: leave the text alone.

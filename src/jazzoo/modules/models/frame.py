@@ -1,3 +1,4 @@
+import contextlib
 import typing as T
 
 from jazzoo.enums import Sigil
@@ -24,6 +25,9 @@ class Frame:
         self.globals = globals_
         self.locals: T.Dict[str, T.Any] = {} if locals_ is None else locals_
         self.stdout = ""
+        # Set while a call's return value is being computed for a caller that uses
+        # it. A quiet frame echoes no commands and forwards no stdout.
+        self.is_quiet = False
 
     def lookup(self, sigil: Sigil, name: str) -> T.Any:
         if sigil is Sigil.GOAT:
@@ -62,8 +66,21 @@ class Frame:
 
     def child(self, module=None) -> "Frame":
         """A fresh frame for a callee: new 🐆 scope and its own ⚙️.stdout."""
-        return Frame(
+        child = Frame(
             module=module or self.module,
             root_module=self.root_module,
             globals_=self.globals,
         )
+        # Everything a quiet call runs is quiet too.
+        child.is_quiet = self.is_quiet
+        return child
+
+    @contextlib.contextmanager
+    def quietly(self) -> T.Iterator["Frame"]:
+        """Evaluate calls whose value is used without printing what they run."""
+        was_quiet = self.is_quiet
+        self.is_quiet = True
+        try:
+            yield self
+        finally:
+            self.is_quiet = was_quiet

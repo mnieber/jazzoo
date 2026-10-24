@@ -14,6 +14,7 @@ def run_block(
     body: str,
     filename: T.Optional[str] = None,
     line: T.Optional[int] = None,
+    is_quiet: bool = False,
 ) -> str:
     """Run one block as a single subprocess and return its raw stdout.
 
@@ -42,8 +43,9 @@ def run_block(
         os.unlink(handle.name)
 
     # The block's own output goes to the console as well as being captured for
-    # ⚙️.stdout, so a target behaves like the commands it runs.
-    if completed.stdout:
+    # ⚙️.stdout, so a target behaves like the commands it runs. A quiet block keeps
+    # its stdout for the caller, but its stderr is always shown.
+    if completed.stdout and not is_quiet:
         print(completed.stdout, end="")
     if completed.stderr:
         print(completed.stderr, end="", file=sys.stderr)

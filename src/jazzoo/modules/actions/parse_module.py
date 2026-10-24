@@ -2,13 +2,16 @@ import os
 import typing as T
 
 from jazzoo.enums import Sigil
-from jazzoo.errors import ModuleImportError, ParseError
+from jazzoo.errors import ExecutionError, ModuleImportError, ParseError
 from jazzoo.modules.actions.resolve_import import resolve_import
 from jazzoo.modules.models.frame import Frame
 from jazzoo.modules.models.module import Module
 from jazzoo.modules.rules.parse_import_statement import parse_import_statement
-from jazzoo.modules.rules.parse_source import parse_source
-from jazzoo.modules.rules.validate_module import validate_module
+from jazzoo.modules.rules.parse_source import Assignment, BuiltinCall, parse_source
+from jazzoo.modules.rules.validate_module import (
+    validate_builtin_call,
+    validate_module,
+)
 
 # 🐐 is shared by every module in a run.
 _GLOBALS: T.Dict[str, T.Any] = {}
@@ -21,7 +24,8 @@ def parse_module(path: str) -> Module:
     Everything decidable from the parse tree is raised here rather than when a
     target runs (design section 12), so a bad call site fails even if a different
     target is invoked. Note that loading also *executes*: a top-level assignment
-    may call a function whose body is a shebang block.
+    may call a function whose body is a shebang block, and a top-level ⚙️.loadenv
+    changes the environment.
     """
     _GLOBALS.clear()
     cache: T.Dict[str, Module] = {}
@@ -80,25 +84,41 @@ def _load_module(
 
     _check_name_collisions(parsed, module)
     validate_module(module, _resolve_function_valued(parsed, module))
+    for statement in parsed.statements:
+        if isinstance(statement, BuiltinCall):
+            validate_builtin_call(
+                statement.name,
+                [(a.name, a.value) for a in statement.arguments],
+                statement.filename,
+                statement.line,
+            )
 
-    # Top-level assignments run last, and may call into the imported modules.
+    # Top-level statements run last, and may call into the imported modules. Their
+    # values are used, not shown, so they run quietly.
     from jazzoo.expressions.actions.evaluate_expression import evaluate_expression
 
     frame = Frame(module=module, root_module=root, globals_=_GLOBALS)
-    for assignment in parsed.assignments:
-        try:
-            value = evaluate_expression(assignment.rhs, frame)
-        except ParseError as error:
-            # Attribute the error to the assignment, not to jazzoo's internals.
-            raise ParseError(
-                error.message,
-                filename=error.filename or assignment.filename,
-                line=error.line if error.line is not None else assignment.line,
-            ) from None
-        frame.assign(assignment.sigil, assignment.name, value)
+    with frame.quietly():
+        for statement in parsed.statements:
+            _run_statement(statement, frame, evaluate_expression)
 
     module.is_initialized = True
     return module
+
+
+def _run_statement(statement, frame: Frame, evaluate_expression) -> None:
+    source = statement.text if isinstance(statement, BuiltinCall) else statement.rhs
+    try:
+        value = evaluate_expression(source, frame)
+    except (ParseError, ExecutionError) as error:
+        # Attribute the error to the statement, not to jazzoo's internals.
+        raise type(error)(
+            error.message,
+            filename=error.filename or statement.filename,
+            line=error.line if error.line is not None else statement.line,
+        ) from None
+    if isinstance(statement, Assignment):
+        frame.assign(statement.sigil, statement.name, value)
 
 
 def _resolve_function_valued(parsed, module: Module) -> T.Dict[str, T.Any]:

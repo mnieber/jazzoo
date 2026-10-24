@@ -27,7 +27,7 @@ from jazzoo.expressions.rules.substitute_references import substitute_references
 from jazzoo.expressions.utils.join_path import join_path
 from jazzoo.expressions.utils.render_value import render_value
 from jazzoo.functions.models.curried_function import CurriedFunction
-from jazzoo.modules.rules.parse_source import parse_call_arguments
+from jazzoo.modules.rules.parse_source import _SIGIL_TEXTS, parse_call_arguments
 
 # Splits `🐭.name(args)` into its name and its argument text.
 _CALL_PARTS_RE = re.compile(
@@ -52,12 +52,26 @@ def evaluate_call(text: str, frame) -> str:
         line = None
 
     sigil_text = match.group("sigil")
+    if _SIGIL_TEXTS[sigil_text] is Sigil.SYSTEM:
+        return _call_builtin(path, resolved)
+
     stored = _resolve_function_value(f"{sigil_text}.{path}", frame)
     if stored is not None and (stored.bound or stored.explicitly_unbound):
         return call_curried(stored, resolved, frame)
 
     target = _lookup_function(path, frame, _Site())
     return call_function(target, resolved, frame, evaluate_expression)
+
+
+def _call_builtin(name: str, arguments: T.Dict[str, T.Any]) -> str:
+    from jazzoo.functions.actions.call_builtin_function import (
+        call_builtin_function,
+        is_builtin_function,
+    )
+
+    if not is_builtin_function(name):
+        raise ResolutionError(f"no such function: ⚙️.{name}")
+    return call_builtin_function(name, arguments)
 
 
 def _resolve_arguments(args_text: str, path: str, frame) -> T.Dict[str, str]:
@@ -72,10 +86,12 @@ def _resolve_arguments(args_text: str, path: str, frame) -> T.Dict[str, str]:
             raise ArgumentError(
                 f"arguments must be named in a .jaz file: {path}(...)"
             )
-    return {
-        argument.name: evaluate_expression(argument.value, frame)
-        for argument in arguments
-    }
+    # An argument's value is used by the callee, so calls inside it are quiet.
+    with frame.quietly():
+        return {
+            argument.name: evaluate_expression(argument.value, frame)
+            for argument in arguments
+        }
 
 
 def call_value(value: T.Any, args_text: str, frame) -> str:
@@ -120,6 +136,7 @@ def _evaluate_node(node: T.Any, frame) -> T.Any:
             node.text,
             lambda reference: resolve_reference(reference, frame),
             evaluate_call=lambda call_text: evaluate_call(call_text, frame),
+            evaluate_braced=lambda source: evaluate_expression(source, frame),
         )
 
     if isinstance(node, JsonLiteral):

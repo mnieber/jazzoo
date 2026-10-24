@@ -12,5 +12,7 @@ def format_signature(function: Function, path: str) -> str:
         if parameter.default is None:
             parts.append(parameter.name)
         else:
-            parts.append(f'{parameter.name}="{parameter.default}"')
+            # The default as written, so a string keeps its quotes and a variable
+            # reference shows by name.
+            parts.append(f"{parameter.name}={parameter.default}")
     return f"{path}({', '.join(parts)})"
