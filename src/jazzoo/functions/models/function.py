@@ -1,9 +1,8 @@
 import typing as T
 
-from dataclassy import dataclass
-
 from jazzoo.functions.models.parameter import Parameter
 from jazzoo.modules.models.scope import Scope
+from jazzoo.utils.dataclass import dataclass
 
 if T.TYPE_CHECKING:
     from jazzoo.blocks.models.block import Block

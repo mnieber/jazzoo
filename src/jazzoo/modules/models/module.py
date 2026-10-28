@@ -1,8 +1,7 @@
 import typing as T
 
-from dataclassy import dataclass
-
 from jazzoo.modules.models.scope import Scope
+from jazzoo.utils.dataclass import dataclass
 
 
 @dataclass

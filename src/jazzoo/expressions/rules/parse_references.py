@@ -1,15 +1,12 @@
 import typing as T
 
-from dataclassy import dataclass
-
 from jazzoo.enums import Sigil
 from jazzoo.expressions.models.reference import Reference
+from jazzoo.utils.dataclass import dataclass
 
 # Longest first, so ⚙️ (which carries a variation selector) is tried before its
 # bare codepoint form.
-_SIGILS = sorted(
-    [s.value for s in Sigil] + ["⚙"], key=len, reverse=True
-)
+_SIGILS = sorted([s.value for s in Sigil] + ["⚙"], key=len, reverse=True)
 _SIGIL_BY_TEXT = {s.value: s for s in Sigil}
 _SIGIL_BY_TEXT["⚙"] = Sigil.SYSTEM
 

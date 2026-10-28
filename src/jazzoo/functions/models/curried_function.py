@@ -1,6 +1,6 @@
 import typing as T
 
-from dataclassy import dataclass
+from jazzoo.utils.dataclass import dataclass
 
 if T.TYPE_CHECKING:
     from jazzoo.functions.models.function import Function

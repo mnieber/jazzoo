@@ -1,14 +1,11 @@
 import typing as T
 
-from dataclassy import dataclass
-
 from jazzoo.errors import ParseError
+from jazzoo.utils.dataclass import dataclass
 
 _SIGIL_STARTS = ("🐐", "🐭", "🐆", "⚙️", "⚙")
 
-_NAME_CHARS = set(
-    "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_."
-)
+_NAME_CHARS = set("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_.")
 
 _KEYWORDS = ("if", "else", "and", "or", "not")
 
