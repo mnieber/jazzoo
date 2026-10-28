@@ -3,7 +3,7 @@ import typing as T
 from jazzoo.errors import ArgumentError, ParseError
 from jazzoo.functions.models.curried_function import CurriedFunction
 from jazzoo.functions.models.function import Function
-from jazzoo.modules.rules.parse_source import _split_top_level
+from jazzoo.utils.split_top_level import split_top_level
 
 
 def parse_curry(
@@ -30,7 +30,7 @@ def parse_curry(
     bound: T.Dict[str, str] = {}
     explicitly_unbound: T.List[str] = []
 
-    for chunk in _split_top_level(inner, ","):
+    for chunk in split_top_level(inner, ","):
         chunk = chunk.strip()
         if not chunk:
             continue

@@ -5,11 +5,8 @@ from jazzoo.enums import Sigil
 from jazzoo.errors import ArgumentError, ParseError, ResolutionError
 from jazzoo.functions.models.function import Function
 from jazzoo.modules.models.module import Module
-from jazzoo.modules.rules.parse_source import (
-    _ASSIGNMENT_RE,
-    _SIGIL_TEXTS,
-    parse_call_arguments,
-)
+from jazzoo.modules.rules.parse_call_arguments import parse_call_arguments
+from jazzoo.modules.rules.parse_source import _ASSIGNMENT_RE, _SIGIL_TEXTS
 
 # A call is only a call when it is the whole line, or the whole right-hand side of
 # an assignment. Scanning shell text for anything call-shaped would misread
