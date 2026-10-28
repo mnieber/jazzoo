@@ -2,4 +2,3 @@ Ideas:
 
 - simple logic and arithmetic, e.g. `🐆.doit = "yes" if 🐆.foo > 2 or 🐆.bar else "no"`
 - lambda functions: 🐆.foo = (name="okay") => 🐭.log(🐆.name)
-- support ⚙️.loadenv(filename)

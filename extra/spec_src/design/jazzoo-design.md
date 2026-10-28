@@ -1471,7 +1471,7 @@ None of these shadow a Python builtin, so they can be imported without aliasing.
 
 ### A.2 Scopes
 
-The parser is Lark/PEG-based. The parse tree is a tree of nested scopes: the root
+The parse tree is a tree of nested scopes: the root
 module, with imported modules as sub-modules of the module that imports them.
 
 ```python
