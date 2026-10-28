@@ -1,8 +1,7 @@
 import typing as T
 
-from dataclassy import dataclass
-
 from jazzoo.enums import Sigil
+from jazzoo.utils.dataclass import dataclass
 
 
 @dataclass

@@ -1,8 +1,6 @@
 import json
 import typing as T
 
-from dataclassy import dataclass
-
 from jazzoo.errors import ParseError
 from jazzoo.expressions.models.boolean import And, Not, Or
 from jazzoo.expressions.models.literal import Literal
@@ -10,6 +8,7 @@ from jazzoo.expressions.models.path_join import PathJoin
 from jazzoo.expressions.models.pipe import Pipe
 from jazzoo.expressions.models.ternary import Comparison, Ternary
 from jazzoo.expressions.rules.tokenize_expression import Token, tokenize_expression
+from jazzoo.utils.dataclass import dataclass
 
 
 @dataclass
@@ -80,9 +79,7 @@ class _Parser:
             raise ParseError(f"ternary without an else: {self.source!r}")
         self.take()
         # Right-associative: the else branch may be another ternary.
-        return Ternary(
-            value=value, condition=condition, otherwise=self.parse_ternary()
-        )
+        return Ternary(value=value, condition=condition, otherwise=self.parse_ternary())
 
     def parse_condition(self) -> T.Any:
         return self.parse_or()
@@ -162,9 +159,7 @@ class _Parser:
             try:
                 return JsonLiteral(value=json.loads(token.text))
             except ValueError as error:
-                raise ParseError(
-                    f"invalid JSON in expression: {token.text}"
-                ) from error
+                raise ParseError(f"invalid JSON in expression: {token.text}") from error
 
         if token.kind == "word":
             # An unquoted word is read as JSON, so `true`, `false`, `null` and
@@ -173,9 +168,7 @@ class _Parser:
             try:
                 return JsonLiteral(value=json.loads(token.text))
             except ValueError:
-                raise ParseError(
-                    f"strings must be quoted: {token.text}"
-                ) from None
+                raise ParseError(f"strings must be quoted: {token.text}") from None
 
         if token.kind == "call":
             self.take()
@@ -193,9 +186,7 @@ class _Parser:
                 node = Curry(target=node, text=following.text)
             return node
 
-        raise ParseError(
-            f"unexpected {token.text!r} in expression: {self.source!r}"
-        )
+        raise ParseError(f"unexpected {token.text!r} in expression: {self.source!r}")
 
 
 def parse_expression(source: str) -> T.Any:

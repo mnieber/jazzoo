@@ -1,8 +1,6 @@
 import re
 import typing as T
 
-from dataclassy import dataclass
-
 from jazzoo.blocks.models.block import Block, BlockLine
 from jazzoo.enums import BlockMode, Sigil
 from jazzoo.errors import ParseError
@@ -10,6 +8,7 @@ from jazzoo.functions.models.call_site import Argument, CallSite
 from jazzoo.functions.models.function import Function
 from jazzoo.functions.models.parameter import Parameter
 from jazzoo.settings import DEFAULT_SHEBANG
+from jazzoo.utils.dataclass import dataclass
 
 _SIGIL_TEXTS = {s.value: s for s in Sigil}
 _SIGIL_TEXTS["⚙"] = Sigil.SYSTEM
@@ -99,9 +98,7 @@ def _split_top_level(text: str, separator: str) -> T.List[str]:
     return parts
 
 
-def parse_parameters(
-    text: str, filename: str, line: int
-) -> T.List[Parameter]:
+def parse_parameters(text: str, filename: str, line: int) -> T.List[Parameter]:
     parameters: T.List[Parameter] = []
     for chunk in _split_top_level(text, ","):
         chunk = chunk.strip()
@@ -115,9 +112,7 @@ def parse_parameters(
     return parameters
 
 
-def parse_call_arguments(
-    text: str, filename: str, line: int
-) -> T.List[Argument]:
+def parse_call_arguments(text: str, filename: str, line: int) -> T.List[Argument]:
     arguments: T.List[Argument] = []
     for chunk in _split_top_level(text, ","):
         chunk = chunk.strip()
@@ -132,9 +127,7 @@ def parse_call_arguments(
     return arguments
 
 
-def parse_dependencies(
-    text: str, filename: str, line: int
-) -> T.List[CallSite]:
+def parse_dependencies(text: str, filename: str, line: int) -> T.List[CallSite]:
     """Parse the dependency list that follows a function's colon."""
     dependencies: T.List[CallSite] = []
     for match in re.finditer(r"([A-Za-z_][A-Za-z0-9_.-]*)\s*\(([^)]*)\)", text):
@@ -202,9 +195,7 @@ def _parse_body(
                     break
                 inner.append((inner_no, inner_raw))
                 index += 1
-            inner_blocks, inner_locals = _parse_body(
-                inner, filename, header_indent + 4
-            )
+            inner_blocks, inner_locals = _parse_body(inner, filename, header_indent + 4)
             local_fn = Function(
                 name=local_match.group("name"),
                 parameters=parse_parameters(
@@ -360,8 +351,6 @@ def parse_source(source: str, filename: str) -> ParsedSource:
             index += 1
             continue
 
-        raise ParseError(
-            f"cannot parse: {trimmed}", filename=filename, line=line_no
-        )
+        raise ParseError(f"cannot parse: {trimmed}", filename=filename, line=line_no)
 
     return result
