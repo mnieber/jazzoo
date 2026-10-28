@@ -4,10 +4,12 @@ import typing as T
 from jazzoo.enums import Sigil
 from jazzoo.errors import ExecutionError, ModuleImportError, ParseError
 from jazzoo.modules.actions.resolve_import import resolve_import
+from jazzoo.modules.models.assignment import Assignment
+from jazzoo.modules.models.builtin_call import BuiltinCall
 from jazzoo.modules.models.frame import Frame
 from jazzoo.modules.models.module import Module
 from jazzoo.modules.rules.parse_import_statement import parse_import_statement
-from jazzoo.modules.rules.parse_source import Assignment, BuiltinCall, parse_source
+from jazzoo.modules.rules.parse_source import parse_source
 from jazzoo.modules.rules.validate_module import (
     validate_builtin_call,
     validate_module,

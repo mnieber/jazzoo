@@ -27,7 +27,8 @@ from jazzoo.expressions.rules.substitute_references import substitute_references
 from jazzoo.expressions.utils.join_path import join_path
 from jazzoo.expressions.utils.render_value import render_value
 from jazzoo.functions.models.curried_function import CurriedFunction
-from jazzoo.modules.rules.parse_source import _SIGIL_TEXTS, parse_call_arguments
+from jazzoo.modules.rules.parse_call_arguments import parse_call_arguments
+from jazzoo.modules.rules.parse_source import _SIGIL_TEXTS
 
 # Splits `🐭.name(args)` into its name and its argument text.
 _CALL_PARTS_RE = re.compile(
