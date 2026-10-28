@@ -6,7 +6,7 @@ JAZZOO_SOURCE = f"""
     ⚙️.load_config(path=⚙️.module.dirname / "config/base.yaml")
     ⚙️.load_config(path=⚙️.module.dirname / "config/local.yaml", required=false)
 
-    build:
+    build():
         #!{sys.executable}
         from jazzoo import get_config as get
 

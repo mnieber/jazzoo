@@ -1,3 +1,11 @@
+from jazzoo.config import (
+    ConfigError,
+    ConfigExpansionError,
+    ConfigFileError,
+    ConfigKeyError,
+    get_config,
+    prepare_config,
+)
 from jazzoo.errors import (
     ArgumentError,
     ExecutionError,
@@ -14,14 +22,20 @@ from jazzoo.modules.rules.get_module_by_path import get_module_by_path
 
 __all__ = [
     "ArgumentError",
+    "ConfigError",
+    "ConfigExpansionError",
+    "ConfigFileError",
+    "ConfigKeyError",
     "ExecutionError",
     "JazzooError",
     "ModuleImportError",
     "ParseError",
     "ResolutionError",
     "evaluate",
+    "get_config",
     "get_function_by_path",
     "get_module_by_path",
     "get_targets",
     "parse_module",
+    "prepare_config",
 ]

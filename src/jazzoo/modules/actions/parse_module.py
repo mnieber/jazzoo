@@ -26,7 +26,7 @@ def parse_module(path: str) -> Module:
     Everything decidable from the parse tree is raised here rather than when a
     target runs (design section 12), so a bad call site fails even if a different
     target is invoked. Note that loading also *executes*: a top-level assignment
-    may call a function whose body is a shebang block, and a top-level ⚙️.loadenv
+    may call a function whose body is a shebang block, and a top-level ⚙️.load_env
     changes the environment.
     """
     _GLOBALS.clear()

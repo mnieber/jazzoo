@@ -17,6 +17,10 @@ jaz = "jazzoo.runtime.entrypoints.jazzoo:main"
 [tool.setuptools.packages.find]
 where = ["src"]
 
+[tool.setuptools.package-data]
+"jazzoo.config._vendor" = ["vendor.txt"]
+"jazzoo.config._vendor.yaml" = ["LICENSE"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 

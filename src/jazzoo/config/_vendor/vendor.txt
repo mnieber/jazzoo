@@ -1,0 +1,1 @@
+PyYAML==6.0.3 (lib/yaml from the sdist, without cyaml.py)

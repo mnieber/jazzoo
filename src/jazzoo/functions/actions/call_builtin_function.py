@@ -1,5 +1,6 @@
 import typing as T
 
+from jazzoo.environment.actions.load_config import load_config
 from jazzoo.environment.actions.load_env import load_env
 from jazzoo.expressions.rules.is_truthy import is_truthy
 from jazzoo.expressions.utils.render_value import render_value
@@ -8,14 +9,18 @@ from jazzoo.functions.models.parameter import Parameter
 # The ⚙️ functions, which are called as statements and yield no value. Their
 # parameters are checked at load time like those of any other call.
 BUILTIN_PARAMETERS: T.Dict[str, T.List[Parameter]] = {
-    "loadenv": [
+    "load_env": [
+        Parameter(name="path", default=None),
+        Parameter(name="required", default="true"),
+    ],
+    "load_config": [
         Parameter(name="path", default=None),
         Parameter(name="required", default="true"),
     ],
 }
 
 
-def _loadenv(
+def _load_env(
     arguments: T.Dict[str, T.Any], filename: T.Optional[str], line: T.Optional[int]
 ) -> None:
     load_env(
@@ -26,8 +31,20 @@ def _loadenv(
     )
 
 
+def _load_config(
+    arguments: T.Dict[str, T.Any], filename: T.Optional[str], line: T.Optional[int]
+) -> None:
+    load_config(
+        render_value(arguments["path"]),
+        is_required=is_truthy(arguments.get("required", True)),
+        filename=filename,
+        line=line,
+    )
+
+
 _BUILTIN_FUNCTIONS: T.Dict[str, T.Callable[..., None]] = {
-    "loadenv": _loadenv,
+    "load_env": _load_env,
+    "load_config": _load_config,
 }
 
 
