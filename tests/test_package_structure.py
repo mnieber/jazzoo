@@ -23,7 +23,9 @@ def test_no_submodule_imports_from_the_package_root():
             str(path.relative_to(root))
             for path in root.rglob("*.py")
             if path.name != "__init__.py"
-            and re.search(r"^from jazzoo import ", path.read_text(encoding="utf-8"), re.M)
+            and re.search(
+                r"^from jazzoo import ", path.read_text(encoding="utf-8"), re.M
+            )
         ]
 
         # Assert
@@ -37,16 +39,22 @@ def test_the_facade_exports_every_public_name():
         # Config
         expected = {
             "ArgumentError",
+            "ConfigError",
+            "ConfigExpansionError",
+            "ConfigFileError",
+            "ConfigKeyError",
             "ExecutionError",
             "JazzooError",
             "ModuleImportError",
             "ParseError",
             "ResolutionError",
             "evaluate",
+            "get_config",
             "get_function_by_path",
             "get_module_by_path",
             "get_targets",
             "parse_module",
+            "prepare_config",
         }
 
         # Assert

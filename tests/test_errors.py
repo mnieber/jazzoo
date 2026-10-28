@@ -133,13 +133,13 @@ def test_an_error_in_a_jazzoo_statement_carries_its_source_location():
     assignment or a ⚙️ statement - is attributed to the body line it came from."""
     if True:
         # Config
-        # The ⚙️.parse assignment is on line 2, the ⚙️.loadenv statement on line 5.
+        # The ⚙️.parse assignment is on line 2, the ⚙️.load_env statement on line 5.
         jazzoo_fn = save_fixture("""# test_statement_error_location.jaz
         bad-json():
             🐆.config = "not json" | ⚙️.parse
 
         missing-env():
-            ⚙️.loadenv(path="/no/such/file.env")
+            ⚙️.load_env(path="/no/such/file.env")
         """)
 
         # Run
