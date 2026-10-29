@@ -7,11 +7,14 @@ from jazzoo.functions.models.function import Function
 from jazzoo.modules.models.assignment import Assignment
 from jazzoo.modules.models.builtin_call import BuiltinCall
 from jazzoo.modules.models.parsed_source import ParsedSource
+from jazzoo.modules.rules.parse_attribute_line import (
+    is_attribute_line,
+    parse_attribute_line,
+)
 from jazzoo.modules.rules.parse_body import parse_body
 from jazzoo.modules.rules.parse_call_arguments import parse_call_arguments
 from jazzoo.modules.rules.parse_dependencies import parse_dependencies
 from jazzoo.modules.rules.parse_parameters import parse_parameters
-from jazzoo.settings import KNOWN_ATTRIBUTES
 from jazzoo.utils.indent_of import indent_of
 from jazzoo.utils.join_continuations import join_continuations
 
@@ -27,8 +30,6 @@ _ASSIGNMENT_RE = re.compile(
 _FUNCTION_RE = re.compile(
     r"^(?P<name>[A-Za-z_][A-Za-z0-9_-]*)\s*\((?P<params>[^)]*)\)\s*:(?P<deps>.*)$"
 )
-
-_ATTRIBUTE_RE = re.compile(r"^\[(?P<name>[A-Za-z_][A-Za-z0-9_-]*)\]$")
 
 # `⚙️.<name>(args)` as a whole top-level line: a call to a ⚙️ function statement.
 _BUILTIN_CALL_RE = re.compile(
@@ -46,6 +47,7 @@ def parse_source(source: str, filename: str) -> ParsedSource:
     entries = join_continuations(source.splitlines())
 
     pending_attributes: T.List[str] = []
+    attribute_line_no = 0
     index = 0
     while index < len(entries):
         line_no, raw = entries[index]
@@ -55,24 +57,24 @@ def parse_source(source: str, filename: str) -> ParsedSource:
             index += 1
             continue
 
-        attribute_match = _ATTRIBUTE_RE.match(trimmed)
-        if attribute_match:
-            name = attribute_match.group("name")
-            if name not in KNOWN_ATTRIBUTES:
-                raise ParseError(
-                    f"unknown attribute: [{name}]", filename=filename, line=line_no
-                )
-            pending_attributes.append(name)
+        if is_attribute_line(trimmed):
+            if not pending_attributes:
+                attribute_line_no = line_no
+            pending_attributes += parse_attribute_line(trimmed, filename, line_no)
             index += 1
             continue
+
+        function_match = _FUNCTION_RE.match(trimmed)
+        is_function = bool(function_match) and indent_of(raw) == 0
+        if pending_attributes and not is_function:
+            raise _attribute_without_function_error(filename, attribute_line_no)
 
         if trimmed.startswith("from "):
             result.imports.append((line_no, trimmed))
             index += 1
             continue
 
-        function_match = _FUNCTION_RE.match(trimmed)
-        if function_match and indent_of(raw) == 0:
+        if is_function:
             body_entries: T.List[T.Tuple[int, str]] = []
             index += 1
             while index < len(entries):
@@ -141,4 +143,12 @@ def parse_source(source: str, filename: str) -> ParsedSource:
 
         raise ParseError(f"cannot parse: {trimmed}", filename=filename, line=line_no)
 
+    if pending_attributes:
+        raise _attribute_without_function_error(filename, attribute_line_no)
     return result
+
+
+def _attribute_without_function_error(filename: str, line: int) -> ParseError:
+    return ParseError(
+        "an attribute must precede a function", filename=filename, line=line
+    )

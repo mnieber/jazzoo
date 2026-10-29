@@ -803,12 +803,17 @@ module that defines the function.
 
 ### 8.4 Attributes
 
-Attributes appear on the lines before the function, one per line:
+Attributes appear on the lines before the function. Several attributes may share one
+pair of brackets, separated by commas:
 
 ```
 [private]
 _helper(name):
     echo "Internal helper: 🐆.name"
+
+[private, interactive]
+_shell():
+    fish
 ```
 
 | Attribute       | Effect                                                                             |
@@ -816,9 +821,16 @@ _helper(name):
 | `[private]`     | not a target: hidden from `jaz --list` and the CLI, but callable from `.jaz` files |
 | `[interactive]` | its blocks are not captured, but use the terminal directly (section 9.7)           |
 
-Several attributes may precede one function (`[private]` and `[interactive]`), in any
-order. An unknown attribute is a `ParseError`. Local functions may have attributes too
-(section 8.10).
+Several attributes may precede one function, in any order, in one list
+(`[private, interactive]`), on separate lines, or both. Whitespace around the commas
+is ignored, and a repeated attribute has no extra effect. An unknown attribute, or a
+malformed list (`[private,]`, `[private interactive]`), is a `ParseError`, and so is
+an attribute line that is not followed by a function. Local functions may have
+attributes too (section 8.10).
+
+A line that starts with `[` directly followed by a letter or `_`, and ends with `]`,
+is always an attribute line. A shell test needs a space after `[` or `[[`, so
+`[ -d build ]` and `[[ -f .env ]]` stay ordinary shell lines.
 
 ### 8.5 Dependencies
 
@@ -953,9 +965,10 @@ deploy():
     🐆.version = 🐭.read-version()     # captured, as usual
 ```
 
-In a body, a `[name]` line is an attribute only when the next non-empty line (after
-any further attributes) is a local function header; anywhere else it is an ordinary
-shell line. `[private]` on a local function is a `ParseError`, since a local function
+In a body, an attribute line (section 8.4) must be followed by a local function
+header, after any further attribute lines and empty lines; otherwise it is a
+`ParseError`. Inside a shebang block, the line belongs to the interpreter and is never
+an attribute. `[private]` on a local function is a `ParseError`, since a local function
 is never a target.
 
 ---
@@ -1527,6 +1540,8 @@ broken call site in one target therefore prevents every target from running.
 | A call through a boolean whose branches are not all functions         | `ParseError`        |
 | An unknown attribute (`[interactve]`)                                 | `ParseError`        |
 | `[private]` on a local function                                       | `ParseError`        |
+| A malformed attribute list (`[private,]`, `[private interactive]`)    | `ParseError`        |
+| An attribute line that is not followed by a function                  | `ParseError`        |
 | A positional argument in a `.jaz` file (`🐭.build("dev")`)            | `ArgumentError`     |
 | A pipe stage leaving zero, or more than one, parameter unbound        | `ArgumentError`     |
 | Binding an unknown parameter in a curry expression                    | `ArgumentError`     |

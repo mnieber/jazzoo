@@ -5,17 +5,17 @@ from jazzoo.blocks.models.block import Block, BlockLine
 from jazzoo.enums import BlockMode
 from jazzoo.errors import ParseError
 from jazzoo.functions.models.function import Function
+from jazzoo.modules.rules.parse_attribute_line import (
+    is_attribute_line,
+    parse_attribute_line,
+)
 from jazzoo.modules.rules.parse_parameters import parse_parameters
-from jazzoo.settings import KNOWN_ATTRIBUTES
 from jazzoo.utils.indent_of import indent_of
 
 # A local function definition: `🐆.name(params):`
 _LOCAL_FUNCTION_RE = re.compile(
     r"^🐆\.(?P<name>[A-Za-z_][A-Za-z0-9_-]*)\s*\((?P<params>[^)]*)\)\s*:\s*$"
 )
-
-# An attribute of a local function: `[name]`
-_ATTRIBUTE_RE = re.compile(r"^\[(?P<name>[A-Za-z_][A-Za-z0-9_-]*)\]$")
 
 
 def parse_body(
@@ -27,6 +27,7 @@ def parse_body(
 
     current = Block(mode=BlockMode.JAZZOO, shebang=None, lines=[], filename=filename)
     pending_attributes: T.List[str] = []
+    attribute_line_no = 0
     index = 0
     while index < len(entries):
         line_no, raw = entries[index]
@@ -36,30 +37,25 @@ def parse_body(
             index += 1
             continue
 
-        # A `[name]` line is an attribute only when a local function header follows
-        # it; otherwise it stays a shell line, as before.
-        attribute_match = _ATTRIBUTE_RE.match(trimmed)
-        if (
-            attribute_match
-            and current.mode == BlockMode.JAZZOO
-            and _precedes_local_function(entries, index)
-        ):
-            name = attribute_match.group("name")
-            if name not in KNOWN_ATTRIBUTES:
-                raise ParseError(
-                    f"unknown attribute: [{name}]", filename=filename, line=line_no
-                )
-            if name == "private":
+        # Inside a shebang block the line belongs to that interpreter
+        if current.mode == BlockMode.JAZZOO and is_attribute_line(trimmed):
+            names = parse_attribute_line(trimmed, filename, line_no)
+            if "private" in names:
                 raise ParseError(
                     "a local function cannot be [private]: it is never a target",
                     filename=filename,
                     line=line_no,
                 )
-            pending_attributes.append(name)
+            if not pending_attributes:
+                attribute_line_no = line_no
+            pending_attributes += names
             index += 1
             continue
 
         local_match = _LOCAL_FUNCTION_RE.match(trimmed)
+        if pending_attributes and not local_match:
+            raise _attribute_without_function_error(filename, attribute_line_no)
+
         if local_match:
             # Everything indented further than this header belongs to the local body.
             header_indent = indent_of(raw)
@@ -127,16 +123,14 @@ def parse_body(
         current.lines.append(BlockLine(text=text, line=line_no, is_quiet=is_quiet))
         index += 1
 
+    if pending_attributes:
+        raise _attribute_without_function_error(filename, attribute_line_no)
     if current.lines:
         blocks.append(current)
     return blocks, locals_
 
 
-def _precedes_local_function(entries: T.List[T.Tuple[int, str]], index: int) -> bool:
-    # Skip blank lines and further attributes, so that attributes may be stacked
-    for _, raw in entries[index + 1 :]:
-        trimmed = raw.strip()
-        if not trimmed or _ATTRIBUTE_RE.match(trimmed):
-            continue
-        return bool(_LOCAL_FUNCTION_RE.match(trimmed))
-    return False
+def _attribute_without_function_error(filename: str, line: int) -> ParseError:
+    return ParseError(
+        "an attribute must precede a local function", filename=filename, line=line
+    )
