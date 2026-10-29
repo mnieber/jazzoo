@@ -1,4 +1,5 @@
 from jazzoo.commands import (
+    CommandAbortedError,
     CommandError,
     CommandFailedError,
     CommandNotFoundError,
@@ -29,6 +30,7 @@ from jazzoo.modules.rules.get_module_by_path import get_module_by_path
 
 __all__ = [
     "ArgumentError",
+    "CommandAbortedError",
     "CommandError",
     "CommandFailedError",
     "CommandNotFoundError",

@@ -12,6 +12,14 @@ class CommandNotFoundError(CommandError):
     pass
 
 
+class CommandAbortedError(CommandError):
+    pass
+
+
+class UsageError(CommandError):
+    pass
+
+
 class CommandFailedError(CommandError):
     def __init__(self, message: str, result: "CommandResult"):
         super().__init__(message)

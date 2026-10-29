@@ -151,10 +151,13 @@ class TestEnv:
             output += decoder.decode(chunk).replace("\r\n", "\n")
 
             if output.endswith(CONFIRM_PROMPT) and len(output) > answered_until:
-                # The prompt is "<command line>\n" + CONFIRM_PROMPT
+                # The prompt is "<command line>\n" + CONFIRM_PROMPT. The typed
+                # answers are not echoed, so the command line may also start right
+                # after the previous prompt.
                 head = output[: -len(CONFIRM_PROMPT)].rstrip("\n")
-                command_line = head.rsplit("\n", 1)[-1]
-                prompt_ranges.append((len(head) - len(command_line), len(output)))
+                start = max(head.rfind("\n") + 1, answered_until)
+                command_line = head[start:]
+                prompt_ranges.append((start, len(output)))
                 answered_until = len(output)
                 self.prompts.append(command_line)
                 if not answers:

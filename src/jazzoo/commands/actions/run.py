@@ -8,8 +8,10 @@ import typing as T
 from ..errors import CommandFailedError
 from ..models.command_result import CommandResult
 from ..rules.find_executable import find_executable
+from ..rules.is_confirm_on import is_confirm_on
 from ..utils.format_command import format_command
 from ..utils.ignoring_sigint import ignoring_sigint
+from .confirm_command import confirm_command
 
 
 def run(
@@ -39,7 +41,18 @@ def run(
         args = list(command)
         executable = find_executable(args[0], environ)
 
-    if echo:
+    # The prompt shows the command, so it replaces the echo
+    if is_confirm_on():
+        if not confirm_command(command, cwd):
+            skipped_output = "" if capture else None
+            return CommandResult(
+                command=command,
+                returncode=0,
+                stdout=skipped_output,
+                stderr=skipped_output,
+                skipped=True,
+            )
+    elif echo:
         print(format_command(command, cwd))
 
     # The command writes to the same file descriptors as the script, so what the

@@ -39,6 +39,7 @@ def test_the_facade_exports_every_public_name():
         # Config
         expected = {
             "ArgumentError",
+            "CommandAbortedError",
             "CommandError",
             "CommandFailedError",
             "CommandNotFoundError",
