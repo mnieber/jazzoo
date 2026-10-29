@@ -21,17 +21,16 @@ the three namespace sigils.
 | read an environment variable, with a fallback            | [5.4](#54-optional-references-and-defaults), [7.2](#72-environment-variables) |
 | load a `.env` file                                       | [7.3](#73-loading-a-dotenv-file)                                              |
 | load YAML config files                                   | [7.4](#74-loading-config-files)                                               |
-| read config values from a Python script                  | [13](#13-config-files)                                                        |
+| read config values from a Python script                  | [jazzoo-config.md](./jazzoo-config.md)                                        |
 | compute a value conditionally                            | [6.3](#63-conditional-expressions)                                            |
 | capture the output of a command or function              | [9.4](#94-stdout-output-and-return-values)                                    |
 | work with JSON                                           | [4.4](#44-structured-values), [7.5](#75-pipe-operators)                       |
 | build and manipulate file paths                          | [6.5](#65-path-joins), [7.5](#75-pipe-operators)                              |
 | run several lines in one shell, or run Python            | [9.2](#92-shebang-blocks)                                                     |
 | show a command's output live, or prompt the user         | [9.7](#97-interactive-functions)                                              |
-| run commands from a Python script                        | [14](#14-running-commands)                                                    |
-| confirm each command before it runs                      | [14.3](#143-confirming-commands)                                              |
-| run commands from a shell script, with confirmation      | [14.4](#144-jaz-run)                                                          |
-| run commands in a Docker container                       | [14.5](#145-running-commands-in-a-container)                                  |
+| run commands from a Python script                        | [jazzoo-commands.md](./jazzoo-commands.md)                                    |
+| confirm each command before it runs                      | [jazzoo-commands.md, 3](./jazzoo-commands.md#3-confirming-commands)           |
+| run commands from a shell script, with confirmation      | [jazzoo-commands.md, 4](./jazzoo-commands.md#4-jaz-run)                       |
 | hide a command's echo, or silence a function             | [9.6](#96-console-output)                                                     |
 | make a task depend on another                            | [8.5](#85-dependencies)                                                       |
 | pre-fill some arguments of a function                    | [8.8](#88-currying)                                                           |
@@ -699,7 +698,7 @@ effect. They change the process environment; they do not make `⚙️` assignabl
 
 `⚙️.load_config` appends a YAML file to the **config list**. Jazzoo itself never reads
 the config; a script that the file runs reads values from the merged config with
-`get_config` (section 13).
+`get_config` (see `jazzoo-config.md`).
 
 - It is a statement and yields no value, like `⚙️.load_env`.
 - At the top level of a module it runs when the module is loaded; in a function body
@@ -1188,9 +1187,9 @@ build():
 - An interactive block inherits stdin, stdout and stderr from `jaz`; nothing is
   captured. Its output appears as it is written and in the order it is written, whether
   it comes from a shell line, from a script's own `print`, or from a command that the
-  script starts with `run` (section 14). When `jaz` runs in a terminal, the block sees
-  a terminal, so prompts, colours, progress bars, full-screen programs and ctrl-c work
-  as in a shell.
+  script starts with `run` (see `jazzoo-commands.md`). When `jaz` runs in a
+  terminal, the block sees a terminal, so prompts, colours, progress bars, full-screen
+  programs and ctrl-c work as in a shell.
 - The output goes wherever `jaz`'s own output goes, so redirection
   (`jaz build > build.log`) and CI logs work as usual.
 - After an interactive block, `⚙️.stdout` and `⚙️.output` are `""`, so the function's
@@ -1410,7 +1409,7 @@ jaz --list [<path>]            # list targets, or describe what is at <path>
 jaz --list-all                 # list every target at every depth
 jaz --file <path> ...          # use <path> as the root module
 jaz --trace <target>           # on error, also print the stack trace
-jaz --confirm <target>         # ask before every command that run starts (section 14.3)
+jaz --confirm <target>         # ask before every command that run starts
 ```
 
 The options of `jaz` may appear anywhere on the command line, also after the target
@@ -1491,7 +1490,8 @@ of earlier commands — through `⚙️.output`, return values, or computed depe
 arguments — and cannot be predicted without running them. A dry run that guessed
 would diverge from reality exactly when a script is complex enough to need checking.
 Use `jaz --list` to discover what a file offers, `--trace` to debug failures, and
-`--confirm` (section 14.3) to check each command of a run before it executes.
+`--confirm` (see `jazzoo-commands.md`) to check each command of a run before it
+executes.
 
 ---
 
@@ -1568,527 +1568,16 @@ jazzoo.jaz:12: error: build() has no parameter named 'profile'
 `--trace` additionally prints the Python stack trace. It is never shown otherwise,
 since it describes Jazzoo's internals rather than the user's file.
 
-Errors raised while reading the config (section 13.7) are not `JazzooError`s. They
-are raised by `get_config` in the script's own process, and are reported by that
-script; to `jaz` they are an ordinary non-zero exit.
+Errors raised while reading the config (see `jazzoo-config.md`) are not
+`JazzooError`s. They are raised by `get_config` in the script's own process, and are
+reported by that script; to `jaz` they are an ordinary non-zero exit.
 
 ---
 
-## 13. Config Files
-
-### 13.1 Overview
-
-A Jazzoo file names one or more YAML config files with `⚙️.load_config` (section
-7.4). A script that the file runs — a Python shebang block, or any `python foo.py`
-shell line — reads values from the merged config with a single call:
-
-```
-⚙️.load_config(path=⚙️.module.dirname / "config/base.yaml")
-⚙️.load_config(path=⚙️.module.dirname / "config/local.yaml", required=false)
-
-build:
-    #!/usr/bin/env python3
-    from jazzoo import get_config as get
-
-    src = get("/root/src")
-    print(f"building {src}")
-```
-
-```yaml
-# config/base.yaml
-root:
-  project_dir: ${PROJECT_DIR}
-  src: ${/root/project_dir}/src
-  build_dir: ${/root/project_dir}/build
-```
-
-Jazzoo only manages the list of config files; it never reads them itself.
-
-### 13.2 `get_config`
-
-```python
-from jazzoo import get_config as get
-
-get("/root/src")                # a value: str, int, float, bool, None, list or dict
-get("/root/tags/0")             # a list element, by index
-get("/")                        # the whole config
-get("/root/port", default=80)   # 80 if the path does not exist
-```
-
-- The argument is a path into the config: `/`-separated keys, starting with `/`. A
-  segment that addresses a list is an integer index. Empty segments are ignored, so
-  `/root/` is the same as `/root`.
-- A path that does not start with `/` is a `ValueError`; `default` does not apply.
-- `get` returns the value at the path, fully expanded (section 13.5). A dict or list
-  is expanded recursively.
-- A path that does not exist raises `ConfigKeyError`, which names the path and the
-  first segment that was not found.
-- With `default=<value>`, `get` returns `<value>` instead of raising `ConfigKeyError`
-  when the path does not exist. The default is returned as is; it is not expanded.
-  It only covers a missing path: an error while expanding a value that exists (e.g.
-  an unset environment variable) is still raised.
-- `get` reads the config list from `JAZZOO_CONFIG_FILES`. When the variable is unset
-  or empty, the config is `{}`.
-
-### 13.3 Caching and the environment
-
-- `get` builds the config just in time and caches it. The cache key is the value of
-  `JAZZOO_CONFIG_FILES`; when the list changes, the cache is rebuilt.
-- The cache holds the merged raw tree, a copy of the environment, and every value
-  expanded so far. `${NAME}` reads from the copy, not from the live environment, so
-  every `get` sees the environment as it was at the first `get`. The result
-  therefore does not depend on the order in which values are expanded: lazy
-  expansion gives the same values as expanding the whole config up front would. A
-  later change to the environment is only seen after the cache is rebuilt.
-- Expansion is lazy: `get("/root/src")` expands only `/root/src` and whatever it
-  references. A broken value elsewhere in the config (e.g. an unset environment
-  variable in a section the script never reads) does not make `get` fail.
-
-`prepare_config()` builds the cache for the current `JAZZOO_CONFIG_FILES` now,
-instead of at the first `get`:
-
-```python
-from jazzoo import prepare_config
-
-prepare_config()
-os.environ["SHOP_USER"] = "deploy"   # does not affect later get calls
-```
-
-- It reads and merges the files and copies the environment. It expands nothing and
-  returns `None`.
-- A script that changes its environment calls it first, so that `get` keeps seeing
-  the environment as it was when the script started.
-- File errors (`ConfigFileError`) are raised by `prepare_config`, so they show up at
-  the start of the script. A broken value does not make it fail, because nothing is
-  expanded.
-- When the cache for the current list already exists, it does nothing; in
-  particular, it does not take a new copy of the environment.
-
-### 13.4 Reading and merging files
-
-Config files are read as plain YAML (no Python object tags). A file must contain a
-single YAML document whose top level is a mapping, or be empty, which counts as
-`{}`. Anything else is a `ConfigFileError` that names the file, as is a YAML syntax
-error (with the file and line), a Python object tag such as `!!python/object`, and a
-file in the list that no longer exists.
-
-The files are merged in list order; a later file overrides an earlier one:
-
-- two dicts are merged key by key, recursively;
-- in all other cases the later value replaces the earlier one. This includes lists:
-  a later list replaces an earlier list, it is not appended to;
-- `null` is an ordinary value: it replaces the earlier value, it does not delete the
-  key.
-
-Merging happens before expansion, so a reference always sees the merged value. A
-`local.yaml` that sets `/root/project_dir` also changes `/root/src` in `base.yaml`.
-
-### 13.5 Expansion
-
-Expansion applies to string values only. Keys are never expanded.
-
-**References to other config values.** `${/a/b}` is replaced by the value at path
-`/a/b` in the merged config.
-
-- If the whole string is one reference, the result is the referenced value with its
-  own type, which may be a number, list or dict: `threads: ${/build/nr_of_threads}`
-  yields the number `2`.
-- If the reference is part of a longer string, the referenced value is rendered into
-  it as in Jazzoo substitution (section 4.3): a string as is, a number as JSON, a
-  boolean as `true` or `false`, and `null` as the empty string. A list or dict is a
-  `ConfigExpansionError`.
-- The referenced value is expanded first, so references may chain.
-- A reference to a path that does not exist is a `ConfigExpansionError`.
-- A reference cycle (`/a` references `/b`, which references `/a`) is a
-  `ConfigExpansionError` that lists the paths in the cycle.
-
-**Nested references.** A reference may contain other references; the inner ones are
-expanded first, and the result is used as the path:
-
-```yaml
-env: prod
-urls:
-  dev: http://localhost:8000
-  prod: https://example.com
-api_url: ${/urls/${/env}} # https://example.com
-```
-
-- An inner reference must yield a string or number, which becomes part of the path.
-  A list, dict, boolean or `null` is a `ConfigExpansionError`.
-- An inner reference may be an environment variable: `${/urls/${ENV_NAME}}`.
-- Nesting may be any number of levels deep.
-
-**Environment variables.** `${NAME}` (no leading `/`) is replaced by the environment
-variable `NAME`.
-
-- An unset variable is a `ConfigExpansionError`.
-- `${NAME:-default}` yields `default` when `NAME` is unset or empty.
-- `$NAME` without braces is not expanded; it stays literal text, so shell snippets
-  stored in a config (`echo $HOME`) are left alone.
-- The environment is that of the script that calls `get`, as copied when the cache
-  was built (section 13.3). Variables that the Jazzoo file loaded with `⚙️.load_env`
-  are therefore visible.
-
-**Escapes.** `$${` yields a literal `${`.
-
-### 13.6 The `jazzoo.config` sub-package
-
-`get_config`, `prepare_config` and the config errors live in the sub-package
-`jazzoo.config`, and are re-exported by `jazzoo`, so `from jazzoo import get_config`
-works.
-
-The sub-package is self-contained: it imports only the standard library and its own
-modules, and its internal imports are relative. A project that does not want to
-depend on `jazzoo`, or whose interpreter does not have `jazzoo` installed (e.g.
-because `jaz` was installed with `pipx`), can copy the sub-package into its own
-source tree under any name and call its `get_config`. It reads the same
-`JAZZOO_CONFIG_FILES` that `jaz` sets.
-
-Jazzoo has no runtime dependencies, so YAML is read with a vendored, pure-Python
-copy of PyYAML inside the sub-package. It is never imported as `yaml`, so a PyYAML
-installed in the same venv is neither used nor affected.
-
-### 13.7 Config errors
-
-| Class                  | Meaning                                                          |
-| ---------------------- | ---------------------------------------------------------------- |
-| `ConfigFileError`      | a config file is missing, is not valid YAML, or is not a mapping |
-| `ConfigKeyError`       | `get` was given a path that does not exist, without a default    |
-| `ConfigExpansionError` | a `${...}` cannot be expanded                                    |
-
-All three subclass `ConfigError(Exception)`, defined in `jazzoo.config`. They are not
-`JazzooError`s, so that the sub-package stays self-contained. A `ConfigFileError`
-names the file and, for a syntax error, starts with `<file>:<line>:` like Jazzoo's
-own errors. The other two name the config path involved and, where it is known, the
-config file that supplied the value.
-
----
-
-## 14. Running Commands
-
-### 14.1 Overview
-
-A script that a Jazzoo file runs — a Python shebang block, or any `python foo.py`
-shell line — runs commands with `run`:
-
-```python
-from jazzoo import run
-
-run("my-app --config=simple doit")                      # runs in the foreground
-run("docker compose logs | grep error")                 # a string runs in bash
-run(["tmux", "send-keys", "-t", pane, command, "C-m"])  # a list runs directly
-head = run("git rev-parse HEAD", capture=True).stdout
-if run("tmux has-session -t blogs", check=False).returncode != 0:
-    run("tmux new-session -d -s blogs")
-```
-
-Jazzoo files themselves do not need `run`: a shell line already runs a command.
-
-### 14.2 `run`
-
-```python
-run(command, cwd=None, env=None, capture=False, check=True, echo=False) -> CommandResult
-```
-
-**The command** is a string or a list:
-
-- A string runs in bash (`bash -c "<command>"`), so pipes, `&&`, `;`, redirection,
-  `$HOME`, `~`, globs and quoting work as in a shell line of a Jazzoo file.
-- A list runs directly, without a shell: the first term is the executable, and the
-  others are passed as they are. Its executable is looked up on the `PATH` of the
-  command's environment before anything runs; a term that contains a `/` is used as a
-  path. An executable that is not found is a `CommandNotFoundError`. For a string,
-  bash reports an unknown command itself (exit code 127).
-- An empty command is a `ValueError`.
-
-A value that is pasted into a string becomes shell syntax, as in section 5.5. Use the
-list form for values from variables, or quote them with `shlex.quote`.
-
-**Where and how it runs:**
-
-- `cwd` is the working directory of the command; a directory that does not exist is a
-  `ValueError`, raised before anything runs.
-- `env` is a dict of variables that is laid over `os.environ`; the script's own
-  environment is not changed.
-- By default the command runs in the foreground: it inherits the script's stdin,
-  stdout and stderr, and `run` waits until it ends. Whether it reaches the terminal
-  depends on where the script's stdout goes; under `jaz`, that is the terminal in an
-  interactive function (section 9.7).
-- With `capture=True`, stdout and stderr are captured as text instead of being shown.
-  Stdin is still inherited.
-- With `echo=True`, the command is printed before it runs. A string is shown as given,
-  a list with `shlex.join`; with `cwd`, the directory comes first:
-  `(/app/src) python manage.py migrate`. When commands are confirmed (section 14.3),
-  the prompt replaces the echo.
-
-**Ctrl-c.** While a command runs, `run` ignores SIGINT in the script (in the main
-thread), so a ctrl-c reaches the command only. Afterwards the old handler is restored.
-If the command was ended by SIGINT, `run` raises `KeyboardInterrupt`.
-
-**The result** is a `CommandResult` with `command` (as given), `returncode`, `stdout`
-and `stderr` (`None` unless captured), and `skipped` (`True` when the user skipped the
-command at a confirmation prompt, section 14.3). With `check=True` (the default), a
-non-zero exit code raises `CommandFailedError`, which holds the result and names the
-command and the exit code (and includes the captured stderr). With `check=False`,
-`run` returns the result whatever the exit code, for commands that answer a question
-through their exit code (`grep -q`, `tmux has-session`).
-
-### 14.3 Confirming commands
-
-`jaz --confirm <target>` makes `run` ask the user before every command that it
-executes. The user can run the command, skip it, or abort:
-
-```
-$ jaz --confirm deploy
-(/home/jane/blogs) docker compose build
-confirm? [Y/n/q] y
-...
-(/home/jane/blogs) docker compose up -d
-confirm? [Y/n/q] n
-(/home/jane/blogs) python scripts/migrate.py
-confirm? [Y/n/q] q
-```
-
-**What is confirmed.** Only the commands of `run` (and of `jaz-run`, section 14.4).
-`jaz` itself never asks: the shell lines and shebang blocks of a Jazzoo file run as
-usual. A command that should be confirmed is started with `run` from a Python script,
-or with `jaz-run` from a shell script or a shell line:
-
-```
-deploy():
-    jaz-run docker compose down -v --project=🐆.name
-    jaz-run -c "docker compose logs | grep error"
-```
-
-Whatever a script does without `run` (writing files, calling `subprocess` directly) is
-not confirmed. Every `run` call is confirmed, also with `capture=True` or
-`check=False`, but only after `run` has checked its arguments: an empty command, a
-missing `cwd` or an unknown executable is still an error, without a prompt.
-
-**Switching it on.** `jaz --confirm` sets the environment variable
-`JAZZOO_CONFIRM=1` before it loads the root module (overwriting a value that was
-already set); it does not change how `jaz` runs blocks. Every block inherits the
-variable, so `run` confirms in every script that the run starts, including the
-scripts of a nested `jaz`; everything below a `jaz --confirm` is confirmed. `run`
-confirms whenever `JAZZOO_CONFIRM` is exactly `1`, also outside `jaz` (e.g. when a
-developer exports the variable and runs a script directly). `--confirm` only matters
-when a target runs: `jaz --confirm --list` and `jaz --confirm --help` ignore it.
-
-**The prompt** shows the command as `(<cwd>) <command>` (a string as given, a list
-with `shlex.join`), followed by `confirm? [Y/n/q] `. Unlike the echo, it always shows
-the directory: without `cwd`, the current directory. With `echo=True`, the prompt
-replaces the echo.
-
-The prompt is written to, and the answer read from, the controlling terminal
-(`/dev/tty`), not stdout and stdin. So it reaches the person at the terminal from a
-captured block, from a quiet call, from `$(jaz-run ...)`, and when the output of `jaz`
-is redirected (`jaz --confirm build > build.log`); the prompt is not part of the
-output.
-
-**Answers.** The answer is stripped and case-insensitive:
-
-- `y` or Enter runs the command;
-- `n` skips it: the command does not run, and the script continues. `run` returns a
-  `CommandResult` with `skipped=True` and `returncode=0`; with `capture=True`,
-  `stdout` and `stderr` are `""`. Later steps may depend on what a skipped command
-  would have done; that is the user's responsibility;
-- `q`, or the end of input (ctrl-d), aborts: `run` raises `CommandAbortedError`. A
-  script that does not catch it exits non-zero, so its block fails and `jaz` stops
-  the run;
-- any other answer (also `yes`) asks again.
-
-A ctrl-c at the prompt raises `KeyboardInterrupt`, as anywhere else in the script.
-
-**Without a terminal** (CI, cron), `jaz --confirm <target>` fails before it loads the
-root module, with `--confirm needs a terminal`. `run` with `JAZZOO_CONFIRM=1` and no
-terminal raises `CommandError` with the same message, and the command does not run.
-
-### 14.4 `jaz-run`
-
-`jaz-run` is the command-line front-end of `run`, for shell scripts and the shell
-lines of Jazzoo files. It runs the command with the same confirmation, echo and
-prompt:
-
-```
-jaz-run [--echo] [--] <executable> [<argument> ...]   # a list command
-jaz-run [--echo] -c "<command>"                       # a string command, run in bash
-```
-
-- The options of `jaz-run` come first. The first argument that is not an option of
-  `jaz-run` starts the command, and everything after it belongs to the command (as
-  with `env` and `sudo`): `jaz-run ls --echo` passes `--echo` to `ls`. `--` ends the
-  options explicitly.
-- Without `-c`, the arguments are a list command:
-  `run([<executable>, <argument>, ...])`. With `-c`, the single argument after it is a
-  string command, which runs in bash: `run("<command>")`.
-- `--echo` is `run`'s `echo=True`. `--help` prints the usage.
-- There are no options for `cwd`, `env`, `capture` and `check`: the command already
-  runs in the current directory and environment of the shell, its output is captured
-  with `$(jaz-run ...)` (the prompt still reaches the terminal), and its exit code is
-  available as usual. A failing command prints no extra message, because its own
-  stderr is visible.
-
-Exit codes:
-
-| Code               | When                                                                               |
-| ------------------ | ---------------------------------------------------------------------------------- |
-| the command's code | the command ran                                                                    |
-| `0`                | the user skipped the command, or `--help`                                          |
-| `130`              | the user aborted (`jaz-run: aborted by the user` on stderr), or pressed ctrl-c     |
-| `127`              | the executable of a list command is not found (the `CommandNotFoundError` message) |
-| `2`                | a usage error, or an error of `run` itself (an empty command, no terminal)         |
-
-Every message of `jaz-run` on stderr starts with `jaz-run: `. In a shell line of a
-Jazzoo file, a non-zero exit code stops the run; a shell script stops only when it
-uses `set -e`.
-
-`jaz-run` is installed as a console script next to `jaz` and `jazzoo`, so it is on the
-`PATH` wherever `jaz` is. Its entrypoint lives in `jazzoo.commands`, which also has a
-`__main__.py`, so a vendored copy of the sub-package works without installing jazzoo:
-`python3 -m myproject.jazzoo_commands -c "..."`.
-
-### 14.5 Running commands in a container
-
-`run_docker` turns `run` into a function that runs its commands in a Docker container
-that is already running, with `docker exec`:
-
-```python
-from jazzoo import get_config as get, run, run_docker
-
-run_be = run_docker(get("/blogs_be/container"))(run)
-
-run_be("python manage.py migrate")
-run_be(["pytest", "-x"], cwd="/app/src")
-version = run_be("python --version", capture=True).stdout
-run("docker compose ps")  # the undecorated run still runs on the host
-```
-
-A script whose commands all run in the same container may replace `run` itself:
-`run = run_docker("blogs_be")(run)`.
-
-```python
-run_docker(container, user=None, workdir=None, env=None, shell="bash") -> decorator
-```
-
-**The decorator.** `run_docker(...)` returns a decorator. It takes a function with the
-signature of `run` and returns a function with the same signature. The returned
-function turns its command into a `docker exec` command and passes that to the
-decorated function, with the other arguments. So echo, confirmation (section 14.3),
-`capture`, `check`, ctrl-c and the `CommandResult` are those of the decorated `run`, and
-decorators can be stacked (e.g. a later decorator that logs every command).
-
-**Its arguments** are the settings of `docker exec` that hold for every command:
-
-- `container` is the name or id of the container, as `docker exec` takes it; for a
-  Docker Compose stack, the `container_name` of the service. `run_docker` does not read
-  the config itself; the script passes the name, typically from `get_config`.
-- `user` becomes `--user <user>`.
-- `workdir` is the default working directory in the container (`--workdir`); without
-  it, the command runs in the `WORKDIR` of the image.
-- `env` is a dict of variables that every command gets in the container.
-- `shell` is the shell that runs a string command in the container. The default is
-  `bash`, as for `run`; an image without bash (e.g. Alpine) needs `shell="sh"`.
-
-**How a call is translated.** The decorated function always receives a list command,
-so nothing runs in a shell on the host:
-
-| Call                                  | Command that the decorated `run` receives                 |
-| ------------------------------------- | --------------------------------------------------------- |
-| `run_be("a \| grep b")`               | `docker exec <options> blogs_be bash -c "a \| grep b"`    |
-| `run_be(["pytest", "-x"])`            | `docker exec <options> blogs_be pytest -x`                |
-| `run_be(..., cwd="/app/src")`         | `docker exec --workdir /app/src ... blogs_be ...`         |
-| `run_be(..., env={"DEBUG": "1"})`     | `docker exec --env DEBUG=1 ... blogs_be ...`              |
-
-- `cwd` is a directory in the container. It replaces `workdir` for this call, and is
-  not checked on the host: the decorated function is called with `cwd=None`. The
-  command never inherits the host's current directory.
-- `env` is merged over the `env` of `run_docker` (the call wins) and passed with
-  `--env`; it does not change the environment of the `docker` client. The variables
-  that the container already has (e.g. from the `env_file` of its service) are kept.
-- `capture`, `check` and `echo` are passed on unchanged.
-- The options always come in the same order, so that the echo and the prompt are
-  predictable: `docker exec --interactive [--tty] [--user <user>] [--workdir <dir>]
-  [--env <name>=<value> ...] <container> <command>`. The `--env` options follow the
-  order of the merged dict: the variables of `run_docker` first, then the new ones of
-  the call.
-- An empty command is a `ValueError`, raised before the `docker exec` command is built,
-  as for `run`. An empty or blank `container` is a `ValueError`, raised by
-  `run_docker(...)` itself, before anything is decorated.
-
-**Terminal.** `--interactive` is always passed, so the command reads the script's stdin,
-as with `run`. `--tty` is passed only when `capture` is false and both stdin and stdout
-of the script are terminals. So `run_be("fish")` opens an interactive shell in the
-container, while captured output stays clean (a tty would merge stderr into stdout and
-end lines with `\r\n`), and a script without a terminal (CI) does not fail with docker's
-`the input device is not a TTY`.
-
-**What the user sees.** The echo, the confirmation prompt, `CommandResult.command` and
-the message of `CommandFailedError` show the full `docker exec` command, because that is
-what runs:
-
-```
-(/home/jane/blogs) docker exec --interactive --tty --workdir /app/src blogs_be pytest -x
-confirm? [Y/n/q]
-```
-
-Values passed with `env` are therefore visible in the echo and the prompt; secrets
-belong in the env file of the container instead.
-
-**Errors.**
-
-- A missing `docker` executable on the host is a `CommandNotFoundError`, raised by the
-  decorated `run`.
-- A container that does not exist or is not running, and an executable that does not
-  exist in the container, are reported by `docker exec` itself (on stderr, with a
-  non-zero exit code), so with `check=True` they raise `CommandFailedError`.
-  `run_docker` does not check the container beforehand, which would cost an extra
-  `docker` call per command.
-
-**Ctrl-c.** With `--tty`, a ctrl-c reaches the command in the container through the
-tty. Without a tty, the ctrl-c only reaches the `docker` client (`docker exec` does not
-forward signals), and the command in the container may keep running.
-
-**Not included.** Starting a new container from an image (`docker run`), addressing a
-container by its Docker Compose service name (`docker compose exec`), and mapping paths
-between the host and the container. `jaz-run` has no option for containers: a shell line
-writes `docker exec` itself, e.g. `jaz-run docker exec blogs_be python manage.py migrate`.
-
-### 14.6 The `jazzoo.commands` sub-package
-
-`run`, `run_docker`, `CommandResult` and the command errors live in the sub-package
-`jazzoo.commands`, and are re-exported by `jazzoo`, so `from jazzoo import run` works.
-Like `jazzoo.config` (section 13.6), the sub-package is self-contained: it imports only
-the standard library and its own modules, and its internal imports are relative, so a
-project can copy it into its own source tree under any name.
-
-The name `JAZZOO_CONFIRM` and the prompt are defined in `jazzoo.commands` (like the
-name of `JAZZOO_CONFIG_FILES` in `jazzoo.config`), so that a vendored copy reads the
-same variable that `jaz` sets. The rest of jazzoo uses `jazzoo.commands` only for the
-name of the variable and to check for a terminal.
-
-### 14.7 Command errors
-
-| Class                  | Meaning                                                  |
-| ---------------------- | -------------------------------------------------------- |
-| `CommandNotFoundError` | the executable of a list command is not on the `PATH`    |
-| `CommandFailedError`   | a command exited non-zero while `check=True`             |
-| `CommandAbortedError`  | the user aborted at a confirmation prompt (section 14.3) |
-
-All subclass `CommandError(Exception)`, defined in `jazzoo.commands`. Like the config
-errors, they are not `JazzooError`s. Invalid arguments (an empty command, a missing
-`cwd`) are `ValueError`s. A `run` that must confirm without a terminal raises a plain
-`CommandError` (section 14.3).
-
----
-
-## 15. Unspecified
+## 13. Unspecified
 
 - **Default shell.** Whether the shell used for jazzoo-mode lines can be configured
   (e.g. a `set shell` directive) is not yet specified.
-- **Preset config values.** Values that `get_config` could provide without a config
-  file defining them — the directory of the module that loaded a config file, the
-  root module's directory, or the directory of the config file itself (to anchor
-  relative paths inside it) — are not yet specified.
 
 ---
 
@@ -2114,25 +1603,8 @@ class ExecutionError(JazzooError): ...     # a block exited non-zero
 
 None of these shadow a Python builtin, so they can be imported without aliasing.
 
-The config errors (section 13.7) form a separate hierarchy in `jazzoo.config`:
-
-```python
-class ConfigError(Exception): ...
-class ConfigFileError(ConfigError): ...       # a config file that cannot be read
-class ConfigKeyError(ConfigError): ...        # a get_config path that does not exist
-class ConfigExpansionError(ConfigError): ...  # a ${...} that cannot be expanded
-```
-
-The command errors (section 14.7) form another separate hierarchy in
-`jazzoo.commands`:
-
-```python
-class CommandError(Exception): ...
-class CommandNotFoundError(CommandError): ...  # the executable of a list command is not found
-class CommandFailedError(CommandError): ...    # a command exited non-zero; holds the CommandResult
-class CommandAbortedError(CommandError): ...   # the user aborted at a confirmation prompt
-class UsageError(CommandError): ...            # a usage error of jaz-run
-```
+The config errors and the command errors form separate hierarchies, described in
+`jazzoo-config.md` and `jazzoo-commands.md`.
 
 ### A.2 Scopes
 
