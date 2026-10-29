@@ -23,12 +23,26 @@ from myproject.jazzoo_commands import run
 print(run("echo vendored", capture=True).stdout, end="")
 """
 
+# Runs the copy as `python3 -m myproject.jazzoo_commands -c "echo vendored"`, with
+# jazzoo blocked
+VENDORED_MAIN_SCRIPT = """
+import runpy
+import sys
+
+sys.modules["jazzoo"] = None
+sys.path.insert(0, sys.argv[1])
+sys.argv = ["jazzoo_commands", "-c", "echo vendored"]
+
+runpy.run_module("myproject.jazzoo_commands", run_name="__main__", alter_sys=True)
+"""
+
 FACADE_NAMES = [
     "run",
     "CommandResult",
     "CommandError",
     "CommandNotFoundError",
     "CommandFailedError",
+    "CommandAbortedError",
 ]
 
 
@@ -57,6 +71,16 @@ def test_commands_vendoring(context: Context):
         env.copy_commands_package("myproject/jazzoo_commands"),
         env.write_file("myproject/__init__.py", ""),
         env.run_python(VENDORED_SCRIPT, env.path("")),
+    ):
+        assert env.exit_code == 0, env.error_output
+        assert env.output == "vendored\n"
+
+    # We run the copy as a module, as jaz-run, with a string command, from a script
+    # that cannot import jazzoo.
+    #
+    # The copy should run the command, and exit with 0.
+    if env.step(
+        env.run_python(VENDORED_MAIN_SCRIPT, env.path("")),
     ):
         assert env.exit_code == 0, env.error_output
         assert env.output == "vendored\n"

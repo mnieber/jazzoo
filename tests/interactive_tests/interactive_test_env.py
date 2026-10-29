@@ -64,8 +64,3 @@ class TestEnv(JazzooTestEnv):
         self.exit_code = completed.returncode
         self.output = completed.stdout
         self.printed_err = completed.stderr
-
-    # Queries
-
-    def pty_lines(self) -> T.List[str]:
-        return (self.pty_output or "").splitlines()
