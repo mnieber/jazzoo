@@ -63,8 +63,8 @@ class TestEnv:
         except Exception as error:
             self.error = error
 
-    def evaluate(self, expression: str):
-        self.output = evaluate(self.root_module, expression)
+    def evaluate(self, expression: str, store_as: str = "output"):
+        setattr(self, store_as, evaluate(self.root_module, expression))
 
     def evaluate_and_catch_error(self, expression: str):
         self.error = None
