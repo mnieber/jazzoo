@@ -4,6 +4,7 @@ ENABLED_TEST_PACKAGES = [
     "commands_tests",
     "interactive_tests",
     "confirm_tests",
+    "zoo_tests",
 ]
 
 ALL_TEST_PACKAGES = [

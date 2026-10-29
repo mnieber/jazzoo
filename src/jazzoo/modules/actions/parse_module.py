@@ -19,7 +19,7 @@ from jazzoo.modules.rules.validate_module import (
 _GLOBALS: T.Dict[str, T.Any] = {}
 
 
-def parse_module(path: str) -> Module:
+def parse_module(path: str, invocation_dir: T.Optional[str] = None) -> Module:
     """Load a .jaz file: parse it, wire its imports, validate it, and run its
     top-level assignments.
 
@@ -31,7 +31,13 @@ def parse_module(path: str) -> Module:
     """
     _GLOBALS.clear()
     cache: T.Dict[str, Module] = {}
-    return _load_module(os.path.abspath(path), None, cache, root=None)
+    return _load_module(
+        os.path.abspath(path),
+        None,
+        cache,
+        root=None,
+        invocation_dir=invocation_dir or os.getcwd(),
+    )
 
 
 def _load_module(
@@ -39,6 +45,7 @@ def _load_module(
     importer: T.Optional[str],
     cache: T.Dict[str, Module],
     root: T.Optional[Module],
+    invocation_dir: str = "",
 ) -> Module:
     """Load one file, honouring the module cache.
 
@@ -70,6 +77,7 @@ def _load_module(
     cache[filename] = module
     if root is None:
         root = module
+        module.invocation_dir = invocation_dir
 
     for function in module.functions:
         _attach_module(function, module)

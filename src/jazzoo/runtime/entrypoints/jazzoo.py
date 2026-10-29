@@ -7,6 +7,7 @@ import typing as T
 from jazzoo.commands.rules.has_terminal import has_terminal
 from jazzoo.commands.settings import CONFIRM_ENV_VAR
 from jazzoo.errors import ArgumentError, JazzooError
+from jazzoo.runtime.utils.format_error import format_error
 from jazzoo.settings import DEFAULT_FILENAMES
 
 
@@ -104,7 +105,7 @@ def _print_listing(module, path: T.Optional[str]) -> int:
     raise JazzooError(f"no such target: {path}", filename=module.filename)
 
 
-def _run(args) -> int:
+def _run(args, invocation_dir: T.Optional[str]) -> int:
     from jazzoo.expressions.actions.evaluate_expression import evaluate_expression
     from jazzoo.functions.actions.call_function import call_function
     from jazzoo.functions.rules.get_target_by_path import get_target_by_path
@@ -119,7 +120,7 @@ def _run(args) -> int:
         os.environ[CONFIRM_ENV_VAR] = "1"
 
     filename = args.file or _find_default_file()
-    module = parse_module(filename)
+    module = parse_module(filename, invocation_dir=invocation_dir)
 
     tokens = list(args.rest)
 
@@ -150,25 +151,29 @@ def _run(args) -> int:
     return 0
 
 
-def main(argv: T.Optional[T.List[str]] = None) -> int:
-    args = _parse_args(argv)
+def _run_or_help(args, invocation_dir: T.Optional[str]) -> int:
     if args.help:
         print(
             "usage: jaz [--list [<path>]] [--list-all] [--file <path>] "
             "[--trace] [--confirm] <target> [arg=value ...]"
         )
         return 0
+    return _run(args, invocation_dir)
 
+
+def run(
+    argv: T.Optional[T.List[str]] = None, invocation_dir: T.Optional[str] = None
+) -> int:
+    # Lets the errors pass. invocation_dir defaults to the current directory.
+    return _run_or_help(_parse_args(argv), invocation_dir)
+
+
+def main(argv: T.Optional[T.List[str]] = None) -> int:
+    args = _parse_args(argv)
     try:
-        return _run(args)
+        return _run_or_help(args, None)
     except JazzooError as error:
-        location = error.filename or ""
-        if location and error.line is not None:
-            location = f"{os.path.basename(location)}:{error.line}"
-        elif location:
-            location = os.path.basename(location)
-        prefix = f"{location}: " if location else ""
-        print(f"{prefix}error: {error.message}", file=sys.stderr)
+        print(format_error(error), file=sys.stderr)
         if args.trace:
             traceback.print_exc()
         return 1

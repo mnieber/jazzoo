@@ -1,0 +1,7 @@
+output_dir: doc/spec
+component_name: jazzoo
+package_config_by_name:
+  jazzoo:
+    output_dir: .
+    scenario_paths:
+      - extra/spec_src/scenarios/**/scenario.py

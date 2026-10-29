@@ -637,14 +637,15 @@ All `⚙️` variables are read-only.
 
 Constant for the run:
 
-| Variable                  | Value                                            |
-| ------------------------- | ------------------------------------------------ |
-| `⚙️.module.basename`      | filename of the current module, e.g. `index.jaz` |
-| `⚙️.module.path`          | absolute path of the current module              |
-| `⚙️.module.dirname`       | absolute path of the current module's directory  |
-| `⚙️.root_module.basename` | filename of the root module                      |
-| `⚙️.root_module.path`     | absolute path of the root module                 |
-| `⚙️.root_module.dirname`  | absolute path of the root module's directory     |
+| Variable                  | Value                                             |
+| ------------------------- | ------------------------------------------------- |
+| `⚙️.module.basename`      | filename of the current module, e.g. `index.jaz`  |
+| `⚙️.module.path`          | absolute path of the current module               |
+| `⚙️.module.dirname`       | absolute path of the current module's directory   |
+| `⚙️.root_module.basename` | filename of the root module                       |
+| `⚙️.root_module.path`     | absolute path of the root module                  |
+| `⚙️.root_module.dirname`  | absolute path of the root module's directory      |
+| `⚙️.invocation_dir`       | the directory that `jaz` or `zoo` was called from |
 
 Updated as a function body runs (section 9.4):
 
@@ -1916,9 +1917,9 @@ jaz-run [--echo] -c "<command>"                       # a string command, run in
   `jaz-run` starts the command, and everything after it belongs to the command (as
   with `env` and `sudo`): `jaz-run ls --echo` passes `--echo` to `ls`. `--` ends the
   options explicitly.
-- Without `-c`, the arguments are a list command: `run([<executable>, <argument>,
-  ...])`. With `-c`, the single argument after it is a string command, which runs in
-  bash: `run("<command>")`.
+- Without `-c`, the arguments are a list command:
+  `run([<executable>, <argument>, ...])`. With `-c`, the single argument after it is a
+  string command, which runs in bash: `run("<command>")`.
 - `--echo` is `run`'s `echo=True`. `--help` prints the usage.
 - There are no options for `cwd`, `env`, `capture` and `check`: the command already
   runs in the current directory and environment of the shell, its output is captured
@@ -1960,11 +1961,11 @@ name of the variable and to check for a terminal.
 
 ### 14.6 Command errors
 
-| Class                  | Meaning                                                      |
-| ---------------------- | ------------------------------------------------------------ |
-| `CommandNotFoundError` | the executable of a list command is not on the `PATH`        |
-| `CommandFailedError`   | a command exited non-zero while `check=True`                 |
-| `CommandAbortedError`  | the user aborted at a confirmation prompt (section 14.3)     |
+| Class                  | Meaning                                                  |
+| ---------------------- | -------------------------------------------------------- |
+| `CommandNotFoundError` | the executable of a list command is not on the `PATH`    |
+| `CommandFailedError`   | a command exited non-zero while `check=True`             |
+| `CommandAbortedError`  | the user aborted at a confirmation prompt (section 14.3) |
 
 All subclass `CommandError(Exception)`, defined in `jazzoo.commands`. Like the config
 errors, they are not `JazzooError`s. Invalid arguments (an empty command, a missing
