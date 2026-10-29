@@ -5,6 +5,8 @@ ENABLED_TEST_PACKAGES = [
 
 ALL_TEST_PACKAGES = [
     "config_tests",
+    "commands_tests",
+    "interactive_tests",
 ]
 
 # Flat test files whose code is not written yet
