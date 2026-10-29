@@ -5,7 +5,7 @@ from jazzoo import ExecutionError
 JAZZOO_SOURCE = """
 [interactive]
 migrate():
-    @echo "database is locked" >&2; exit 3
+    @printf 'database is %s\\n' locked >&2; exit 3
 """
 
 

@@ -15,6 +15,7 @@ def run_block(
     filename: T.Optional[str] = None,
     line: T.Optional[int] = None,
     is_quiet: bool = False,
+    is_interactive: bool = False,
 ) -> str:
     """Run one block as a single subprocess and return its raw stdout.
 
@@ -34,13 +35,31 @@ def run_block(
         handle.close()
         os.chmod(handle.name, os.stat(handle.name).st_mode | stat.S_IEXEC)
 
-        completed = subprocess.run(
-            [handle.name],
-            capture_output=True,
-            text=True,
-        )
+        if is_interactive:
+            # Whatever was echoed must reach the console before the block's output
+            sys.stdout.flush()
+            sys.stderr.flush()
+            completed = subprocess.run([handle.name])
+        else:
+            completed = subprocess.run(
+                [handle.name],
+                capture_output=True,
+                text=True,
+            )
     finally:
         os.unlink(handle.name)
+
+    # An interactive block writes to the console itself, and Jazzoo never sees its
+    # output, not even in a quiet call.
+    if is_interactive:
+        if completed.returncode != 0:
+            raise ExecutionError(
+                f"recipe failed with exit code {completed.returncode}: "
+                f"command failed: {body.strip()}",
+                filename=filename,
+                line=line,
+            )
+        return ""
 
     # The block's own output goes to the console as well as being captured for
     # ⚙️.stdout, so a target behaves like the commands it runs. A quiet block keeps

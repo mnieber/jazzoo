@@ -36,7 +36,7 @@ def create_env(context: Context):
     return Env(context)
 
 
-def test_vendoring(context: Context):
+def test_commands_vendoring(context: Context):
     # Create the test environment
     env = create_env(context)
 

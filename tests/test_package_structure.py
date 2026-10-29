@@ -39,6 +39,10 @@ def test_the_facade_exports_every_public_name():
         # Config
         expected = {
             "ArgumentError",
+            "CommandError",
+            "CommandFailedError",
+            "CommandNotFoundError",
+            "CommandResult",
             "ConfigError",
             "ConfigExpansionError",
             "ConfigFileError",
@@ -55,6 +59,7 @@ def test_the_facade_exports_every_public_name():
             "get_targets",
             "parse_module",
             "prepare_config",
+            "run",
         }
 
         # Assert

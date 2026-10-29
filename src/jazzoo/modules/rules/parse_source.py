@@ -11,6 +11,7 @@ from jazzoo.modules.rules.parse_body import parse_body
 from jazzoo.modules.rules.parse_call_arguments import parse_call_arguments
 from jazzoo.modules.rules.parse_dependencies import parse_dependencies
 from jazzoo.modules.rules.parse_parameters import parse_parameters
+from jazzoo.settings import KNOWN_ATTRIBUTES
 from jazzoo.utils.indent_of import indent_of
 from jazzoo.utils.join_continuations import join_continuations
 
@@ -56,7 +57,12 @@ def parse_source(source: str, filename: str) -> ParsedSource:
 
         attribute_match = _ATTRIBUTE_RE.match(trimmed)
         if attribute_match:
-            pending_attributes.append(attribute_match.group("name"))
+            name = attribute_match.group("name")
+            if name not in KNOWN_ATTRIBUTES:
+                raise ParseError(
+                    f"unknown attribute: [{name}]", filename=filename, line=line_no
+                )
+            pending_attributes.append(name)
             index += 1
             continue
 
@@ -83,6 +89,7 @@ def parse_source(source: str, filename: str) -> ParsedSource:
                         function_match.group("params"), filename, line_no
                     ),
                     is_target="private" not in pending_attributes,
+                    is_interactive="interactive" in pending_attributes,
                     dependencies=parse_dependencies(
                         function_match.group("deps"), filename, line_no
                     ),

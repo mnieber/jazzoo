@@ -8,3 +8,6 @@ DEFAULT_FILENAMES: T.Tuple[str, ...] = ("jazzoo", "jazzoo.jaz")
 
 # Used for jazzoo-mode lines and for a bare `#!` returning to jazzoo mode.
 DEFAULT_SHEBANG = "#!/usr/bin/env bash"
+
+# The attributes that may precede a function definition.
+KNOWN_ATTRIBUTES: T.FrozenSet[str] = frozenset(["private", "interactive"])

@@ -106,7 +106,7 @@ def call_function(
         )
 
     for block in function.body:
-        _run_one_block(block, call_frame, evaluate_expression)
+        _run_one_block(block, call_frame, evaluate_expression, function.is_interactive)
 
     if "retval" in call_frame.locals:
         return call_frame.locals["retval"]
@@ -154,7 +154,9 @@ def _lookup_function(path: str, frame: Frame, call_site) -> Function:
     return function
 
 
-def _run_one_block(block, frame: Frame, evaluate_expression) -> None:
+def _run_one_block(
+    block, frame: Frame, evaluate_expression, is_interactive: bool
+) -> None:
     """Sweep a block, then execute it.
 
     Sweeping walks the lines top to bottom: a jazzoo assignment is evaluated and
@@ -192,6 +194,7 @@ def _run_one_block(block, frame: Frame, evaluate_expression) -> None:
                 filename=block.filename,
                 line=block_line.line,
                 is_quiet=frame.is_quiet,
+                is_interactive=is_interactive,
             )
             continue
 
@@ -210,6 +213,7 @@ def _run_one_block(block, frame: Frame, evaluate_expression) -> None:
         filename=block.filename,
         line=swept[0][1],
         is_quiet=frame.is_quiet,
+        is_interactive=is_interactive,
     )
 
 
