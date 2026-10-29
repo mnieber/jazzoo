@@ -18,7 +18,9 @@ ALL_TEST_PACKAGES = [
 ]
 
 # Test files whose code is not written yet
-DISABLED_TEST_FILES = []
+DISABLED_TEST_FILES = [
+    "interactive_tests/test_interactive_impl/test_attribute_lists.py",
+]
 
 collect_ignore = [
     package for package in ALL_TEST_PACKAGES if package not in ENABLED_TEST_PACKAGES
