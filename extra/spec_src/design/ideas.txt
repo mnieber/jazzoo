@@ -2,3 +2,10 @@ Ideas:
 
 - simple logic and arithmetic, e.g. `🐆.doit = "yes" if 🐆.foo > 2 or 🐆.bar else "no"`
 - lambda functions: 🐆.foo = (name="okay") => 🐭.log(🐆.name)
+- **Preset values for locations.** Values in the config object that `get` provides
+  without a config file defining them: the directory of the Jazzoo module that called
+  `load_config` for a given config file, and the root module's directory. This
+  requires `JAZZOO_CONFIG_FILES` to carry the calling module's directory next to
+  each config path, and the root module's directory once.
+- **The directory of the config file itself**, so that relative paths inside a
+  config file (`src: ./src`) can be anchored to the file.
