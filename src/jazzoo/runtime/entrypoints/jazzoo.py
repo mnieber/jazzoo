@@ -125,9 +125,7 @@ def _run(args) -> int:
     target_name, tokens = tokens[0], tokens[1:]
     target = get_target_by_path(module, target_name)
     if target is None:
-        raise JazzooError(
-            f"no such target: {target_name}", filename=module.filename
-        )
+        raise JazzooError(f"no such target: {target_name}", filename=module.filename)
 
     arguments = _split_target_arguments(
         target_name,
