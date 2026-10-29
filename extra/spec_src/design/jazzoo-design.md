@@ -27,6 +27,8 @@ the three namespace sigils.
 | work with JSON                                           | [4.4](#44-structured-values), [7.5](#75-pipe-operators)                       |
 | build and manipulate file paths                          | [6.5](#65-path-joins), [7.5](#75-pipe-operators)                              |
 | run several lines in one shell, or run Python            | [9.2](#92-shebang-blocks)                                                     |
+| show a command's output live, or prompt the user         | [9.7](#97-interactive-functions)                                              |
+| run commands from a Python script                        | [14](#14-running-commands)                                                    |
 | hide a command's echo, or silence a function             | [9.6](#96-console-output)                                                     |
 | make a task depend on another                            | [8.5](#85-dependencies)                                                       |
 | pre-fill some arguments of a function                    | [8.8](#88-currying)                                                           |
@@ -798,7 +800,7 @@ module that defines the function.
 
 ### 8.4 Attributes
 
-Attributes appear on the line before the function:
+Attributes appear on the lines before the function, one per line:
 
 ```
 [private]
@@ -806,9 +808,14 @@ _helper(name):
     echo "Internal helper: 🐆.name"
 ```
 
-| Attribute   | Effect                                                                             |
-| ----------- | ---------------------------------------------------------------------------------- |
-| `[private]` | not a target: hidden from `jaz --list` and the CLI, but callable from `.jaz` files |
+| Attribute       | Effect                                                                             |
+| --------------- | ---------------------------------------------------------------------------------- |
+| `[private]`     | not a target: hidden from `jaz --list` and the CLI, but callable from `.jaz` files |
+| `[interactive]` | its blocks are not captured, but use the terminal directly (section 9.7)           |
+
+Several attributes may precede one function (`[private]` and `[interactive]`), in any
+order. An unknown attribute is a `ParseError`. Local functions may have attributes too
+(section 8.10).
 
 ### 8.5 Dependencies
 
@@ -929,6 +936,24 @@ Local functions have the same parameters, call syntax and body forms as module
 functions, including nested local functions. Each call gets its own fresh `🐆`
 namespace; the enclosing function's locals are not visible and must be passed as
 arguments.
+
+A local function may be marked `[interactive]` (section 9.7), which makes it easy to
+run one step of a function interactively:
+
+```
+deploy():
+    [interactive]
+    🐆.build():
+        docker compose build
+
+    🐆.build()                         # output streams to the console
+    🐆.version = 🐭.read-version()     # captured, as usual
+```
+
+In a body, a `[name]` line is an attribute only when the next non-empty line (after
+any further attributes) is a local function header; anywhere else it is an ordinary
+shell line. `[private]` on a local function is a `ParseError`, since a local function
+is never a target.
 
 ---
 
@@ -1075,6 +1100,9 @@ A function's return value is `🐆.retval`:
   therefore returns the output of its last block.
 - Once assigned, it keeps the assigned value; later blocks do not change it.
 
+In an interactive function (section 9.7), the output of a block is not captured, so
+`⚙️.stdout` and `⚙️.output` are `""` after each block.
+
 ```
 debug(name="me"):
     echo "Test 🐆.name"
@@ -1089,7 +1117,8 @@ doit():
 ### 9.5 Failure
 
 If any block exits with a non-zero status, the run aborts with an `ExecutionError`
-(section 12.3).
+(section 12.3). Its message includes the block's stderr; in an interactive function,
+where stderr is not captured, it says `command failed: <command>` instead.
 
 ### 9.6 Console output
 
@@ -1120,8 +1149,58 @@ usual.
 A call used as a statement — a dependency, a call on its own line, or a target invoked
 from the CLI — is not quiet.
 
+An interactive function (section 9.7) is the exception: its output reaches the
+console even in a quiet call. Its shell lines are not echoed, as in any quiet call.
+
 Quiet calls matter especially for module-level assignments, which run every time the
 module loads, including for `jaz --list`.
+
+### 9.7 Interactive functions
+
+Jazzoo captures the stdout and stderr of every block, for `⚙️.stdout`, the return
+value and the error message, and prints them when the block ends. That does not suit
+two kinds of blocks: a long-running command whose progress messages should appear as
+they come (`docker compose build`), and a command that talks to the user (a prompt, a
+menu, `fish`, `vim`, `docker exec -it ...`). Such blocks never need to tell Jazzoo what
+they printed, and are put in a function marked `[interactive]`:
+
+```
+[interactive]
+shell():
+    docker exec -it blogs_be fish
+
+[interactive]
+build():
+    #!/usr/bin/env python3
+    from jazzoo import run
+
+    print("Building the images")
+    run("docker compose build")
+```
+
+- The attribute applies to every block of the function: its shell lines and its
+  shebang blocks. To make only part of a function interactive, split it, e.g. with a
+  local function (section 8.10).
+- An interactive block inherits stdin, stdout and stderr from `jaz`; nothing is
+  captured. Its output appears as it is written and in the order it is written, whether
+  it comes from a shell line, from a script's own `print`, or from a command that the
+  script starts with `run` (section 14). When `jaz` runs in a terminal, the block sees
+  a terminal, so prompts, colours, progress bars, full-screen programs and ctrl-c work
+  as in a shell.
+- The output goes wherever `jaz`'s own output goes, so redirection
+  (`jaz build > build.log`) and CI logs work as usual.
+- After an interactive block, `⚙️.stdout` and `⚙️.output` are `""`, so the function's
+  default return value is `""`. An explicit `🐆.retval` still works.
+- Shell lines are still echoed, and `@` still suppresses the echo: the echo is printed
+  by `jaz` before the block starts, and is not part of the block's output.
+- A non-zero exit code raises an `ExecutionError`, whose message says
+  `command failed: <command>`; the details were already shown on the console.
+- An interactive function that is called quietly still shows its output (section
+  9.6). Its value is `""`.
+- The attribute is not inherited: the functions that an interactive function calls run
+  with their own attributes.
+- To pass data back to Jazzoo, an interactive block can use the filesystem (e.g. write
+  a file that a later line reads with `⚙️.parse`), or its exit code.
 
 ---
 
@@ -1434,6 +1513,8 @@ broken call site in one target therefore prevents every target from running.
 | Two exports landing different functions under one name in one layer   | `ParseError`        |
 | A module exporting both a function and a layer under one name         | `ParseError`        |
 | A call through a boolean whose branches are not all functions         | `ParseError`        |
+| An unknown attribute (`[interactve]`)                                 | `ParseError`        |
+| `[private]` on a local function                                       | `ParseError`        |
 | A positional argument in a `.jaz` file (`🐭.build("dev")`)            | `ArgumentError`     |
 | A pipe stage leaving zero, or more than one, parameter unbound        | `ArgumentError`     |
 | Binding an unknown parameter in a curry expression                    | `ArgumentError`     |
@@ -1671,7 +1752,95 @@ config file that supplied the value.
 
 ---
 
-## 14. Unspecified
+## 14. Running Commands
+
+### 14.1 Overview
+
+A script that a Jazzoo file runs — a Python shebang block, or any `python foo.py`
+shell line — runs commands with `run`:
+
+```python
+from jazzoo import run
+
+run("my-app --config=simple doit")                      # runs in the foreground
+run("docker compose logs | grep error")                 # a string runs in bash
+run(["tmux", "send-keys", "-t", pane, command, "C-m"])  # a list runs directly
+head = run("git rev-parse HEAD", capture=True).stdout
+if run("tmux has-session -t blogs", check=False).returncode != 0:
+    run("tmux new-session -d -s blogs")
+```
+
+Jazzoo files themselves do not need `run`: a shell line already runs a command.
+
+### 14.2 `run`
+
+```python
+run(command, cwd=None, env=None, capture=False, check=True, echo=False) -> CommandResult
+```
+
+**The command** is a string or a list:
+
+- A string runs in bash (`bash -c "<command>"`), so pipes, `&&`, `;`, redirection,
+  `$HOME`, `~`, globs and quoting work as in a shell line of a Jazzoo file.
+- A list runs directly, without a shell: the first term is the executable, and the
+  others are passed as they are. Its executable is looked up on the `PATH` of the
+  command's environment before anything runs; a term that contains a `/` is used as a
+  path. An executable that is not found is a `CommandNotFoundError`. For a string,
+  bash reports an unknown command itself (exit code 127).
+- An empty command is a `ValueError`.
+
+A value that is pasted into a string becomes shell syntax, as in section 5.5. Use the
+list form for values from variables, or quote them with `shlex.quote`.
+
+**Where and how it runs:**
+
+- `cwd` is the working directory of the command; a directory that does not exist is a
+  `ValueError`, raised before anything runs.
+- `env` is a dict of variables that is laid over `os.environ`; the script's own
+  environment is not changed.
+- By default the command runs in the foreground: it inherits the script's stdin,
+  stdout and stderr, and `run` waits until it ends. Whether it reaches the terminal
+  depends on where the script's stdout goes; under `jaz`, that is the terminal in an
+  interactive function (section 9.7).
+- With `capture=True`, stdout and stderr are captured as text instead of being shown.
+  Stdin is still inherited.
+- With `echo=True`, the command is printed before it runs. A string is shown as given,
+  a list with `shlex.join`; with `cwd`, the directory comes first:
+  `(/app/src) python manage.py migrate`.
+
+**Ctrl-c.** While a command runs, `run` ignores SIGINT in the script (in the main
+thread), so a ctrl-c reaches the command only. Afterwards the old handler is restored.
+If the command was ended by SIGINT, `run` raises `KeyboardInterrupt`.
+
+**The result** is a `CommandResult` with `command` (as given), `returncode`, and
+`stdout` and `stderr` (`None` unless captured). With `check=True` (the default), a
+non-zero exit code raises `CommandFailedError`, which holds the result and names the
+command and the exit code (and includes the captured stderr). With `check=False`,
+`run` returns the result whatever the exit code, for commands that answer a question
+through their exit code (`grep -q`, `tmux has-session`).
+
+### 14.3 The `jazzoo.commands` sub-package
+
+`run`, `CommandResult` and the command errors live in the sub-package
+`jazzoo.commands`, and are re-exported by `jazzoo`, so `from jazzoo import run` works.
+Like `jazzoo.config` (section 13.6), the sub-package is self-contained: it imports only
+the standard library and its own modules, and its internal imports are relative, so a
+project can copy it into its own source tree under any name.
+
+### 14.4 Command errors
+
+| Class                  | Meaning                                                      |
+| ---------------------- | ------------------------------------------------------------ |
+| `CommandNotFoundError` | the executable of a list command is not on the `PATH`        |
+| `CommandFailedError`   | a command exited non-zero while `check=True`                 |
+
+Both subclass `CommandError(Exception)`, defined in `jazzoo.commands`. Like the config
+errors, they are not `JazzooError`s. Invalid arguments (an empty command, a missing
+`cwd`) are `ValueError`s.
+
+---
+
+## 15. Unspecified
 
 - **Default shell.** Whether the shell used for jazzoo-mode lines can be configured
   (e.g. a `set shell` directive) is not yet specified.
@@ -1713,6 +1882,15 @@ class ConfigKeyError(ConfigError): ...        # a get_config path that does not 
 class ConfigExpansionError(ConfigError): ...  # a ${...} that cannot be expanded
 ```
 
+The command errors (section 14.4) form another separate hierarchy in
+`jazzoo.commands`:
+
+```python
+class CommandError(Exception): ...
+class CommandNotFoundError(CommandError): ...  # the executable of a list command is not found
+class CommandFailedError(CommandError): ...    # a command exited non-zero; holds the CommandResult
+```
+
 ### A.2 Scopes
 
 The parse tree is a tree of nested scopes: the root
@@ -1739,6 +1917,7 @@ class Parameter:
 class Function(Scope):
     parameters: T.List[Parameter]
     is_target: bool              # False for [private] functions
+    is_interactive: bool         # True for [interactive] functions
 ```
 
 - A `Module` contains sub-modules and functions; a `Function` contains local functions
