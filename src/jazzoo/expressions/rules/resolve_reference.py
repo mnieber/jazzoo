@@ -22,6 +22,9 @@ def _system_value(reference: Reference, context) -> T.Any:
     if parts[0] == "output":
         return strip_one_newline(context.stdout)
 
+    if parts == ["invocation_dir"]:
+        return context.root_module.invocation_dir
+
     if parts[0] in ("module", "root_module") and len(parts) == 2:
         module = context.module if parts[0] == "module" else context.root_module
         path = module.filename

@@ -24,3 +24,5 @@ class Module(Scope):
     # False while the module's own top-level assignments are still running, which is
     # how a load-time circular reference is detected (design section 14).
     is_initialized: bool = False
+    # The directory that jaz (or zoo) was called from. Only set on the root module.
+    invocation_dir: str = ""
