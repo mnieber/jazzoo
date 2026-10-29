@@ -5,6 +5,7 @@ from jazzoo.commands import (
     CommandNotFoundError,
     CommandResult,
     run,
+    run_docker,
 )
 from jazzoo.config import (
     ConfigError,
@@ -52,4 +53,5 @@ __all__ = [
     "parse_module",
     "prepare_config",
     "run",
+    "run_docker",
 ]

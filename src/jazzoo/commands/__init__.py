@@ -1,4 +1,5 @@
 from .actions.run import run
+from .actions.run_docker import run_docker
 from .errors import (
     CommandAbortedError,
     CommandError,
@@ -14,4 +15,5 @@ __all__ = [
     "CommandNotFoundError",
     "CommandResult",
     "run",
+    "run_docker",
 ]

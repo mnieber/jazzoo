@@ -61,6 +61,7 @@ def test_the_facade_exports_every_public_name():
             "parse_module",
             "prepare_config",
             "run",
+            "run_docker",
         }
 
         # Assert
