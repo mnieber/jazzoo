@@ -5,11 +5,11 @@ import sys
 import typing as T
 from pathlib import Path
 
-from jazzoo_test_env import Context, TestEnv as JazzooTestEnv
+from jazzoo_test_env import CTRL_C, CTRL_D, Context, TestEnv as JazzooTestEnv
 
 from jazzoo.commands import run
 
-__all__ = ["Context", "TestEnv"]
+__all__ = ["CTRL_C", "CTRL_D", "Context", "TestEnv"]
 
 
 class TestEnv(JazzooTestEnv):
@@ -51,6 +51,18 @@ class TestEnv(JazzooTestEnv):
             text=True,
             start_new_session=True,
             timeout=30,
+        )
+
+    def run_python_script_in_pty(
+        self,
+        name: str,
+        answers: T.Sequence[str] = (),
+        stdout_file: T.Optional[str] = None,
+    ):
+        """Runs a script below tmp_path in a terminal, and answers its confirmation
+        prompts (see _run_in_pty)."""
+        self._run_in_pty(
+            [sys.executable, self.path(name)], answers=answers, stdout_file=stdout_file
         )
 
     # Queries
