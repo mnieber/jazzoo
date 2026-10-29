@@ -10,6 +10,7 @@ dev = ["pytest"]
 [project.scripts]
 jazzoo = "jazzoo.runtime.entrypoints.jazzoo:main"
 jaz = "jazzoo.runtime.entrypoints.jazzoo:main"
+jaz-run = "jazzoo.commands.entrypoints.jaz_run:main"
 
 [tool.setuptools.package-dir]
 "" = "src"

@@ -11,3 +11,5 @@ class CommandResult:
     # None unless the output was captured
     stdout: T.Optional[str] = None
     stderr: T.Optional[str] = None
+    # True when the user skipped the command at the confirmation prompt
+    skipped: bool = False

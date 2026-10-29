@@ -4,6 +4,8 @@ import sys
 import traceback
 import typing as T
 
+from jazzoo.commands.rules.has_terminal import has_terminal
+from jazzoo.commands.settings import CONFIRM_ENV_VAR
 from jazzoo.errors import ArgumentError, JazzooError
 from jazzoo.settings import DEFAULT_FILENAMES
 
@@ -16,9 +18,11 @@ def _parse_args(argv: T.Optional[T.List[str]] = None):
     parser.add_argument("--list", dest="list_targets", action="store_true")
     parser.add_argument("--list-all", dest="list_all", action="store_true")
     parser.add_argument("--trace", dest="trace", action="store_true")
+    parser.add_argument("--confirm", dest="confirm", action="store_true")
     parser.add_argument("--help", "-h", dest="help", action="store_true")
     parser.add_argument("rest", nargs="*")
-    return parser.parse_args(argv)
+    # The options may also follow the target and its arguments
+    return parser.parse_intermixed_args(argv)
 
 
 def _find_default_file() -> str:
@@ -107,6 +111,13 @@ def _run(args) -> int:
     from jazzoo.modules.actions.parse_module import _GLOBALS, parse_module
     from jazzoo.modules.models.frame import Frame
 
+    # Only the commands of a target are confirmed, so listing needs no terminal
+    runs_target = bool(args.rest) and not args.list_targets and not args.list_all
+    if args.confirm and runs_target:
+        if not has_terminal():
+            raise JazzooError("--confirm needs a terminal")
+        os.environ[CONFIRM_ENV_VAR] = "1"
+
     filename = args.file or _find_default_file()
     module = parse_module(filename)
 
@@ -144,7 +155,7 @@ def main(argv: T.Optional[T.List[str]] = None) -> int:
     if args.help:
         print(
             "usage: jaz [--list [<path>]] [--list-all] [--file <path>] "
-            "[--trace] <target> [arg=value ...]"
+            "[--trace] [--confirm] <target> [arg=value ...]"
         )
         return 0
 
