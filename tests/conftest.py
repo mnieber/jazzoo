@@ -5,6 +5,7 @@ ENABLED_TEST_PACKAGES = [
     "interactive_tests",
     "confirm_tests",
     "zoo_tests",
+    "docker_tests",
 ]
 
 ALL_TEST_PACKAGES = [
