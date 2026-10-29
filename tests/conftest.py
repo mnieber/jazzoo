@@ -13,6 +13,7 @@ ALL_TEST_PACKAGES = [
     "interactive_tests",
     "confirm_tests",
     "zoo_tests",
+    "docker_tests",
 ]
 
 # Test files whose code is not written yet
