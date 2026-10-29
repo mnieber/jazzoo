@@ -1,3 +1,10 @@
+from jazzoo.commands import (
+    CommandError,
+    CommandFailedError,
+    CommandNotFoundError,
+    CommandResult,
+    run,
+)
 from jazzoo.config import (
     ConfigError,
     ConfigExpansionError,
@@ -22,6 +29,10 @@ from jazzoo.modules.rules.get_module_by_path import get_module_by_path
 
 __all__ = [
     "ArgumentError",
+    "CommandError",
+    "CommandFailedError",
+    "CommandNotFoundError",
+    "CommandResult",
     "ConfigError",
     "ConfigExpansionError",
     "ConfigFileError",
@@ -38,4 +49,5 @@ __all__ = [
     "get_targets",
     "parse_module",
     "prepare_config",
+    "run",
 ]

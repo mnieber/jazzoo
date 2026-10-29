@@ -15,6 +15,8 @@ class Function(Scope):
     parameters: T.List[Parameter] = []
     # False for [private] functions, which are not callable from the CLI.
     is_target: bool = True
+    # True for [interactive] functions, whose blocks are not captured.
+    is_interactive: bool = False
     # Calls declared after the colon, run before the body.
     dependencies: T.List["CallSite"] = []
     body: T.List["Block"] = []
