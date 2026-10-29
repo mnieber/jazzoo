@@ -7,5 +7,9 @@ Ideas:
   `load_config` for a given config file, and the root module's directory. This
   requires `JAZZOO_CONFIG_FILES` to carry the calling module's directory next to
   each config path, and the root module's directory once.
-- **The directory of the config file itself**, so that relative paths inside a
-  config file (`src: ./src`) can be anchored to the file.
+  - **The directory of the config file itself**, so that relative paths inside a
+    config file (`src: ./src`) can be anchored to the file.
+- Jazzoo [parse_args(f)] decorator
+  F runs on the current inputs of the decorated function
+  F also receives all kwargs and args of type “++foo”, “++foo=1” and “+f”
+  F returns the augmented inputs of the decorated function as a json object
