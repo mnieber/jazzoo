@@ -19,7 +19,9 @@ def substitute_references(
     given, evaluates an inline `🐭.name(args)` call, and `evaluate_braced` evaluates
     an expression written between braces.
     """
-    matches: T.List[ReferenceMatch] = parse_references(text, filename=filename, line=line)
+    matches: T.List[ReferenceMatch] = parse_references(
+        text, filename=filename, line=line
+    )
     if not matches:
         return text
 

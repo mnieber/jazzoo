@@ -99,9 +99,7 @@ def _validate_function(
             if assignment is not None:
                 # An unquoted string on the right-hand side is a ParseError, and is
                 # decidable from the source alone.
-                _validate_expression(
-                    candidate, block.filename, block_line.line
-                )
+                _validate_expression(candidate, block.filename, block_line.line)
             _validate_pipes(
                 candidate, module, in_scope, block.filename, block_line.line
             )
@@ -180,7 +178,8 @@ def _function_valued_locals(
 
             held = outer.get(path) or found.get(path)
             target = (
-                held.function if held is not None
+                held.function
+                if held is not None
                 else get_function_by_path(module, path)
             )
             if target is None:
@@ -200,9 +199,7 @@ def _validate_expression(
     try:
         parse_expression(source)
     except ParseError as error:
-        raise ParseError(
-            error.message, filename=filename, line=line
-        ) from None
+        raise ParseError(error.message, filename=filename, line=line) from None
 
 
 def _validate_braced_expressions(
@@ -264,7 +261,9 @@ def _validate_pipes(
             continue
 
         held = function_valued.get(path)
-        target = held.function if held is not None else get_function_by_path(module, path)
+        target = (
+            held.function if held is not None else get_function_by_path(module, path)
+        )
         if target is None:
             continue
 
@@ -333,9 +332,7 @@ def _validate_call(
 
     target = _find_function(path, module, enclosing, function_valued)
     if target is None:
-        raise ResolutionError(
-            f"no such function: {path}", filename=filename, line=line
-        )
+        raise ResolutionError(f"no such function: {path}", filename=filename, line=line)
 
     held = function_valued.get(path)
     if held is not None:
@@ -346,9 +343,7 @@ def _validate_call(
                     filename=filename,
                     line=line,
                 )
-    _validate_arguments(
-        path, target.name, target.parameters, arguments, filename, line
-    )
+    _validate_arguments(path, target.name, target.parameters, arguments, filename, line)
 
 
 def _validate_arguments(
@@ -429,8 +424,7 @@ def _boolean_operand_functions(
         path = split[1]
         held = known.get(path)
         function = (
-            held.function if held is not None
-            else get_function_by_path(module, path)
+            held.function if held is not None else get_function_by_path(module, path)
         )
         if function is not None:
             found.append(function)
@@ -491,8 +485,7 @@ def _validate_against_alternatives(
         for parameter in function.parameters:
             if parameter.default is None and parameter.name not in supplied:
                 raise ArgumentError(
-                    f"{function.name}() is missing a value for "
-                    f"'{parameter.name}'",
+                    f"{function.name}() is missing a value for " f"'{parameter.name}'",
                     filename=filename,
                     line=line,
                 )

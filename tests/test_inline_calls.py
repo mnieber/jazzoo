@@ -108,8 +108,7 @@ def test_a_space_before_the_paren_means_it_is_not_a_call():
 
         # Assert
         assert (
-            evaluate(root_module, '🐭.greet(who="jane")')
-            == "Hello jane (tracing=on)"
+            evaluate(root_module, '🐭.greet(who="jane")') == "Hello jane (tracing=on)"
         )
 
 

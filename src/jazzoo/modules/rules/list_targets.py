@@ -42,7 +42,5 @@ def _walk(module: Module, prefix: str, entered: T.FrozenSet[int]) -> T.List[str]
     for layer in module.layers:
         if id(layer) in entered:
             continue
-        lines.extend(
-            _walk(layer, prefix + layer.name + ".", entered | {id(layer)})
-        )
+        lines.extend(_walk(layer, prefix + layer.name + ".", entered | {id(layer)}))
     return lines

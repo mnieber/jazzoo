@@ -23,9 +23,7 @@ pytestmark = pytest.mark.skipif(
 
 
 def _run(args, cwd):
-    return subprocess.run(
-        [_JAZ, *args], cwd=cwd, capture_output=True, text=True
-    )
+    return subprocess.run([_JAZ, *args], cwd=cwd, capture_output=True, text=True)
 
 
 def test_the_installed_binary_lists_and_runs_targets():

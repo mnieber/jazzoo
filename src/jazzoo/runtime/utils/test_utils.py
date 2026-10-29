@@ -67,7 +67,9 @@ def _split_directive(source: str) -> tuple[str, str]:
     while idx < len(lines) and lines[idx].strip() == "":
         idx += 1
     if idx >= len(lines):
-        raise ValueError("Fixture source is empty; expected a leading '# <filename>' line")
+        raise ValueError(
+            "Fixture source is empty; expected a leading '# <filename>' line"
+        )
 
     directive = lines[idx].strip()
     if not directive.startswith("#"):
@@ -78,7 +80,7 @@ def _split_directive(source: str) -> tuple[str, str]:
     if not filename:
         raise ValueError("Fixture '# <filename>' directive has no filename")
 
-    body = "\n".join(lines[idx + 1:])
+    body = "\n".join(lines[idx + 1 :])
     body = textwrap.dedent(body)
     if body and not body.endswith("\n"):
         body += "\n"

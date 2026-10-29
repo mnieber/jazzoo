@@ -84,9 +84,7 @@ def _resolve_arguments(args_text: str, path: str, frame) -> T.Dict[str, str]:
     arguments = parse_call_arguments(args_text, None, None)
     for argument in arguments:
         if argument.name is None:
-            raise ArgumentError(
-                f"arguments must be named in a .jaz file: {path}(...)"
-            )
+            raise ArgumentError(f"arguments must be named in a .jaz file: {path}(...)")
     # An argument's value is used by the callee, so calls inside it are quiet.
     with frame.quietly():
         return {
@@ -111,9 +109,7 @@ def call_value(value: T.Any, args_text: str, frame) -> str:
     )
 
 
-def call_curried(
-    curried: "CurriedFunction", arguments: T.Dict[str, str], frame
-) -> str:
+def call_curried(curried: "CurriedFunction", arguments: T.Dict[str, str], frame) -> str:
     """Call a curried function, merging the bound arguments with the caller's."""
     from jazzoo.functions.actions.call_function import call_function
 
@@ -156,9 +152,7 @@ def _evaluate_node(node: T.Any, frame) -> T.Any:
         )
 
     if isinstance(node, CallValue):
-        return call_value(
-            _evaluate_node(node.target, frame), node.args, frame
-        )
+        return call_value(_evaluate_node(node.target, frame), node.args, frame)
 
     if isinstance(node, Comparison):
         # A comparison can now sit inside `and`/`or`, so it has to yield a value of

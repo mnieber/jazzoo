@@ -83,9 +83,7 @@ def test_braces_may_hold_an_expression():
 
         # Assert
         assert evaluate(root_module, "🐭.run()") == "bash|sh|app.tar.gz"
-        assert (
-            evaluate(root_module, '🐭.run(cmd="fish")') == "fish|fish|app.tar.gz"
-        )
+        assert evaluate(root_module, '🐭.run(cmd="fish")') == "fish|fish|app.tar.gz"
 
 
 def test_a_malformed_braced_expression_is_a_parse_error():

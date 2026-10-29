@@ -39,15 +39,11 @@ def _parse_symbols(text: str) -> T.Tuple[T.List[ImportedSymbol], bool]:
         if name == "*":
             is_wildcard = True
             continue
-        symbols.append(
-            ImportedSymbol(name=name, alias=match.group("alias") or name)
-        )
+        symbols.append(ImportedSymbol(name=name, alias=match.group("alias") or name))
     return symbols, is_wildcard
 
 
-def parse_import_statement(
-    text: str, filename: str, line: int
-) -> ImportStatement:
+def parse_import_statement(text: str, filename: str, line: int) -> ImportStatement:
     """Parse one `from <path> import|export ...` line.
 
     `import` places the symbols under a mandatory namespace alias and keeps them

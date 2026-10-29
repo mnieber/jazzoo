@@ -76,8 +76,7 @@ def resolve_import(
                 continue
 
             raise ModuleImportError(
-                f"{os.path.basename(source_path)} does not export "
-                f"'{symbol.name}'",
+                f"{os.path.basename(source_path)} does not export " f"'{symbol.name}'",
                 filename=statement.filename,
                 line=statement.line,
             )
@@ -86,9 +85,7 @@ def resolve_import(
         if statement.alias is None:
             _bind_flat_export(selected, into, statement)
         else:
-            _bind_layered_export(
-                selected, selected_layers, into, statement, source
-            )
+            _bind_layered_export(selected, selected_layers, into, statement, source)
         return
 
     _bind_private_import(selected, into, statement, source)
@@ -98,9 +95,7 @@ def _origin(function: Function) -> Function:
     return function.origin or function
 
 
-def _bind_copy(
-    function: Function, alias: str, statement: ImportStatement
-) -> Function:
+def _bind_copy(function: Function, alias: str, statement: ImportStatement) -> Function:
     bound = copy.copy(function)
     bound.name = alias
     bound.origin = _origin(function)
@@ -226,9 +221,7 @@ def _bind_private_import(
     source: Module,
 ) -> None:
     """A private import: the symbols live under a namespace sub-module."""
-    namespace = _get_or_create_namespace(
-        into, statement.alias, source, statement.line
-    )
+    namespace = _get_or_create_namespace(into, statement.alias, source, statement.line)
     for function, alias in selected:
         existing = _find_bound(namespace.functions, alias)
         if _is_same_definition(existing, function):

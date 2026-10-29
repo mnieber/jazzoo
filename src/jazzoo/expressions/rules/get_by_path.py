@@ -29,7 +29,9 @@ def get_by_path(value: T.Any, parts: T.List[str]) -> T.Any:
     return current
 
 
-def set_by_path(container: T.Dict[str, T.Any], parts: T.List[str], value: T.Any) -> None:
+def set_by_path(
+    container: T.Dict[str, T.Any], parts: T.List[str], value: T.Any
+) -> None:
     """Assign into a dotted path, creating the objects along the way.
 
     Assigning under a value that is not an object replaces it, so a path assignment

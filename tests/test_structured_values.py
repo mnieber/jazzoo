@@ -91,10 +91,7 @@ def test_an_array_is_indexed_by_a_path_segment():
         root_module = parse_module(jazzoo_fn)
 
         # Assert
-        assert (
-            evaluate(root_module, "🐭.build()")
-            == "a.example.com and b.example.com"
-        )
+        assert evaluate(root_module, "🐭.build()") == "a.example.com and b.example.com"
 
 
 def test_a_missing_path_is_a_resolution_error():
@@ -719,14 +716,10 @@ def test_bool_and_empty_answer_different_questions():
         # Assert
         # "no" is falsy but not empty - the one place the two come apart.
         assert (
-            evaluate(root_module, '🐭.compare(value="no")')
-            == "bool=false empty=false"
+            evaluate(root_module, '🐭.compare(value="no")') == "bool=false empty=false"
         )
         # An empty string is both.
-        assert (
-            evaluate(root_module, '🐭.compare(value="")')
-            == "bool=false empty=true"
-        )
+        assert evaluate(root_module, '🐭.compare(value="")') == "bool=false empty=true"
         # A non-empty, truthy value is neither.
         assert (
             evaluate(root_module, '🐭.compare(value="hello")')
@@ -943,7 +936,4 @@ def test_a_module_variable_holds_structure_across_an_import():
         root_module = parse_module(jazzoo_fn)
 
         # Assert
-        assert (
-            evaluate(root_module, "🐭.build()")
-            == "theirs=42 mine=caller-owns-this"
-        )
+        assert evaluate(root_module, "🐭.build()") == "theirs=42 mine=caller-owns-this"
