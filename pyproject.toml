@@ -1,8 +1,18 @@
 [project]
 name = "jazzoo"
 version = "0.1.0"
-readme = "README.md"
+description = "A beast of a task-runner"
+readme = "README.short.md"
+authors = [{ name = "Maarten Nieber" }]
+license = "MIT"
+license-files = ["LICENSE"]
+requires-python = ">=3.10"
 dependencies = []
+
+# Uncomment at launch, when the GitHub repo is public
+# [project.urls]
+# Homepage = "https://github.com/mnieber/jazzoo"
+# Issues = "https://github.com/mnieber/jazzoo/issues"
 
 [project.optional-dependencies]
 dev = ["pytest"]
@@ -27,5 +37,6 @@ where = ["src"]
 testpaths = ["tests"]
 
 [build-system]
-requires = ["setuptools>=45", "wheel"]
+# setuptools 77 is the first that understands license = "MIT"
+requires = ["setuptools>=77", "wheel"]
 build-backend = "setuptools.build_meta"
