@@ -1,3 +1,4 @@
+import importlib.metadata
 import os
 from pathlib import Path
 
@@ -45,10 +46,14 @@ def test_link_of_a_link(context: Context):
     # from.
     #
     # It should link the same directory as the venv of shop, and not the
-    # site-packages of shop: a link, not a link to a link.
+    # site-packages of shop: a link, not a link to a link. The linked install of
+    # shop describes that directory, so its version should be used.
     if env.step(
         env.run_python_in_venv("projects/blog/.venv", SHOW_JAZZOO_FILE),
     ):
+        assert env.dist_info_names("projects/blog/.venv") == [
+            "jazzoo-" + importlib.metadata.version("jazzoo") + ".dist-info"
+        ]
         assert env.read_direct_url("projects/blog/.venv")["url"] == (
             Path(LINKED_DIR).as_uri()
         )

@@ -80,7 +80,7 @@ def create_venv(venv_dir: str, prompt: str, with_pip: bool = True) -> None:
     python = os.path.join(venv_dir, "bin", "python")
     site_packages = _site_packages_dir(python)
     linked_dir = os.path.dirname(jazzoo.__file__)
-    version = get_jazzoo_version()
+    version = get_jazzoo_version(linked_dir)
     dist_info = os.path.join(site_packages, f"jazzoo-{version}.dist-info")
 
     files = {

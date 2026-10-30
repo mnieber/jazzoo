@@ -153,9 +153,27 @@ $ pip uninstall jazzoo           # removes the link; the checkout is not touched
   "Requirement already satisfied", because pip sees that version installed. To replace
   the link with the released package of the same version, the developer adds
   `--force-reinstall`.
-- **No version found.** When the linked jazzoo has no package metadata (it was not
-  installed by pip, e.g. it runs from a source tree on `PYTHONPATH`), the version is
-  `0.0.0`.
+- **The metadata of the linked jazzoo.** `importlib.metadata` may find the metadata of
+  another jazzoo than the one that is linked, e.g. when a source tree on `PYTHONPATH`
+  runs `zoo`, and a jazzoo is also installed with pip. The version is only taken from a
+  distribution `jazzoo` that describes the linked directory:
+  - a regular install, whose package is the linked directory;
+  - an editable install (such as `pip install -e` of a checkout, or a linked install of
+    zoo), whose `direct_url.json` points to the linked directory or to a directory that
+    contains it.
+- **No version found.** When no distribution describes the linked jazzoo (e.g. it runs
+  from a source tree on `PYTHONPATH`), the version is `0.0.0`.
+- **The version is not updated.** `METADATA` is written when the venv is created. When
+  the version of the linked jazzoo changes later (e.g. a checkout moves to a new
+  version), the venv keeps the old version until it is created again. `pip install -e`
+  behaves the same.
+- **pip freeze.** `pip freeze` shows the link as `-e <the linked directory>`. That is the
+  directory of the package, not of a project, so `pip install -r` cannot install it
+  again. This is accepted: zoo creates these venvs for development, not to be frozen.
+- **A linked directory that is gone.** When the linked directory is moved or removed,
+  the finder finds nothing, and the console scripts of the venv fail with
+  `ModuleNotFoundError: No module named 'jazzoo'`. There is no extra hint: the venv is
+  created again with `zoo env --forget <name>` and `zoo env --init --create-venv`.
 - **What is linked.** The directory of the package that runs `zoo`
   (`os.path.dirname(jazzoo.__file__)`), as today. When that `zoo` runs in a venv with a
   linked install, this is the directory of the link, not a link to a link.
@@ -172,8 +190,8 @@ $ pip uninstall jazzoo           # removes the link; the checkout is not touched
 - **A copy of jazzoo in the tests.** Tests that uninstall the link, or that need a
   jazzoo without package metadata, link a copy of the jazzoo package in `tmp_path`,
   not the checkout that runs the tests. zoo runs from that copy in a subprocess with
-  `PYTHONPATH`, and with `python -S`, so that the package metadata of the test run is
-  not found.
+  `PYTHONPATH`. The package metadata of the test run is still visible there, but it
+  does not describe the copy, so the version of the copy is `0.0.0`.
 - **Where the code lives.** In `jazzoo/zoo/actions/create_venv.py`, which writes the files
   (the contents of `_jazzoo_link.py` and of the metadata files are templates in this
   module, like the console scripts). The version is read by the rule
