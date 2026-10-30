@@ -55,3 +55,7 @@ class NotAVenvError(ZooError):
 
 class NoZooInVenvError(ZooError):
     pass
+
+
+class FishFileExistsError(ZooError):
+    pass

@@ -59,6 +59,10 @@ use it. `--names` is only valid with `--list`.
   `-`, `--latest`, `--init`, `--forget` and `--list`.
 - **The name.** The function is `zz`: short, easy to type, and it reads as "zoo".
   There is no key binding: `zz` and the completion of names are as fast.
+- **The shell.** `zz` runs `zoo` with `SHELL` set to `fish`. `zoo env` picks the
+  activate script from `SHELL`, which is the login shell: a developer whose login shell
+  is bash, and who starts fish from it, would get the bash script. `zz` only runs in
+  fish, so it says so.
 - **Finding zoo.** `zz` runs the `zoo` on the `PATH`, which is the `zoo` of the active
   env. When no env is active, it runs the first `zoo-<name>` link in `~/.local/bin`,
   which is the `zoo` of a registered env. When there is neither, `zz` prints
@@ -85,7 +89,7 @@ use it. `--names` is only valid with `--list`.
   skipped when `fish` is not installed, so that the other tests still run on a machine
   without fish.
 - **Only fish.** There is no installer for bash. A bash user can define the function in
-  `.bashrc`: `zz() { eval "$(zoo env "$@")"; }`. The README shows it.
+  `.bashrc`: `zz() { eval "$(zoo env "$@")"; }`. The scenario of zz shows it.
 - **Where the code lives.** In the feature package `jazzoo.zoo`:
   `actions/install_fish_files.py` (checks and writes the files; the file contents are
   templates in this module, like the activate scripts in `init_zoo_env.py`),
