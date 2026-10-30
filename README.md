@@ -155,6 +155,7 @@ you are.
 - `run_docker(container)(run)` runs the same commands with `docker exec`.
 - `jaz-run` is `run` for shell scripts, with the same confirmation.
 - `get_config("/path/to/key")` reads the merged YAML config.
+- `⚙️.python` is the Python that runs `jaz`, to run scripts that import jazzoo.
 - Config files include their own layers via `/jazzoo/includes`.
 - `${ENV_VAR:-default}` and `${/other/key}` expansion, evaluated lazily.
 - Config errors name the file, and the layer, that caused them.

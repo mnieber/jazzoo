@@ -3,11 +3,12 @@
 ⚙️.stdout and ⚙️.output are covered in test_shebang_blocks.py, since their values
 follow from how blocks execute. ⚙️.env is covered in test_substitutions.py, and the
 path operators (⚙️.abs, ⚙️.basename, ...) in test_expressions.py. What is left here
-are the module and root_module variables, which are constant for a whole run, and
-the spelling of the ⚙️ sigil.
+are the module and root_module variables and ⚙️.python, which are constant for a
+whole run, and the spelling of the ⚙️ sigil.
 """
 
 import os
+import sys
 
 import pytest
 
@@ -312,3 +313,26 @@ def test_the_bare_gear_namespace_is_read_only():
         # Run & Assert
         with pytest.raises(ParseError):
             parse_module(jazzoo_fn)
+
+
+def test_python_is_the_interpreter_that_runs_jazzoo():
+    """⚙️.python is the interpreter that runs jazzoo, so a script that it runs can
+    import jazzoo."""
+    if True:
+        # Config
+        jazzoo_fn = save_fixture(
+            """# test_python.jaz
+        path():
+            echo "⚙️.python"
+
+        imports():
+            ⚙️.python -c "import jazzoo; print('imported')"
+        """
+        )
+
+        # Run
+        root_module = parse_module(jazzoo_fn)
+
+        # Assert
+        assert evaluate(root_module, "🐭.path()") == sys.executable
+        assert evaluate(root_module, "🐭.imports()") == "imported"

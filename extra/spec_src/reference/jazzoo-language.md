@@ -654,6 +654,11 @@ Constant for the run:
 | `⚙️.root_module.path`     | absolute path of the root module                  |
 | `⚙️.root_module.dirname`  | absolute path of the root module's directory      |
 | `⚙️.invocation_dir`       | the directory that `jaz` or `zoo` was called from |
+| `⚙️.python`               | absolute path of the Python that runs `jaz`       |
+
+`⚙️.python` is the interpreter in which jazzoo is installed, so a script that imports
+`jazzoo` (e.g. to call `get_config`) can run with `⚙️.python script.py`, also when the
+`python3` on the `PATH` is a different one.
 
 Updated as a function body runs (section 9.4):
 
