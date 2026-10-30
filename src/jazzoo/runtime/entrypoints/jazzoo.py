@@ -11,7 +11,15 @@ from jazzoo.runtime.utils.format_error import format_error
 from jazzoo.settings import DEFAULT_FILENAMES
 
 # The options of jaz that --complete offers
-OPTIONS = ("--list", "--list-all", "--file", "--trace", "--confirm", "--help")
+OPTIONS = (
+    "--list",
+    "--list-all",
+    "--which",
+    "--file",
+    "--trace",
+    "--confirm",
+    "--help",
+)
 
 
 def _parse_args(argv: T.Optional[T.List[str]] = None):
@@ -21,6 +29,7 @@ def _parse_args(argv: T.Optional[T.List[str]] = None):
     parser.add_argument("--file", dest="file", default=None)
     parser.add_argument("--list", dest="list_targets", action="store_true")
     parser.add_argument("--list-all", dest="list_all", action="store_true")
+    parser.add_argument("--which", dest="which", action="store_true")
     parser.add_argument("--trace", dest="trace", action="store_true")
     parser.add_argument("--confirm", dest="confirm", action="store_true")
     parser.add_argument("--help", "-h", dest="help", action="store_true")
@@ -131,6 +140,49 @@ def _expand_alias(alias: str, args, filename: str) -> T.Tuple[str, T.List[str]]:
     return alias_args.rest[0], alias_args.rest[1:]
 
 
+def _print_which(args, invocation_dir: T.Optional[str]) -> int:
+    """Print the file that defines the target (or layer) that args.rest names.
+
+    Nothing runs, so the module is loaded without running its statements.
+    """
+    from jazzoo.functions.rules.get_definition_file import get_definition_file
+    from jazzoo.modules.actions.parse_module import parse_module
+
+    for option, is_set in (
+        ("--list", args.list_targets),
+        ("--list-all", args.list_all),
+    ):
+        if is_set:
+            raise JazzooError(f"--which cannot be combined with {option}")
+    if not args.rest:
+        raise JazzooError("--which needs a target")
+    if len(args.rest) > 1:
+        raise JazzooError("--which takes no arguments")
+
+    filename = args.file or _find_default_file()
+    module = parse_module(filename, invocation_dir=invocation_dir, run_statements=False)
+
+    path = args.rest[0]
+    definition_file = get_definition_file(module, path)
+    if definition_file is None:
+        from jazzoo.aliases.rules.expand_alias import expand_alias
+
+        # The options of the expansion change how a target runs, so they are skipped
+        expansion = expand_alias(path)
+        if expansion is None:
+            raise JazzooError(f"no such target: {path}", filename=module.filename)
+        alias, path = path, _parse_args(expansion).rest[0]
+        definition_file = get_definition_file(module, path)
+        if definition_file is None:
+            raise JazzooError(
+                f'no such target: {path} (the expansion of alias "{alias}")',
+                filename=module.filename,
+            )
+
+    print(definition_file)
+    return 0
+
+
 def _run(args, invocation_dir: T.Optional[str]) -> int:
     from jazzoo.expressions.actions.evaluate_expression import evaluate_expression
     from jazzoo.functions.actions.call_function import call_function
@@ -203,10 +255,12 @@ def _complete(argv: T.List[str]) -> int:
 def _run_or_help(args, invocation_dir: T.Optional[str]) -> int:
     if args.help:
         print(
-            "usage: jaz [--list [<path>]] [--list-all] [--file <path>] "
-            "[--trace] [--confirm] <target> [arg=value ...]"
+            "usage: jaz [--list [<path>]] [--list-all] [--which <path>] "
+            "[--file <path>] [--trace] [--confirm] <target> [arg=value ...]"
         )
         return 0
+    if args.which:
+        return _print_which(args, invocation_dir)
     return _run(args, invocation_dir)
 
 

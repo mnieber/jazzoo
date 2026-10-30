@@ -171,7 +171,7 @@ literal is a `ParseError`:
 Two positions have no expression grammar and accept bare words as strings:
 
 - defaults in references: `⚙️.env.LOG_LEVEL?:-info` (section 5.4)
-- command-line arguments: `jaz build myapp` (section 11.3)
+- command-line arguments: `jaz build myapp` (section 11.4)
 
 ### 2.5 Comments
 
@@ -814,7 +814,7 @@ A function declares parameters; a caller supplies arguments. A parameter without
 default is required. Inside the body each parameter is a `🐆` variable.
 
 **Arguments are always named** in `.jaz` files. Positional shorthand exists only on
-the command line (section 11.3).
+the command line (section 11.4).
 
 ```
 build(target, mode="release"):
@@ -1459,6 +1459,7 @@ jaz                            # list targets
 jaz <target> [arg=value ...]   # run a target
 jaz --list [<path>]            # list targets, or describe what is at <path>
 jaz --list-all                 # list every target at every depth
+jaz --which <path>             # print the file that defines the target at <path>
 jaz --file <path> ...          # use <path> as the root module
 jaz --trace <target>           # on error, also print the stack trace
 jaz --confirm <target>         # ask before every command that run starts
@@ -1514,7 +1515,33 @@ The walk records modules it has entered by resolved path and skips layers whose 
 has already been entered, so it terminates under circular imports and never lists a
 target twice.
 
-### 11.3 Arguments
+### 11.3 Finding the file of a target
+
+`jaz --which <path>` prints the absolute path of the file that defines the target at
+the path, and does not run the target:
+
+```
+$ jaz --which fe.build
+/home/jane/shop/fe/fe.jaz
+
+$ vim $(jaz --which fe.build)
+```
+
+The path resolves as when the target runs: against the exports of the root module,
+with an alias as the fallback (the file of the target that the alias expands to).
+
+- The file is the one with the definition, not the one with the `export` that made it
+  a target. A target that is exported again through several files resolves to the file
+  that defines it.
+- A path that names an export layer prints the file of the layer's module.
+- The top-level statements of the root module do not run (as for completion), so
+  `--which` has no side effects, and works even when a top-level statement would fail.
+
+`--which` needs a path, takes no target arguments, and cannot be combined with
+`--list` or `--list-all`; each of these is an error, as is a path that names no target,
+layer or alias.
+
+### 11.4 Arguments
 
 Arguments are passed as `name=value`. Values are bare strings (section 2.4):
 
@@ -1535,7 +1562,7 @@ positionally and by name is an error. Positional arguments are not permitted in
 
 Command-line arguments are untrusted input (section 5.5).
 
-### 11.4 No dry-run mode
+### 11.5 No dry-run mode
 
 Jazzoo has no `--dry-run`. The commands a target issues often depend on the results
 of earlier commands — through `⚙️.output`, return values, or computed dependency

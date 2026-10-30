@@ -101,6 +101,7 @@ def test_a_developer_completes_a_jaz_command(context: Context):
             "--list",
             "--list-all",
             "--trace",
+            "--which",
         ]
 
 

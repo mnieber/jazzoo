@@ -8,6 +8,7 @@ ENABLED_TEST_PACKAGES = [
     "docker_tests",
     "aliases_tests",
     "completions_tests",
+    "which_tests",
 ]
 
 ALL_TEST_PACKAGES = [
@@ -19,6 +20,7 @@ ALL_TEST_PACKAGES = [
     "docker_tests",
     "aliases_tests",
     "completions_tests",
+    "which_tests",
 ]
 
 # Test files whose code is not written yet
