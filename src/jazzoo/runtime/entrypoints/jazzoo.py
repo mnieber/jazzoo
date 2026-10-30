@@ -232,6 +232,10 @@ def main(argv: T.Optional[T.List[str]] = None) -> int:
         if args.trace:
             traceback.print_exc()
         return 1
+    except KeyboardInterrupt:
+        if args.trace:
+            traceback.print_exc()
+        return 130
 
 
 if __name__ == "__main__":
