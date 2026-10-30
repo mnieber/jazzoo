@@ -82,6 +82,9 @@ The developer runs `zoo <target>` in any directory. With the venv active, this i
 (`sys.prefix`).</br>
 It records the current directory as `⚙️.invocation_dir`, changes to the root
 directory of the env, and runs `jaz` in-process with the same arguments.</br>
+`zoo` takes the options of `jaz`, except `--file`: it always runs the root jazzoo
+file of the env. A second jazzoo file of the project is imported into the root jazzoo
+file as a layer.</br>
 
 ### Diagram
 

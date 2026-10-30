@@ -166,7 +166,7 @@ you are.
 - `zoo <target>` runs a target of the active project from any directory.
 - `zoo env <name>` and `zoo env -` switch projects, like `cd -`.
 - New terminals start in the last active project.
-- `zz` shell function and completions for fish: `zoo env --install-fish`.
+- `zz` shell function, and completions of `jaz` and `zoo` for fish: `zoo env --install-fish`.
 
 ---
 

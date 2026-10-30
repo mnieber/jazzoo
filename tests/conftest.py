@@ -7,6 +7,7 @@ ENABLED_TEST_PACKAGES = [
     "zoo_tests",
     "docker_tests",
     "aliases_tests",
+    "completions_tests",
 ]
 
 ALL_TEST_PACKAGES = [
@@ -21,15 +22,7 @@ ALL_TEST_PACKAGES = [
 ]
 
 # Test files whose code is not written yet
-DISABLED_TEST_FILES = [
-    "zoo_tests/test_zoo/test_complete_a_zoo_command.py",
-    "zoo_tests/test_zoo/test_complete_in_fish.py",
-    "zoo_tests/test_zoo/test_install_the_fish_shortcut.py",
-    "zoo_tests/test_zoo_impl/test_complete_zoo.py",
-    "zoo_tests/test_zoo_impl/test_install_fish_errors.py",
-    "zoo_tests/test_zoo_impl/test_install_fish_locations.py",
-    "zoo_tests/test_zoo_impl/test_zoo_refuses_file.py",
-]
+DISABLED_TEST_FILES = []
 
 collect_ignore = [
     package for package in ALL_TEST_PACKAGES if package not in ENABLED_TEST_PACKAGES

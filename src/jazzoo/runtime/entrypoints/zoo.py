@@ -12,7 +12,7 @@ from jazzoo.zoo.actions.forget_zoo_env import forget_zoo_env
 from jazzoo.zoo.actions.init_zoo_env import init_zoo_env
 from jazzoo.zoo.actions.install_fish_files import install_fish_files
 from jazzoo.zoo.actions.run_in_zoo_env import run_in_zoo_env
-from jazzoo.zoo.errors import ZooError
+from jazzoo.zoo.errors import ZooError, ZooUsageError
 from jazzoo.zoo.rules.format_zoo_env_list import format_zoo_env_list
 from jazzoo.zoo.rules.get_recent_zoo_env import get_recent_zoo_env
 from jazzoo.zoo.rules.list_zoo_envs import list_zoo_envs
@@ -122,12 +122,31 @@ def _run_env(argv: T.List[str]) -> int:
     return 0
 
 
+def _complete(argv: T.List[str]) -> int:
+    from jazzoo.completions.utils.print_completions import print_completions
+    from jazzoo.zoo.rules.get_zoo_completions import get_zoo_completions
+
+    return print_completions(argv, get_zoo_completions)
+
+
+def _refuse_file_option(argv: T.List[str]):
+    # After --, a word is a target name
+    for word in argv[: argv.index("--")] if "--" in argv else argv:
+        if word == "--file" or word.startswith("--file="):
+            raise ZooUsageError(
+                "--file is not valid with zoo; import the file as a layer instead"
+            )
+
+
 def run(argv: T.Optional[T.List[str]] = None) -> int:
     argv = list(sys.argv[1:] if argv is None else argv)
     if argv[:1] == ["env"]:
         return _run_env(argv[1:])
+    if argv[:1] == ["--complete"]:
+        return _complete(argv[1:])
 
     # Everything else is a jaz call, also `zoo -- env`
+    _refuse_file_option(argv)
     return run_in_zoo_env(argv)
 
 

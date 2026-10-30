@@ -1,6 +1,5 @@
 from zoo_tests.zoo_test_env import SHOP_JAZZOO, Context, TestEnv
 
-from jazzoo.errors import JazzooError
 from jazzoo.zoo.errors import ZooUsageError
 
 OTHER_JAZ = """
@@ -60,14 +59,13 @@ def test_zoo_refuses_file(context: Context):
 
     # We run `zoo -- --file`.
     #
-    # After `--`, --file is a target name, so zoo should not refuse it: jaz
-    # should report that there is no such target.
+    # zoo should not refuse a --file after `--`, but pass it on to jaz, which
+    # gives its own usage error.
     if env.step(
-        env.run_zoo_and_catch_error("--", "--file"),
+        env.run_zoo_and_catch_exit("--", "--file"),
     ):
-        assert isinstance(env.error, JazzooError)
-        assert not isinstance(env.error, ZooUsageError)
-        assert "no such target" in env.error.message
+        assert env.system_exit is not None
+        assert env.system_exit.code == 2
 
 
 class Env(TestEnv):
