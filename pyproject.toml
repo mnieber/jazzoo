@@ -1,18 +1,17 @@
 [project]
 name = "jazzoo"
-version = "0.1.0"
+version = "0.2.0"
 description = "A beast of a task-runner"
-readme = "README.short.md"
+readme = "README.md"
 authors = [{ name = "Maarten Nieber" }]
 license = "MIT"
 license-files = ["LICENSE"]
 requires-python = ">=3.10"
 dependencies = []
 
-# Uncomment at launch, when the GitHub repo is public
-# [project.urls]
-# Homepage = "https://github.com/mnieber/jazzoo"
-# Issues = "https://github.com/mnieber/jazzoo/issues"
+[project.urls]
+Homepage = "https://github.com/mnieber/jazzoo"
+Issues = "https://github.com/mnieber/jazzoo/issues"
 
 [project.optional-dependencies]
 dev = ["pytest"]
