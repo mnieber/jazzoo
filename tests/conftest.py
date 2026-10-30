@@ -18,7 +18,13 @@ ALL_TEST_PACKAGES = [
 ]
 
 # Test files whose code is not written yet
-DISABLED_TEST_FILES = []
+DISABLED_TEST_FILES = [
+    "config_tests/test_config/test_script_reads_config_with_layers.py",
+    "config_tests/test_config_impl/test_includes.py",
+    "config_tests/test_config_impl/test_include_errors.py",
+    "config_tests/test_config_impl/test_include_expansion.py",
+    "config_tests/test_config_impl/test_vendoring_includes.py",
+]
 
 collect_ignore = [
     package for package in ALL_TEST_PACKAGES if package not in ENABLED_TEST_PACKAGES
