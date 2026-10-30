@@ -22,6 +22,7 @@ the three namespace sigils.
 | load a `.env` file                                       | [7.3](#73-loading-a-dotenv-file)                                              |
 | load YAML config files                                   | [7.4](#74-loading-config-files)                                               |
 | read config values from a Python script                  | [jazzoo-config.md](./jazzoo-config.md)                                        |
+| split a config file into layers                          | [jazzoo-config.md, 5](./jazzoo-config.md#5-includes)                          |
 | compute a value conditionally                            | [6.3](#63-conditional-expressions)                                            |
 | capture the output of a command or function              | [9.4](#94-stdout-output-and-return-values)                                    |
 | work with JSON                                           | [4.4](#44-structured-values), [7.5](#75-pipe-operators)                       |
@@ -720,8 +721,10 @@ the config; a script that the file runs reads values from the merged config with
   of the list. A nested `jaz` call therefore inherits the config of its caller.
 
 There is no way to select config files from inside a config file. The Jazzoo file is
-the one place that decides which files are loaded; a conditional expression or path
-join in `path=` covers the conditional case.
+the one place that decides which files are in the config list; a conditional
+expression or path join in `path=` covers the conditional case. A config file may
+include layers (`jazzoo-config.md`, section 5), but these are unconditional: they
+define what the file is made of, and are read by `get_config`, not by `jaz`.
 
 ### 7.5 Pipe operators
 

@@ -38,9 +38,7 @@ def _expand(
     try:
         parts = split_expressions(text)
     except UnclosedExpressionError:
-        raise ConfigFileError(
-            f"{including_file}: unclosed '${{' in include: {include}"
-        )
+        raise ConfigFileError(f"{including_file}: unclosed '${{' in include: {include}")
 
     result = []
     for part in parts:

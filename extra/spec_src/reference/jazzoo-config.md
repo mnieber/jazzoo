@@ -49,7 +49,7 @@ get("/root/port", default=80)   # 80 if the path does not exist
   segment that addresses a list is an integer index. Empty segments are ignored, so
   `/root/` is the same as `/root`.
 - A path that does not start with `/` is a `ValueError`; `default` does not apply.
-- `get` returns the value at the path, fully expanded (section 5). A dict or list
+- `get` returns the value at the path, fully expanded (section 6). A dict or list
   is expanded recursively.
 - A path that does not exist raises `ConfigKeyError`, which names the path and the
   first segment that was not found.
@@ -113,7 +113,88 @@ The files are merged in list order; a later file overrides an earlier one:
 Merging happens before expansion, so a reference always sees the merged value. A
 `local.yaml` that sets `/root/project_dir` also changes `/root/src` in `base.yaml`.
 
-## 5. Expansion
+A file that includes layers (section 5) is merged together with its layers: the
+layers first, then the file itself.
+
+## 5. Includes
+
+A config file can pull in other config files, its **layers**, with
+`/jazzoo/includes`. The layers are logically part of the file: the config is bigger
+than what the file itself contains.
+
+```yaml
+# config/base.yaml
+jazzoo:
+  includes:
+    - tmux.yaml
+    - docker.yaml
+
+docker:
+  shell: bash
+```
+
+```yaml
+# config/docker.yaml
+jazzoo:
+  includes:
+    - common.yaml
+
+docker:
+  compose_project: shop
+  shell: sh
+```
+
+The Jazzoo file only loads `config/base.yaml`; `get` also reads `tmux.yaml`,
+`docker.yaml` and `common.yaml`, and `get("/docker/shell")` is `bash`.
+
+**Merge order.** The layers of a file are merged first, and the file's own content
+on top, so a file wins over its layers. The layers are ordered depth-first: a
+layer's own includes come before the layer. In the example, the order is
+`tmux.yaml`, `common.yaml`, `docker.yaml`, `base.yaml`. Each file in
+`JAZZOO_CONFIG_FILES` is expanded in this way, and the results are merged in list
+order.
+
+**Each file is read once**, in the whole config list, at its first position. A file
+that is reached again is skipped silently. This covers a cycle (a layer that
+includes a file that includes it), two layers that include the same file, a layer
+that two files in `JAZZOO_CONFIG_FILES` include, and a file in the list that an
+earlier file already included.
+
+**Include paths.**
+
+- An include is a single file (not a glob pattern), relative to the directory of the
+  file that contains it, or absolute.
+- Environment variables are expanded as in values (section 6): `${NAME}`,
+  `${NAME:-default}`, and `$${` for a literal `${`. A leading `~` is the home
+  directory. Both read the copy of the environment that `get` takes when it builds
+  its cache (section 3).
+- A reference to a config value (`${/...}`) is not allowed, because the config is
+  not built yet.
+
+**The expanded includes list.** In the merged config, `/jazzoo/includes` holds the
+absolute paths of the layers of all the files in `JAZZOO_CONFIG_FILES`, in merge
+order and without duplicates. The files in `JAZZOO_CONFIG_FILES` are not in it
+themselves, unless an earlier file included them. `get` returns the paths as they
+are, without expanding them again. A tool that opens or lists the config files of a
+project reads this key:
+
+```python
+get("/jazzoo/includes")
+# ["/app/config/tmux.yaml", "/app/config/common.yaml", "/app/config/docker.yaml"]
+```
+
+When no file has an includes list, the key does not exist. `null` means no includes.
+
+**The `/jazzoo` key** is reserved for Jazzoo; a `/jazzoo` that is not a mapping is a
+`ConfigFileError`. Other keys below it are merged like any other config.
+
+**Errors.** A missing include, an includes list that is not a list of strings, a
+`${/...}` or an unset environment variable in an include is a `ConfigFileError`
+that names the file that contains the include. The includes are resolved when `get`
+or `prepare_config` builds the cache, so these errors show up when a script first
+reads the config. An error about a value names the layer that supplied it.
+
+## 6. Expansion
 
 Expansion applies to string values only. Keys are never expanded.
 
@@ -161,7 +242,7 @@ variable `NAME`.
 
 **Escapes.** `$${` yields a literal `${`.
 
-## 6. The `jazzoo.config` sub-package
+## 7. The `jazzoo.config` sub-package
 
 `get_config`, `prepare_config` and the config errors live in the sub-package
 `jazzoo.config`, and are re-exported by `jazzoo`, so `from jazzoo import get_config`
@@ -178,13 +259,13 @@ Jazzoo has no runtime dependencies, so YAML is read with a vendored, pure-Python
 copy of PyYAML inside the sub-package. It is never imported as `yaml`, so a PyYAML
 installed in the same venv is neither used nor affected.
 
-## 7. Config errors
+## 8. Config errors
 
-| Class                  | Meaning                                                          |
-| ---------------------- | ---------------------------------------------------------------- |
-| `ConfigFileError`      | a config file is missing, is not valid YAML, or is not a mapping |
-| `ConfigKeyError`       | `get` was given a path that does not exist, without a default    |
-| `ConfigExpansionError` | a `${...}` cannot be expanded                                    |
+| Class                  | Meaning                                                                     |
+| ---------------------- | --------------------------------------------------------------------------- |
+| `ConfigFileError`      | a config file or include is missing, is not valid YAML, or is not a mapping |
+| `ConfigKeyError`       | `get` was given a path that does not exist, without a default               |
+| `ConfigExpansionError` | a `${...}` cannot be expanded                                               |
 
 All three subclass `ConfigError(Exception)`, defined in `jazzoo.config`. They are not
 `JazzooError`s, so that the sub-package stays self-contained. A `ConfigFileError`
@@ -199,7 +280,7 @@ class ConfigKeyError(ConfigError): ...        # a get_config path that does not 
 class ConfigExpansionError(ConfigError): ...  # a ${...} that cannot be expanded
 ```
 
-## 8. Unspecified
+## 9. Unspecified
 
 - **Preset config values.** Values that `get_config` could provide without a config
   file defining them — the directory of the module that loaded a config file, the

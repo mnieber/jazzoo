@@ -13,7 +13,7 @@ def run_scenario():
     r.load_config_action = c.Environment.Actions.LoadConfig
     r.get_config_rule = c.Config.Rules.GetConfig
     r.get_loaded_config_rule = c.Config.Rules.GetLoadedConfig
-    r.read_config_file_rule = c.Config.Rules.ReadConfigFile
+    r.read_config_layers_rule = c.Config.Rules.ReadConfigLayers
     r.merge_config_util = c.Config.Utils.MergeConfig
     r.get_value_rule = c.Config.Rules.GetValue
     r.loaded_config = c.Config.Models.LoadedConfig
@@ -31,9 +31,9 @@ def run_scenario():
                 with it().builds_the(r.loaded_config).if_the(
                     r.jazzoo_config_files
                 ).changed():
-                    it().calls(r.read_config_file_rule).for_each(r.config_file)
-                    it().calls(r.merge_config_util).for_the(r.file_trees)
                     it().copies_the(r.environment)
+                    it().calls(r.read_config_layers_rule).for_each(r.config_file)
+                    it().calls(r.merge_config_util).for_the(r.file_trees)
                 it().returns_the(r.loaded_config)
             with it().calls(r.get_value_rule).with_the(r.config_path):
                 it().finds_the(r.raw_value).in_the(r.merged_tree)
@@ -89,9 +89,9 @@ The script calls `get_config` with a path into the config, such as `/root/src`, 
 optionally a default for a path that does not exist.</br>
 `get_loaded_config` returns the cached `LoadedConfig`. When the value of
 `JAZZOO_CONFIG_FILES` differs from the one that the cache was built from, it builds a
-new one: `read_config_file` reads each file as plain YAML, `merge_config` merges them
-in list order (a later file overrides an earlier one, recursively for dicts), and it
-copies the environment.</br>
+new one: it copies the environment, `read_config_layers` reads each file as plain
+YAML, together with the layers that the file includes, and `merge_config` merges them
+in list order (a later file overrides an earlier one, recursively for dicts).</br>
 `get_value` finds the value at the path in the merged tree, and expands it lazily:
 `${/a/b}` is replaced by another config value, `${NAME}` by a variable of the copied
 environment, and references may be nested and chained. Only the value at the path
@@ -123,7 +123,7 @@ sequenceDiagram
     Note over Script,Value: Read a value
     Script->>Get: get_config("/root/src")
     Get->>Loaded: get_loaded_config()
-    Loaded->>Loaded: read and merge the files, copy the environment (if the list changed)
+    Loaded->>Loaded: copy the environment, read and merge the files (if the list changed)
     Loaded-->>Get: LoadedConfig
     Get->>Value: get_value(loaded, segments)
     Value->>Value: find, expand and cache the value

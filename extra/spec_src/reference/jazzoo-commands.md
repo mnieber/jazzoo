@@ -191,7 +191,7 @@ uses `set -e`.
 
 `run`, `CommandResult` and the command errors live in the sub-package
 `jazzoo.commands`, and are re-exported by `jazzoo`, so `from jazzoo import run` works.
-Like `jazzoo.config` (`jazzoo-config.md`, section 6), the sub-package is
+Like `jazzoo.config` (`jazzoo-config.md`, section 7), the sub-package is
 self-contained: it imports only the standard library and its own modules, and its
 internal imports are relative, so a project can copy it into its own source tree
 under any name.
