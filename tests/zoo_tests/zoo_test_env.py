@@ -22,6 +22,7 @@ __all__ = [
     "FISH_FILES",
     "FISH_MANAGED_LINE",
     "LINKED_DIR",
+    "ZOO_MAIN",
 ]
 
 # The files that `zoo env --install-fish` writes, relative to the fish config dir
@@ -222,11 +223,11 @@ class TestEnv(JazzooTestEnv):
 
     def run_zoo_from_copy(self, src_dir: str, *args: str, cwd: str = ""):
         """Runs the zoo of the jazzoo package in <src_dir> (see copy_jazzoo_package)
-        in a subprocess, and stores the result in completed. It runs with
-        `python -S`, so that the package metadata of the test run is not found."""
+        in a subprocess, and stores the result in completed. The package metadata
+        of the jazzoo that runs the tests is visible there too."""
         environ = dict(os.environ, PYTHONPATH=self.path(src_dir))
         self.completed = subprocess.run(
-            [sys.executable, "-S", "-c", ZOO_MAIN, *args],
+            [sys.executable, "-c", ZOO_MAIN, *args],
             cwd=self.path(cwd),
             env=environ,
             stdin=subprocess.DEVNULL,
