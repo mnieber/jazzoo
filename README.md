@@ -90,7 +90,7 @@ do, without adding a dry-run mode to it. `jaz-run` gives shell scripts the same 
 
 `zoo` registers your projects, each with its own venv. `zz blog` switches to a project,
 `zz -` switches back, and `zoo build` runs a target of the active project from wherever
-you are.
+you are. See [Projects and their environments](extra/spec_src/reference/jazzoo-zoo.md).
 
 ---
 
@@ -142,6 +142,7 @@ you are.
 
 - `jaz` lists the targets; `jaz --list fe.build` shows a signature.
 - `jaz --list-all` lists every target at every depth.
+- `jaz --which fe.build` prints the file that defines a target.
 - `key=value` arguments; the first one may skip its name.
 - Options go anywhere: `jaz build myapp --confirm`.
 - `--confirm` asks before every command that `run` or `jaz-run` starts.
@@ -166,6 +167,7 @@ you are.
 - `zoo <target>` runs a target of the active project from any directory.
 - `zoo env <name>` and `zoo env -` switch projects, like `cd -`.
 - New terminals start in the last active project.
+- `zoo --which` prints the active project; `zoo env --list` lists them all.
 - `zz` shell function, and completions of `jaz` and `zoo` for fish: `zoo env --install-fish`.
 
 ---
@@ -187,4 +189,5 @@ are as quick to type as `$`.
 - [The Jazzoo language](extra/spec_src/reference/jazzoo-language.md)
 - [Running commands: `run`, `jaz-run` and `--confirm`](extra/spec_src/reference/jazzoo-commands.md)
 - [Config files](extra/spec_src/reference/jazzoo-config.md)
+- [Projects and their environments: `zoo` and `zz`](extra/spec_src/reference/jazzoo-zoo.md)
 - [Editor setup: typing the sigils](extra/spec_src/reference/jazzoo-editor-setup.md)
