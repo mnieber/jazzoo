@@ -1,2 +1,0 @@
-# Keep the full README out of the sdist until the launch (see readme in pyproject.toml)
-exclude README.md
