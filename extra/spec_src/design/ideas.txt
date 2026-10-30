@@ -13,3 +13,5 @@ Ideas:
   F runs on the current inputs of the decorated function
   F also receives all kwargs and args of type “++foo”, “++foo=1” and “+f”
   F returns the augmented inputs of the decorated function as a json object
+- Support a special list item called “child_items” (with a fancy sigil)
+  This tells jazzoo to not replace but extend the list

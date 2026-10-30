@@ -19,13 +19,14 @@ def test_activate_scripts(context: Context):
     # We look at activate.bash of shop.
     #
     # It should set JAZZOO_ENV, deactivate the active venv (only if there is
-    # one), and then source the activate script of the venv. The venv is found
+    # one: a shell may inherit VIRTUAL_ENV without the deactivate function, e.g.
+    # when it was started from a shell with an active venv), and then source the activate script of the venv. The venv is found
     # through the link in the registry, so that relinking venv_dir is enough to
     # move the venv.
     if env.step():
         assert env.read_lines(env.env_dir("shop") + "/activate.bash") == [
             "export JAZZOO_ENV=shop",
-            'if [ -n "$VIRTUAL_ENV" ]; then',
+            "if declare -F deactivate >/dev/null; then",
             "deactivate",
             "fi",
             f"source {env.env_dir('shop')}/venv_dir/bin/activate",
@@ -37,7 +38,7 @@ def test_activate_scripts(context: Context):
     if env.step():
         assert env.read_lines(env.env_dir("shop") + "/activate.fish") == [
             "set -gx JAZZOO_ENV shop",
-            'if test -n "$VIRTUAL_ENV"',
+            "if functions -q deactivate",
             "deactivate",
             "end",
             f"source {env.env_dir('shop')}/venv_dir/bin/activate.fish",
