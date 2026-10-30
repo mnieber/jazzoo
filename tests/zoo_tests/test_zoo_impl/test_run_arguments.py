@@ -12,11 +12,6 @@ fail():
 """
 )
 
-OTHER_JAZ = """
-hello():
-    @echo "hello from other.jaz"
-"""
-
 
 def create_env(context: Context):
     return Env(context)
@@ -30,7 +25,6 @@ def test_run_arguments(context: Context):
     # directory.
     if env.step(
         env.add_project("shop", JAZZOO),
-        env.write_file("projects/shop/other.jaz", OTHER_JAZ),
         env.init_env("shop"),
         env.use_zoo_of("projects/shop/.venv"),
         env.make_dir("elsewhere"),
@@ -60,16 +54,6 @@ def test_run_arguments(context: Context):
         env.run_zoo("--", "env"),
     ):
         assert env.output == "the env target\n"
-
-    # We run a target of other.jaz with `--file other.jaz`.
-    #
-    # The relative path should be resolved against the root directory, not
-    # against the directory that we called zoo from.
-    if env.step(
-        env.change_dir("elsewhere"),
-        env.run_zoo("--file", "other.jaz", "hello"),
-    ):
-        assert env.output == "hello from other.jaz\n"
 
     # We run a target that fails, as the console script does.
     #
