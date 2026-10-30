@@ -15,6 +15,7 @@ ALL_TEST_PACKAGES = [
     "confirm_tests",
     "zoo_tests",
     "docker_tests",
+    "aliases_tests",
 ]
 
 # Test files whose code is not written yet
