@@ -78,6 +78,16 @@ def test_alias_config_file(context: Context):
         assert isinstance(env.error, JazzooError)
         assert env.error.message == "no such target: h"
 
+    # We write a config file with the alias h in a [DEFAULT] section, and run jaz h.
+    #
+    # [DEFAULT] is an ordinary section, whose keys do not end up in [alias].
+    if env.step(
+        env.write_aliases("[DEFAULT]\nh = build\n\n[alias]\nb = build\n"),
+        env.run_jaz_and_catch_error("h"),
+    ):
+        assert isinstance(env.error, JazzooError)
+        assert env.error.message == "no such target: h"
+
     # We add an [alias] section next to the other section, and run jaz h.
     #
     # The alias should be found.
