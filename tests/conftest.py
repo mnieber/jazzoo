@@ -20,7 +20,13 @@ ALL_TEST_PACKAGES = [
 ]
 
 # Test files whose code is not written yet
-DISABLED_TEST_FILES = []
+DISABLED_TEST_FILES = [
+    "zoo_tests/test_zoo/test_create_a_venv.py",
+    "zoo_tests/test_zoo_impl/test_linked_install_metadata.py",
+    "zoo_tests/test_zoo_impl/test_linked_import_hook.py",
+    "zoo_tests/test_zoo_impl/test_link_of_a_link.py",
+    "zoo_tests/test_zoo_impl/test_linked_source_tree.py",
+]
 
 collect_ignore = [
     package for package in ALL_TEST_PACKAGES if package not in ENABLED_TEST_PACKAGES

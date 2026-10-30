@@ -1,18 +1,28 @@
+import glob
 import json
 import os
 import shutil
 import stat
 import subprocess
 import sys
+import textwrap
 import typing as T
 from pathlib import Path
 
 import pytest
 from jazzoo_test_env import Context, TestEnv as JazzooTestEnv
 
+import jazzoo
 from jazzoo.runtime.entrypoints.zoo import main, run as run_zoo
 
-__all__ = ["Context", "TestEnv", "SHOP_JAZZOO", "FISH_FILES", "FISH_MANAGED_LINE"]
+__all__ = [
+    "Context",
+    "TestEnv",
+    "SHOP_JAZZOO",
+    "FISH_FILES",
+    "FISH_MANAGED_LINE",
+    "LINKED_DIR",
+]
 
 # The files that `zoo env --install-fish` writes, relative to the fish config dir
 FISH_FILES = ["functions/zz.fish", "completions/zz.fish", "conf.d/zoo.fish"]
@@ -23,6 +33,14 @@ FISH_MANAGED_LINE = "# managed by zoo env --install-fish"
 # The PATH of a fish that a test runs: the zoo-<name> links, and the system
 # directories, but never a zoo or venv of the developer.
 FISH_PATH_DIRS = ["/usr/local/bin", "/usr/bin", "/bin"]
+
+# Runs the zoo of the jazzoo package that python finds
+ZOO_MAIN = (
+    "import sys; from jazzoo.runtime.entrypoints.zoo import main; sys.exit(main())"
+)
+
+# The directory of the jazzoo package that runs the tests
+LINKED_DIR = os.path.dirname(jazzoo.__file__)
 
 # The jazzoo file of most projects. `where` shows the directories of the run, and is
 # silent about its commands, so that the output only has the values.
@@ -178,6 +196,45 @@ class TestEnv(JazzooTestEnv):
             timeout=60,
         )
 
+    def run_python_in_venv(self, venv: str, code: str):
+        """Runs code with the python of the venv, in a subprocess, and stores the
+        result in completed. PYTHONPATH is unset, so that only the venv decides what
+        python imports."""
+        environ = {k: v for k, v in os.environ.items() if k != "PYTHONPATH"}
+        self.completed = subprocess.run(
+            [self.path(f"{venv}/bin/python"), "-c", textwrap.dedent(code)],
+            cwd=self.path(""),
+            env=environ,
+            stdin=subprocess.DEVNULL,
+            capture_output=True,
+            text=True,
+            timeout=60,
+        )
+
+    def copy_jazzoo_package(self, src_dir: str):
+        """Copies the jazzoo package that runs the tests to <src_dir>/jazzoo: a
+        source tree without package metadata."""
+        shutil.copytree(
+            LINKED_DIR,
+            self.path(f"{src_dir}/jazzoo"),
+            ignore=shutil.ignore_patterns("__pycache__"),
+        )
+
+    def run_zoo_from_copy(self, src_dir: str, *args: str, cwd: str = ""):
+        """Runs the zoo of the jazzoo package in <src_dir> (see copy_jazzoo_package)
+        in a subprocess, and stores the result in completed. It runs with
+        `python -S`, so that the package metadata of the test run is not found."""
+        environ = dict(os.environ, PYTHONPATH=self.path(src_dir))
+        self.completed = subprocess.run(
+            [sys.executable, "-S", "-c", ZOO_MAIN, *args],
+            cwd=self.path(cwd),
+            env=environ,
+            stdin=subprocess.DEVNULL,
+            capture_output=True,
+            text=True,
+            timeout=180,
+        )
+
     def write_executable(self, name: str, text: str):
         self.write_file(name, text)
         path = self.path(name)
@@ -206,6 +263,27 @@ class TestEnv(JazzooTestEnv):
     def fish_lines(self) -> T.List[str]:
         """The lines of the stdout of the last fish run."""
         return self.completed.stdout.splitlines()
+
+    def site_packages(self, venv: str) -> str:
+        (path,) = glob.glob(self.path(f"{venv}/lib/python*/site-packages"))
+        return path
+
+    def dist_info_names(self, venv: str) -> T.List[str]:
+        """The names of the dist-info directories of jazzoo in the venv."""
+        return sorted(
+            os.path.basename(path)
+            for path in glob.glob(
+                os.path.join(self.site_packages(venv), "jazzoo-*.dist-info")
+            )
+        )
+
+    def dist_info_file(self, venv: str, name: str) -> str:
+        """The path of a file in the (only) dist-info directory of jazzoo."""
+        (dist_info,) = self.dist_info_names(venv)
+        return os.path.join(self.site_packages(venv), dist_info, name)
+
+    def read_direct_url(self, venv: str) -> T.Dict[str, T.Any]:
+        return json.loads(self.read_file(self.dist_info_file(venv, "direct_url.json")))
 
     def zoo_link(self, name: str) -> str:
         return self.path(f"home/.local/bin/zoo-{name}")
