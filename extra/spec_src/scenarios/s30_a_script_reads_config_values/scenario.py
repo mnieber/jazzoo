@@ -47,8 +47,8 @@ markdown_node = sunya.add_markdown_node(scenario, "A script reads config values"
 markdown_node.markdown = """
 A jazzoo file names the YAML config files of a project, and a script that it runs
 (a Python shebang block, or any `python foo.py` shell line) reads values from the
-merged config with `get_config`. Jazzoo only manages the list of config files; it
-never reads them itself.
+merged config with `get_config`. The jazzoo file itself reads a value with
+`⚙️.get_config`.
 
 ```
 ⚙️.load_config(path=⚙️.module.dirname / "config/base.yaml")

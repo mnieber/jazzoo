@@ -21,6 +21,7 @@ the three namespace sigils.
 | read an environment variable, with a fallback            | [5.4](#54-optional-references-and-defaults), [7.2](#72-environment-variables) |
 | load a `.env` file                                       | [7.3](#73-loading-a-dotenv-file)                                              |
 | load YAML config files                                   | [7.4](#74-loading-config-files)                                               |
+| read a config value in a jazzoo file                     | [7.4](#74-loading-config-files)                                               |
 | read config values from a Python script                  | [jazzoo-config.md](./jazzoo-config.md)                                        |
 | split a config file into layers                          | [jazzoo-config.md, 5](./jazzoo-config.md#5-includes)                          |
 | compute a value conditionally                            | [6.3](#63-conditional-expressions)                                            |
@@ -709,9 +710,9 @@ effect. They change the process environment; they do not make `⚙️` assignabl
 ⚙️.load_config(path=⚙️.module.dirname / "config/local.yaml", required=false)
 ```
 
-`⚙️.load_config` appends a YAML file to the **config list**. Jazzoo itself never reads
-the config; a script that the file runs reads values from the merged config with
-`get_config` (see `jazzoo-config.md`).
+`⚙️.load_config` appends a YAML file to the **config list**. The Jazzoo file reads a
+value of the merged config with `⚙️.get_config` (below), and a script that the file
+runs reads values with `get_config` (see `jazzoo-config.md`).
 
 - It is a statement and yields no value, like `⚙️.load_env`.
 - At the top level of a module it runs when the module is loaded; in a function body
@@ -724,8 +725,8 @@ the config; a script that the file runs reads values from the merged config with
   original position.
 - By default a missing file is an `ExecutionError`. With `required=false`, a missing
   file is silently skipped and not added to the list.
-- It only checks that the file exists. The YAML is parsed by `get_config`, so loading
-  config does not slow down every `jaz` run.
+- It only checks that the file exists. The YAML is parsed when a value is first read,
+  so loading config does not slow down every `jaz` run.
 - The config list is exported to subprocesses in the environment variable
   `JAZZOO_CONFIG_FILES`, as absolute paths separated by `os.pathsep`. A subprocess
   sees the list as it was when the subprocess started.
@@ -736,7 +737,29 @@ There is no way to select config files from inside a config file. The Jazzoo fil
 the one place that decides which files are in the config list; a conditional
 expression or path join in `path=` covers the conditional case. A config file may
 include layers (`jazzoo-config.md`, section 5), but these are unconditional: they
-define what the file is made of, and are read by `get_config`, not by `jaz`.
+define what the file is made of, and are read together with the file.
+
+`⚙️.get_config` yields the value at a path in the merged config:
+
+```
+build(local=⚙️.get_config(path="/compose/use_dockerfile_local", default=false)):
+    echo "local: 🐆.local"
+
+deploy():
+    echo "deploying to {{ ⚙️.get_config(path="/deploy/host") }}"
+```
+
+- It is an expression, so it can be used in an assignment, in `{{ }}` and as a
+  parameter default. Its arguments are checked when the module is loaded.
+- It returns what `get_config(path, default)` returns in a script
+  (`jazzoo-config.md`, section 2): the same paths, merge order, includes and `${...}`
+  expansion. A dict becomes an object and a list an array.
+- It reads the config list as it is when the call runs: a top-level assignment does
+  not see a config file that a later `⚙️.load_config` adds.
+- When the path does not exist, it yields `default`, which may be any value,
+  including `null`. Without `default`, a missing path is an `ExecutionError`, as is
+  every other error of reading the config, and a value that is not a JSON value
+  (e.g. a YAML date).
 
 ### 7.5 Pipe operators
 
@@ -804,7 +827,8 @@ test():
 
 ### 8.3 Default values
 
-A default is an expression. It may reference `🐐`, `🐭` and `⚙️.env`:
+A default is an expression. It may reference `🐐`, `🐭` and `⚙️.env`, and call a
+function, e.g. `⚙️.get_config` (section 7.4):
 
 ```
 🐭.default-mode = ⚙️.env.BUILD_MODE?:-release
@@ -1598,9 +1622,10 @@ jazzoo.jaz:12: error: build() has no parameter named 'profile'
 `--trace` additionally prints the Python stack trace. It is never shown otherwise,
 since it describes Jazzoo's internals rather than the user's file.
 
-Errors raised while reading the config (see `jazzoo-config.md`) are not
+Errors raised while a script reads the config (see `jazzoo-config.md`) are not
 `JazzooError`s. They are raised by `get_config` in the script's own process, and are
-reported by that script; to `jaz` they are an ordinary non-zero exit.
+reported by that script; to `jaz` they are an ordinary non-zero exit. Errors of
+`⚙️.get_config` are `ExecutionError`s, with the message of the config error.
 
 ---
 
