@@ -22,7 +22,8 @@ def test_a_local_function_is_called_with_named_arguments():
     like 🐭 functions."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_local_basic.jaz
+        jazzoo_fn = save_fixture(
+            """# test_local_basic.jaz
         🐭.tracing = "on"
 
         help(who="me"):
@@ -30,7 +31,8 @@ def test_a_local_function_is_called_with_named_arguments():
                 echo "Hello 🐆.who! Tracing is: 🐭.tracing"
 
             🐆.retval = 🐆.dump(who=🐆.who)
-        """)
+        """
+        )
 
         # Run
         root_module = parse_module(jazzoo_fn)
@@ -46,13 +48,15 @@ def test_a_local_function_takes_parameter_defaults():
     """A local function's parameters may have defaults, like any other function."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_local_defaults.jaz
+        jazzoo_fn = save_fixture(
+            """# test_local_defaults.jaz
         help():
             🐆.greet(who="world", punctuation="!"):
                 echo "Hello 🐆.who🐆.punctuation"
 
             🐆.retval = 🐆.greet()
-        """)
+        """
+        )
 
         # Run
         root_module = parse_module(jazzoo_fn)
@@ -65,13 +69,15 @@ def test_a_positional_argument_to_a_local_function_is_an_argument_error():
     """Arguments are always named, in local functions too."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_local_positional.jaz
+        jazzoo_fn = save_fixture(
+            """# test_local_positional.jaz
         help():
             🐆.dump(who):
                 echo "Hello 🐆.who"
 
             🐆.retval = 🐆.dump("me")
-        """)
+        """
+        )
 
         # Run / Assert
         with pytest.raises(ArgumentError):
@@ -82,13 +88,15 @@ def test_a_missing_argument_to_a_local_function_is_an_argument_error():
     """A local function's required parameters are validated like any other."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_local_missing_arg.jaz
+        jazzoo_fn = save_fixture(
+            """# test_local_missing_arg.jaz
         help():
             🐆.dump(who):
                 echo "Hello 🐆.who"
 
             🐆.retval = 🐆.dump()
-        """)
+        """
+        )
 
         # Run / Assert
         with pytest.raises(ArgumentError):
@@ -100,7 +108,8 @@ def test_a_local_function_has_a_fresh_local_namespace():
     leak to the parent."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_local_namespace_fresh.jaz
+        jazzoo_fn = save_fixture(
+            """# test_local_namespace_fresh.jaz
         help():
             🐆.secret = "parent"
 
@@ -110,7 +119,8 @@ def test_a_local_function_has_a_fresh_local_namespace():
 
             🐆.from-child = 🐆.dump()
             🐆.retval = "🐆.from-child/🐆.secret"
-        """)
+        """
+        )
 
         # Run
         root_module = parse_module(jazzoo_fn)
@@ -125,13 +135,15 @@ def test_arguments_are_passed_explicitly_not_inherited():
     are passed explicitly."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_local_no_inheritance.jaz
+        jazzoo_fn = save_fixture(
+            """# test_local_no_inheritance.jaz
         help(who="me"):
             🐆.dump():
                 echo "[🐆.who?]"
 
             🐆.retval = 🐆.dump()
-        """)
+        """
+        )
 
         # Run
         root_module = parse_module(jazzoo_fn)
@@ -144,13 +156,15 @@ def test_arguments_are_passed_explicitly_not_inherited():
     """Without the `?` marker, the same reference is a ResolutionError."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_local_no_inheritance_strict.jaz
+        jazzoo_fn = save_fixture(
+            """# test_local_no_inheritance_strict.jaz
         help(who="me"):
             🐆.dump():
                 echo "[🐆.who]"
 
             🐆.retval = 🐆.dump()
-        """)
+        """
+        )
 
         # Run
         root_module = parse_module(jazzoo_fn)
@@ -165,7 +179,8 @@ def test_a_local_function_sees_module_and_global_variables():
     both are visible inside a local function."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_local_sees_outer_scopes.jaz
+        jazzoo_fn = save_fixture(
+            """# test_local_sees_outer_scopes.jaz
         🐐.log-level = "high"
         🐭.tracing = "on"
 
@@ -174,7 +189,8 @@ def test_a_local_function_sees_module_and_global_variables():
                 echo "🐐.log-level/🐭.tracing"
 
             🐆.retval = 🐆.dump()
-        """)
+        """
+        )
 
         # Run
         root_module = parse_module(jazzoo_fn)
@@ -188,7 +204,8 @@ def test_a_local_function_is_not_visible_outside_its_enclosing_function():
     not 🐭 functions and not targets."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_local_not_visible.jaz
+        jazzoo_fn = save_fixture(
+            """# test_local_not_visible.jaz
         help():
             🐆.dump():
                 echo "hello"
@@ -197,7 +214,8 @@ def test_a_local_function_is_not_visible_outside_its_enclosing_function():
 
         other():
             echo "other"
-        """)
+        """
+        )
 
         # Run
         root_module = parse_module(jazzoo_fn)
@@ -213,7 +231,8 @@ def test_calling_a_local_function_from_another_function_is_a_resolution_error():
     """A local function defined in one function cannot be called from another."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_local_out_of_scope.jaz
+        jazzoo_fn = save_fixture(
+            """# test_local_out_of_scope.jaz
         help():
             🐆.dump():
                 echo "hello"
@@ -222,7 +241,8 @@ def test_calling_a_local_function_from_another_function_is_a_resolution_error():
 
         other():
             🐆.retval = 🐆.dump()
-        """)
+        """
+        )
 
         # Run / Assert
         with pytest.raises(ResolutionError):
@@ -234,7 +254,8 @@ def test_local_functions_support_shebang_blocks():
     assignments, and shebang blocks."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_local_body_forms.jaz
+        jazzoo_fn = save_fixture(
+            """# test_local_body_forms.jaz
         help():
             🐆.dump(who):
                 #!/usr/bin/env python3
@@ -248,7 +269,8 @@ def test_local_functions_support_shebang_blocks():
                 echo "🐆.greeting 🐆.who"
 
             🐆.retval = 🐆.dump(who="jane")
-        """)
+        """
+        )
 
         # Run
         root_module = parse_module(jazzoo_fn)
@@ -262,7 +284,8 @@ def test_local_functions_nest():
     """Local functions support nested local functions."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_local_nested.jaz
+        jazzoo_fn = save_fixture(
+            """# test_local_nested.jaz
         help():
             🐆.outer(who):
                 🐆.inner(name):
@@ -271,7 +294,8 @@ def test_local_functions_nest():
                 🐆.retval = 🐆.inner(name=🐆.who)
 
             🐆.retval = 🐆.outer(who="jane")
-        """)
+        """
+        )
 
         # Run
         root_module = parse_module(jazzoo_fn)
@@ -285,7 +309,8 @@ def test_a_nested_local_function_is_scoped_to_its_own_parent():
     outermost function cannot call it."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_local_nested_scope.jaz
+        jazzoo_fn = save_fixture(
+            """# test_local_nested_scope.jaz
         help():
             🐆.outer():
                 🐆.inner():
@@ -294,7 +319,8 @@ def test_a_nested_local_function_is_scoped_to_its_own_parent():
                 🐆.retval = 🐆.inner()
 
             🐆.retval = 🐆.inner()
-        """)
+        """
+        )
 
         # Run / Assert
         with pytest.raises(ResolutionError):
@@ -306,7 +332,8 @@ def test_a_local_function_may_call_module_functions():
     file as they do anywhere else."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_local_calls_module_fn.jaz
+        jazzoo_fn = save_fixture(
+            """# test_local_calls_module_fn.jaz
         [private]
         _helper(name):
             echo "helper: 🐆.name"
@@ -316,7 +343,8 @@ def test_a_local_function_may_call_module_functions():
                 🐆.retval = 🐭._helper(name=🐆.who)
 
             🐆.retval = 🐆.dump(who="jane")
-        """)
+        """
+        )
 
         # Run
         root_module = parse_module(jazzoo_fn)
@@ -330,13 +358,15 @@ def test_the_at_marker_suppresses_console_output(capsys):
     executed. Prefixing the line with `@` suppresses that."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_at_marker.jaz
+        jazzoo_fn = save_fixture(
+            """# test_at_marker.jaz
         loud():
             echo "Hello"
 
         quiet():
             @echo "Hello"
-        """)
+        """
+        )
 
         # Run
         root_module = parse_module(jazzoo_fn)
@@ -360,13 +390,15 @@ def test_the_at_marker_applies_inside_a_local_function(capsys):
     """The `@` marker works on the lines of a local function body too."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_at_marker_local.jaz
+        jazzoo_fn = save_fixture(
+            """# test_at_marker_local.jaz
         help(who="me"):
             🐆.dump(who):
                 @echo "Hello 🐆.who!"
 
             🐆.retval = 🐆.dump(who=🐆.who)
-        """)
+        """
+        )
 
         # Run
         root_module = parse_module(jazzoo_fn)

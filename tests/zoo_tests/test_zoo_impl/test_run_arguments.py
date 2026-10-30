@@ -1,13 +1,16 @@
 from zoo_tests.zoo_test_env import SHOP_JAZZOO, Context, TestEnv
 
 # A target named `env`, which `zoo env` would take for its own command
-JAZZOO = SHOP_JAZZOO + """
+JAZZOO = (
+    SHOP_JAZZOO
+    + """
 env():
     @echo "the env target"
 
 fail():
     @exit 3
 """
+)
 
 OTHER_JAZ = """
 hello():

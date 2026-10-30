@@ -16,10 +16,12 @@ def test_a_target_runs_with_named_arguments(capsys):
     """`jaz <target> [arg=value ...]` runs a target. Arguments are always named."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_run_target.jaz
+        jazzoo_fn = save_fixture(
+            """# test_run_target.jaz
         debug(name="me"):
             echo "Running debug for: 🐆.name"
-        """)
+        """
+        )
 
         # Run
         exit_code = main(["debug", "name=jane", "--file", jazzoo_fn])
@@ -44,10 +46,12 @@ def test_several_named_arguments_are_passed_in_any_order(capsys):
     """Named arguments identify their parameter, so their order does not matter."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_named_order.jaz
+        jazzoo_fn = save_fixture(
+            """# test_named_order.jaz
         build(target, mode="release"):
             echo "🐆.target/🐆.mode"
-        """)
+        """
+        )
 
         # Run
         in_order = main(["build", "target=myapp", "mode=debug", "--file", jazzoo_fn])
@@ -70,10 +74,12 @@ def test_the_first_parameter_may_be_passed_positionally(capsys):
     be passed positionally at the CLI."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_positional_shorthand.jaz
+        jazzoo_fn = save_fixture(
+            """# test_positional_shorthand.jaz
         build(target, mode="release"):
             echo "🐆.target/🐆.mode"
-        """)
+        """
+        )
 
         # Run
         positional = main(["build", "myapp", "--file", jazzoo_fn])
@@ -103,10 +109,12 @@ def test_passing_an_argument_twice_is_an_error(capsys):
     """Passing the same argument both positionally and by name is an error."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_duplicate_argument.jaz
+        jazzoo_fn = save_fixture(
+            """# test_duplicate_argument.jaz
         build(target, mode="release"):
             echo "🐆.target/🐆.mode"
-        """)
+        """
+        )
 
         # Run
         exit_code = main(["build", "myapp", "target=other", "--file", jazzoo_fn])
@@ -121,10 +129,12 @@ def test_a_positional_argument_must_come_first(capsys):
     """If mixing positional and named, the positional argument must come first."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_positional_first.jaz
+        jazzoo_fn = save_fixture(
+            """# test_positional_first.jaz
         build(target, mode="release"):
             echo "🐆.target/🐆.mode"
-        """)
+        """
+        )
 
         # Run
         exit_code = main(["build", "mode=debug", "myapp", "--file", jazzoo_fn])
@@ -140,13 +150,15 @@ def test_the_positional_shorthand_is_cli_only():
     CLI-only."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_shorthand_is_cli_only.jaz
+        jazzoo_fn = save_fixture(
+            """# test_shorthand_is_cli_only.jaz
         build(target, mode="release"):
             echo "🐆.target/🐆.mode"
 
         test():
             🐭.build("myapp")
-        """)
+        """
+        )
 
         # Run / Assert
         # The same shorthand that works at the CLI is an ArgumentError in a .jaz file.
@@ -160,7 +172,8 @@ def test_list_shows_the_targets(capsys):
     """`jaz --list` lists available targets."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_list.jaz
+        jazzoo_fn = save_fixture(
+            """# test_list.jaz
         [private]
         _helper():
             echo "helper"
@@ -170,7 +183,8 @@ def test_list_shows_the_targets(capsys):
 
         deploy():
             echo "deploy"
-        """)
+        """
+        )
 
         # Run
         exit_code = main(["--list", "--file", jazzoo_fn])
@@ -189,21 +203,25 @@ def test_imported_targets_are_not_listed_but_exported_ones_are(capsys):
     ones land flat in 🐭 and become targets."""
     if True:
         # Config
-        save_fixture("""# library.jaz
+        save_fixture(
+            """# library.jaz
         imported-target():
             echo "imported"
 
         exported-target():
             echo "exported"
-        """)
+        """
+        )
 
-        jazzoo_fn = save_fixture("""# test_list_imports.jaz
+        jazzoo_fn = save_fixture(
+            """# test_list_imports.jaz
         from ./library.jaz import imported-target as ns
         from ./library.jaz export exported-target
 
         own-target():
             echo "own"
-        """)
+        """
+        )
 
         # Run
         exit_code = main(["--list", "--file", jazzoo_fn])
@@ -221,14 +239,16 @@ def test_a_private_function_cannot_be_invoked_from_the_cli(capsys):
     though they are callable from within .jaz files."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_private_not_invokable.jaz
+        jazzoo_fn = save_fixture(
+            """# test_private_not_invokable.jaz
         [private]
         _helper():
             echo "helper ran"
 
         build():
             🐭._helper()
-        """)
+        """
+        )
 
         # Run
         direct = main(["_helper", "--file", jazzoo_fn])
@@ -249,13 +269,15 @@ def test_running_jaz_with_no_arguments_lists_the_targets(capsys):
     """Running `jaz` with no arguments lists available targets."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_no_arguments.jaz
+        jazzoo_fn = save_fixture(
+            """# test_no_arguments.jaz
         build():
             echo "build"
 
         deploy():
             echo "deploy"
-        """)
+        """
+        )
 
         # Run
         bare = main(["--file", jazzoo_fn])
@@ -274,10 +296,12 @@ def test_an_unknown_target_is_an_error(capsys):
     """Naming a target that does not exist fails rather than doing nothing."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_unknown_target.jaz
+        jazzoo_fn = save_fixture(
+            """# test_unknown_target.jaz
         build():
             echo "build"
-        """)
+        """
+        )
 
         # Run
         exit_code = main(["no-such-target", "--file", jazzoo_fn])
@@ -292,10 +316,12 @@ def test_the_default_file_is_jazzoo_in_the_current_directory(capsys, monkeypatch
     """The default file is `jazzoo` (no extension) in the current directory."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# jazzoo
+        jazzoo_fn = save_fixture(
+            """# jazzoo
         build():
             echo "from the default file"
-        """)
+        """
+        )
 
         # Run
         monkeypatch.chdir(os.path.dirname(jazzoo_fn))
@@ -349,17 +375,21 @@ def test_root_module_system_variables_name_the_entry_point(capsys, monkeypatch):
     the reference is made from an imported module."""
     if True:
         # Config
-        save_fixture("""# reports_root.jaz
+        save_fixture(
+            """# reports_root.jaz
         report():
             echo "root=⚙️.root_module.basename module=⚙️.module.basename"
-        """)
+        """
+        )
 
-        jazzoo_fn = save_fixture("""# test_root_module.jaz
+        jazzoo_fn = save_fixture(
+            """# test_root_module.jaz
         from ./reports_root.jaz import report as lib
 
         go():
             🐭.lib.report()
-        """)
+        """
+        )
 
         # Run
         monkeypatch.chdir(os.path.dirname(jazzoo_fn))

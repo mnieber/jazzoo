@@ -25,12 +25,14 @@ def test_a_dotted_path_reaches_into_an_object():
     """A variable can hold an object, and a dotted name reaches inside it."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_object_access.jaz
+        jazzoo_fn = save_fixture(
+            """# test_object_access.jaz
         build():
             🐆.config.name = "jane"
             🐆.config.port = 8080
             🐆.retval = "🐆.config.name/🐆.config.port"
-        """)
+        """
+        )
 
         # Run
         root_module = parse_module(jazzoo_fn)
@@ -44,11 +46,13 @@ def test_assigning_a_path_creates_the_intermediate_objects():
     not be declared first."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_autovivify.jaz
+        jazzoo_fn = save_fixture(
+            """# test_autovivify.jaz
         build():
             🐆.config.database.host = "localhost"
             🐆.retval = 🐆.config.database.host
-        """)
+        """
+        )
 
         # Run
         root_module = parse_module(jazzoo_fn)
@@ -61,14 +65,16 @@ def test_a_path_works_in_every_namespace():
     """🐐, 🐭 and 🐆 all hold structured values."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_paths_all_sigils.jaz
+        jazzoo_fn = save_fixture(
+            """# test_paths_all_sigils.jaz
         🐐.global-config.env = "prod"
         🐭.module-config.name = "jazzoo"
 
         build():
             🐆.local-config.mode = "debug"
             🐆.retval = "🐐.global-config.env/🐭.module-config.name/🐆.local-config.mode"
-        """)
+        """
+        )
 
         # Run
         root_module = parse_module(jazzoo_fn)
@@ -81,11 +87,13 @@ def test_an_array_is_indexed_by_a_path_segment():
     """Array elements are reached by index, written as an ordinary path segment."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_array_index.jaz
+        jazzoo_fn = save_fixture(
+            """# test_array_index.jaz
         build():
             🐆.hosts = ["a.example.com", "b.example.com"]
             🐆.retval = "🐆.hosts.0 and 🐆.hosts.1"
-        """)
+        """
+        )
 
         # Run
         root_module = parse_module(jazzoo_fn)
@@ -98,7 +106,8 @@ def test_a_missing_path_is_a_resolution_error():
     """A path that does not exist is unresolvable, exactly like an unset variable."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_missing_path.jaz
+        jazzoo_fn = save_fixture(
+            """# test_missing_path.jaz
         missing-field():
             🐆.config.name = "jane"
             🐆.retval = 🐆.config.nickname
@@ -106,7 +115,8 @@ def test_a_missing_path_is_a_resolution_error():
         missing-index():
             🐆.hosts = ["only-one"]
             🐆.retval = 🐆.hosts.5
-        """)
+        """
+        )
 
         # Run
         root_module = parse_module(jazzoo_fn)
@@ -122,7 +132,8 @@ def test_the_markers_apply_to_a_missing_path():
     """`?` and `:-` work on a path like they do on any other reference."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_path_markers.jaz
+        jazzoo_fn = save_fixture(
+            """# test_path_markers.jaz
         optional():
             🐆.config.name = "jane"
             🐆.retval = "[🐆.config.nickname?]"
@@ -130,7 +141,8 @@ def test_the_markers_apply_to_a_missing_path():
         with-default():
             🐆.config.name = "jane"
             🐆.retval = 🐆.config.log-level?:-info
-        """)
+        """
+        )
 
         # Run
         root_module = parse_module(jazzoo_fn)
@@ -144,12 +156,14 @@ def test_a_scalar_renders_bare_and_a_container_renders_as_json():
     """A string leaf renders unquoted; an object or array renders as compact JSON."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_rendering.jaz
+        jazzoo_fn = save_fixture(
+            """# test_rendering.jaz
         build():
             🐆.config.name = "jane"
             🐆.config.port = 8080
             🐆.retval = "🐆.config.name|🐆.config"
-        """)
+        """
+        )
 
         # Run
         root_module = parse_module(jazzoo_fn)
@@ -167,7 +181,8 @@ def test_the_scalar_types_render_as_expected():
     """Numbers render in their JSON form, booleans as true/false, null as empty."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_scalar_rendering.jaz
+        jazzoo_fn = save_fixture(
+            """# test_scalar_rendering.jaz
         build():
             🐆.v.number = 8080
             🐆.v.float = 1.5
@@ -175,7 +190,8 @@ def test_the_scalar_types_render_as_expected():
             🐆.v.no = false
             🐆.v.nothing = null
             🐆.retval = "[🐆.v.number][🐆.v.float][🐆.v.yes][🐆.v.no][🐆.v.nothing]"
-        """)
+        """
+        )
 
         # Run
         root_module = parse_module(jazzoo_fn)
@@ -189,12 +205,14 @@ def test_a_container_renders_into_a_shell_line():
     """A container rendering is ordinary text, so it can be piped to a JSON tool."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_container_in_shell.jaz
+        jazzoo_fn = save_fixture(
+            """# test_container_in_shell.jaz
         build():
             🐆.config.name = "jane"
             #!/usr/bin/env bash
             echo '🐆.config'
-        """)
+        """
+        )
 
         # Run
         root_module = parse_module(jazzoo_fn)
@@ -208,7 +226,8 @@ def test_a_rendered_container_is_consumable_by_a_json_tool():
     read it, so the rendering has to be valid JSON in a real pipeline."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_container_to_json_tool.jaz
+        jazzoo_fn = save_fixture(
+            """# test_container_to_json_tool.jaz
         [private]
         _document():
             #!/usr/bin/env bash
@@ -218,7 +237,8 @@ def test_a_rendered_container_is_consumable_by_a_json_tool():
             🐆.doc = 🐭._document() | ⚙️.parse
             #!/usr/bin/env bash
             echo '🐆.doc' | python3 -c 'import json,sys; print(json.load(sys.stdin)["a"][1]["c"])'
-        """)
+        """
+        )
 
         # Run
         root_module = parse_module(jazzoo_fn)
@@ -232,7 +252,8 @@ def test_parse_reads_a_json_string_into_a_value():
     """⚙️.parse turns a command's stdout into a structured value."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_parse.jaz
+        jazzoo_fn = save_fixture(
+            """# test_parse.jaz
         [private]
         _load-config():
             #!/usr/bin/env bash
@@ -241,7 +262,8 @@ def test_parse_reads_a_json_string_into_a_value():
         build():
             🐆.config = 🐭._load-config() | ⚙️.parse
             🐆.retval = "🐆.config.name/🐆.config.port"
-        """)
+        """
+        )
 
         # Run
         root_module = parse_module(jazzoo_fn)
@@ -254,7 +276,8 @@ def test_parse_rejects_text_that_is_not_json():
     """⚙️.parse on invalid JSON is an ExecutionError."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_parse_invalid.jaz
+        jazzoo_fn = save_fixture(
+            """# test_parse_invalid.jaz
         [private]
         _not-json():
             #!/usr/bin/env bash
@@ -263,7 +286,8 @@ def test_parse_rejects_text_that_is_not_json():
         build():
             🐆.config = 🐭._not-json() | ⚙️.parse
             🐆.retval = "unreachable"
-        """)
+        """
+        )
 
         # Run
         root_module = parse_module(jazzoo_fn)
@@ -278,7 +302,8 @@ def test_json_renders_a_value_back_to_a_json_string():
     string so the result is always valid JSON."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_json_operator.jaz
+        jazzoo_fn = save_fixture(
+            """# test_json_operator.jaz
         a-string():
             🐆.name = "jane"
             🐆.retval = 🐆.name | ⚙️.json
@@ -286,7 +311,8 @@ def test_json_renders_a_value_back_to_a_json_string():
         a-container():
             🐆.config.name = "jane"
             🐆.retval = 🐆.config | ⚙️.json
-        """)
+        """
+        )
 
         # Run
         root_module = parse_module(jazzoo_fn)
@@ -301,7 +327,8 @@ def test_parse_and_json_round_trip():
     """A JSON document survives a trip through jazzoo unchanged."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_round_trip.jaz
+        jazzoo_fn = save_fixture(
+            """# test_round_trip.jaz
         [private]
         _document():
             #!/usr/bin/env bash
@@ -310,7 +337,8 @@ def test_parse_and_json_round_trip():
         build():
             🐆.parsed = 🐭._document() | ⚙️.parse
             🐆.retval = 🐆.parsed | ⚙️.json
-        """)
+        """
+        )
 
         # Run
         root_module = parse_module(jazzoo_fn)
@@ -328,7 +356,8 @@ def test_null_and_empty_containers_are_falsy():
     number 0."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_structured_truthiness.jaz
+        jazzoo_fn = save_fixture(
+            """# test_structured_truthiness.jaz
         nothing():
             🐆.v = null
             🐆.retval = "truthy" if 🐆.v else "falsy"
@@ -348,7 +377,8 @@ def test_null_and_empty_containers_are_falsy():
         boolean-false():
             🐆.v = false
             🐆.retval = "truthy" if 🐆.v else "falsy"
-        """)
+        """
+        )
 
         # Run
         root_module = parse_module(jazzoo_fn)
@@ -368,7 +398,8 @@ def test_a_non_empty_container_is_truthy():
     """A container with anything in it is truthy, as is a non-zero number."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_structured_truthy.jaz
+        jazzoo_fn = save_fixture(
+            """# test_structured_truthy.jaz
         an-array():
             🐆.v = ["a"]
             🐆.retval = "truthy" if 🐆.v else "falsy"
@@ -384,7 +415,8 @@ def test_a_non_empty_container_is_truthy():
         boolean-true():
             🐆.v = true
             🐆.retval = "truthy" if 🐆.v else "falsy"
-        """)
+        """
+        )
 
         # Run
         root_module = parse_module(jazzoo_fn)
@@ -398,13 +430,15 @@ def test_truthiness_is_decided_on_the_value_not_its_rendering():
     """An empty array is falsy even though it renders as the non-empty text `[]`."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_truthiness_vs_rendering.jaz
+        jazzoo_fn = save_fixture(
+            """# test_truthiness_vs_rendering.jaz
         build():
             🐆.v = []
             🐆.rendered = "[🐆.v]"
             🐆.decided = "truthy" if 🐆.v else "falsy"
             🐆.retval = "🐆.rendered is 🐆.decided"
-        """)
+        """
+        )
 
         # Run
         root_module = parse_module(jazzoo_fn)
@@ -418,7 +452,8 @@ def test_a_structured_value_survives_a_function_call():
     """A structured value passes as an argument and comes back as a return value."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_structured_across_calls.jaz
+        jazzoo_fn = save_fixture(
+            """# test_structured_across_calls.jaz
         [private]
         _describe(config):
             🐆.retval = "name=🐆.config.name"
@@ -426,7 +461,8 @@ def test_a_structured_value_survives_a_function_call():
         build():
             🐆.config.name = "jane"
             🐆.retval = 🐭._describe(config=🐆.config)
-        """)
+        """
+        )
 
         # Run
         root_module = parse_module(jazzoo_fn)
@@ -440,7 +476,8 @@ def test_an_unquoted_word_is_read_as_json():
     boolean rather than a five-character string."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_unquoted_is_json.jaz
+        jazzoo_fn = save_fixture(
+            """# test_unquoted_is_json.jaz
         boolean():
             🐆.flag = true
             🐆.retval = "yes" if 🐆.flag else "no"
@@ -456,7 +493,8 @@ def test_an_unquoted_word_is_read_as_json():
         a-number():
             🐆.port = 8080
             🐆.retval = 🐆.port
-        """)
+        """
+        )
 
         # Run
         root_module = parse_module(jazzoo_fn)
@@ -474,15 +512,19 @@ def test_an_unquoted_string_is_a_parse_error():
     """A word that is not valid JSON is a ParseError - strings must be quoted."""
     if True:
         # Config
-        at_top_level = save_fixture("""# test_unquoted_top_level.jaz
+        at_top_level = save_fixture(
+            """# test_unquoted_top_level.jaz
         🐭.name = jane
-        """)
+        """
+        )
 
-        in_a_body = save_fixture("""# test_unquoted_in_body.jaz
+        in_a_body = save_fixture(
+            """# test_unquoted_in_body.jaz
         go():
             🐆.name = jane
             🐆.retval = 🐆.name
-        """)
+        """
+        )
 
         # Run / Assert
         with pytest.raises(ParseError):
@@ -498,10 +540,12 @@ def test_bare_words_survive_where_no_expression_is_parsed(monkeypatch):
         # Config
         monkeypatch.delenv("JAZZOO_ABSENT_WORD", raising=False)
 
-        jazzoo_fn = save_fixture("""# test_bare_default.jaz
+        jazzoo_fn = save_fixture(
+            """# test_bare_default.jaz
         go():
             echo "⚙️.env.JAZZOO_ABSENT_WORD?:-info"
-        """)
+        """
+        )
 
         # Run
         root_module = parse_module(jazzoo_fn)
@@ -516,7 +560,8 @@ def test_empty_distinguishes_nothing_from_falsy():
     command that printed `no` printed something."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_empty_operator.jaz
+        jazzoo_fn = save_fixture(
+            """# test_empty_operator.jaz
         [private]
         _prints-no():
             #!/usr/bin/env bash
@@ -534,7 +579,8 @@ def test_empty_distinguishes_nothing_from_falsy():
         said-nothing():
             🐆.result = 🐭._prints-nothing()
             🐆.retval = 🐆.result | ⚙️.empty
-        """)
+        """
+        )
 
         # Run
         root_module = parse_module(jazzoo_fn)
@@ -550,7 +596,8 @@ def test_empty_covers_the_empty_containers_and_null():
     """⚙️.empty is true for "", [], {} and null, and false for everything else."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_empty_values.jaz
+        jazzoo_fn = save_fixture(
+            """# test_empty_values.jaz
         empty-string():
             🐆.v = ""
             🐆.retval = 🐆.v | ⚙️.empty
@@ -578,7 +625,8 @@ def test_empty_covers_the_empty_containers_and_null():
         a-full-array():
             🐆.v = ["a"]
             🐆.retval = 🐆.v | ⚙️.empty
-        """)
+        """
+        )
 
         # Run
         root_module = parse_module(jazzoo_fn)
@@ -596,7 +644,8 @@ def test_empty_composes_into_a_condition():
     ternary."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_empty_in_condition.jaz
+        jazzoo_fn = save_fixture(
+            """# test_empty_in_condition.jaz
         [private]
         _prints-no():
             #!/usr/bin/env bash
@@ -605,7 +654,8 @@ def test_empty_composes_into_a_condition():
         go():
             🐆.result = 🐭._prints-no()
             🐆.retval = "nothing came back" if 🐆.result | ⚙️.empty else "got: 🐆.result"
-        """)
+        """
+        )
 
         # Run
         root_module = parse_module(jazzoo_fn)
@@ -621,10 +671,12 @@ def test_bool_captures_a_truthiness_decision_as_a_value():
     passed on rather than only consumed by a ternary."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_bool_operator.jaz
+        jazzoo_fn = save_fixture(
+            """# test_bool_operator.jaz
         check(flag):
             🐆.retval = 🐆.flag | ⚙️.bool
-        """)
+        """
+        )
 
         # Run
         root_module = parse_module(jazzoo_fn)
@@ -641,7 +693,8 @@ def test_bool_is_total_over_structured_values():
     """Every value maps to a boolean; nothing raises."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_bool_structured.jaz
+        jazzoo_fn = save_fixture(
+            """# test_bool_structured.jaz
         empty-array():
             🐆.v = []
             🐆.retval = 🐆.v | ⚙️.bool
@@ -661,7 +714,8 @@ def test_bool_is_total_over_structured_values():
         zero():
             🐆.v = 0
             🐆.retval = 🐆.v | ⚙️.bool
-        """)
+        """
+        )
 
         # Run
         root_module = parse_module(jazzoo_fn)
@@ -679,7 +733,8 @@ def test_bool_yields_a_real_boolean():
     or falsy, and survives ⚙️.json as a JSON boolean."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_bool_is_a_boolean.jaz
+        jazzoo_fn = save_fixture(
+            """# test_bool_is_a_boolean.jaz
         round-trip():
             🐆.flag = "yes" | ⚙️.bool
             🐆.retval = 🐆.flag | ⚙️.json
@@ -687,7 +742,8 @@ def test_bool_yields_a_real_boolean():
         used-as-a-condition():
             🐆.flag = "no" | ⚙️.bool
             🐆.retval = "on" if 🐆.flag else "off"
-        """)
+        """
+        )
 
         # Run
         root_module = parse_module(jazzoo_fn)
@@ -703,12 +759,14 @@ def test_bool_and_empty_answer_different_questions():
     spellings, which is why both exist."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_bool_vs_empty.jaz
+        jazzoo_fn = save_fixture(
+            """# test_bool_vs_empty.jaz
         compare(value):
             🐆.as-bool = 🐆.value | ⚙️.bool
             🐆.as-empty = 🐆.value | ⚙️.empty
             🐆.retval = "bool=🐆.as-bool empty=🐆.as-empty"
-        """)
+        """
+        )
 
         # Run
         root_module = parse_module(jazzoo_fn)
@@ -731,10 +789,12 @@ def test_bool_reads_an_environment_variable(monkeypatch):
     """The case ⚙️.bool is for: an env var whose spelling is not known in advance."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_bool_from_env.jaz
+        jazzoo_fn = save_fixture(
+            """# test_bool_from_env.jaz
         go():
             🐆.retval = ⚙️.env.JAZZOO_CI_FLAG? | ⚙️.bool
-        """)
+        """
+        )
 
         # Run
         root_module = parse_module(jazzoo_fn)
@@ -757,13 +817,16 @@ def test_a_call_path_and_a_field_path_do_not_collide():
     still resolves as a field."""
     if True:
         # Config
-        save_fixture("""# collide_lib.jaz
+        save_fixture(
+            """# collide_lib.jaz
         build():
             #!/usr/bin/env bash
             echo "from the imported function"
-        """)
+        """
+        )
 
-        jazzoo_fn = save_fixture("""# test_call_field_collision.jaz
+        jazzoo_fn = save_fixture(
+            """# test_call_field_collision.jaz
         from ./collide_lib.jaz import build as docker
 
         🐭.docker-config.build = "from the variable"
@@ -773,7 +836,8 @@ def test_a_call_path_and_a_field_path_do_not_collide():
 
         as-a-field():
             🐆.retval = 🐭.docker-config.build
-        """)
+        """
+        )
 
         # Run
         root_module = parse_module(jazzoo_fn)
@@ -788,23 +852,29 @@ def test_a_variable_may_not_share_a_name_with_a_namespace():
     winner jazzoo forbids the collision - in either order."""
     if True:
         # Config
-        save_fixture("""# same_name_lib.jaz
+        save_fixture(
+            """# same_name_lib.jaz
         build():
             #!/usr/bin/env bash
             echo "the function"
-        """)
+        """
+        )
 
-        namespace_first = save_fixture("""# test_namespace_then_variable.jaz
+        namespace_first = save_fixture(
+            """# test_namespace_then_variable.jaz
         from ./same_name_lib.jaz import build as docker
 
         🐭.docker.build = "the field"
-        """)
+        """
+        )
 
-        variable_first = save_fixture("""# test_variable_then_namespace.jaz
+        variable_first = save_fixture(
+            """# test_variable_then_namespace.jaz
         🐭.docker = "a string"
 
         from ./same_name_lib.jaz import build as docker
-        """)
+        """
+        )
 
         # Run / Assert
         with pytest.raises(ParseError):
@@ -818,7 +888,8 @@ def test_a_module_variable_may_be_assigned_more_than_once():
     uniqueness rule does not fire on it."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_reassignment.jaz
+        jazzoo_fn = save_fixture(
+            """# test_reassignment.jaz
         🐭.cfg = "replaced"
         🐭.cfg.name = "jane"
         🐭.plain = "first"
@@ -826,7 +897,8 @@ def test_a_module_variable_may_be_assigned_more_than_once():
 
         go():
             🐆.retval = "🐭.cfg.name/🐭.plain"
-        """)
+        """
+        )
 
         # Run
         root_module = parse_module(jazzoo_fn)
@@ -841,23 +913,29 @@ def test_a_collision_points_at_the_second_declaration():
     since that is the one to remove."""
     if True:
         # Config
-        save_fixture("""# second_decl_lib.jaz
+        save_fixture(
+            """# second_decl_lib.jaz
         build():
             #!/usr/bin/env bash
             echo "fn"
-        """)
+        """
+        )
 
-        import_first = save_fixture("""# test_import_then_variable.jaz
+        import_first = save_fixture(
+            """# test_import_then_variable.jaz
         from ./second_decl_lib.jaz import build as docker
 
         🐭.docker = "x"
-        """)
+        """
+        )
 
-        variable_first = save_fixture("""# test_variable_then_import.jaz
+        variable_first = save_fixture(
+            """# test_variable_then_import.jaz
         🐭.docker = "x"
 
         from ./second_decl_lib.jaz import build as docker
-        """)
+        """
+        )
 
         # Run / Assert
         with pytest.raises(ParseError) as import_first_error:
@@ -875,13 +953,16 @@ def test_only_the_first_segment_names_something_in_the_scope():
     with a `docker` namespace but not with a module-level `build`."""
     if True:
         # Config
-        save_fixture("""# first_segment_lib.jaz
+        save_fixture(
+            """# first_segment_lib.jaz
         build():
             #!/usr/bin/env bash
             echo "the imported function"
-        """)
+        """
+        )
 
-        jazzoo_fn = save_fixture("""# test_first_segment.jaz
+        jazzoo_fn = save_fixture(
+            """# test_first_segment.jaz
         from ./first_segment_lib.jaz import build as tools
 
         🐭.settings.build = "the field"
@@ -892,7 +973,8 @@ def test_only_the_first_segment_names_something_in_the_scope():
 
         go():
             🐆.retval = "🐭.settings.build/🐭.tools.build()/🐭.build()"
-        """)
+        """
+        )
 
         # Run
         root_module = parse_module(jazzoo_fn)
@@ -911,7 +993,8 @@ def test_a_module_variable_holds_structure_across_an_import():
     writes the object in its own defining module."""
     if True:
         # Config
-        save_fixture("""# structured_store.jaz
+        save_fixture(
+            """# structured_store.jaz
         🐭.state.count = "0"
 
         set-count(to):
@@ -919,9 +1002,11 @@ def test_a_module_variable_holds_structure_across_an_import():
 
         get-count():
             🐆.retval = 🐭.state.count
-        """)
+        """
+        )
 
-        jazzoo_fn = save_fixture("""# test_structured_import.jaz
+        jazzoo_fn = save_fixture(
+            """# test_structured_import.jaz
         🐭.state.count = "caller-owns-this"
 
         from ./structured_store.jaz import (set-count, get-count) as s
@@ -930,7 +1015,8 @@ def test_a_module_variable_holds_structure_across_an_import():
             🐭.s.set-count(to="42")
             🐆.theirs = 🐭.s.get-count()
             🐆.retval = "theirs=🐆.theirs mine=🐭.state.count"
-        """)
+        """
+        )
 
         # Run
         root_module = parse_module(jazzoo_fn)

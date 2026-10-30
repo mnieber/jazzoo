@@ -20,7 +20,8 @@ def test_and_or_and_not_combine_truthiness():
     """`and`, `or` and `not` combine values by their truthiness."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_bool_basic.jaz
+        jazzoo_fn = save_fixture(
+            """# test_bool_basic.jaz
         🐭.yes = true
         🐭.no = false
 
@@ -38,7 +39,8 @@ def test_and_or_and_not_combine_truthiness():
 
         negated():
             🐆.retval = "y" if not 🐭.no else "n"
-        """)
+        """
+        )
 
         # Run
         root_module = parse_module(jazzoo_fn)
@@ -56,7 +58,8 @@ def test_truthiness_follows_the_existing_rule():
     style negatives are falsy."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_bool_truthiness.jaz
+        jazzoo_fn = save_fixture(
+            """# test_bool_truthiness.jaz
         🐭.off = "no"
         🐭.zero = "0"
         🐭.empty = []
@@ -67,7 +70,8 @@ def test_truthiness_follows_the_existing_rule():
 
         with-truthy():
             🐆.retval = "y" if 🐭.off or 🐭.on else "n"
-        """)
+        """
+        )
 
         # Run
         root_module = parse_module(jazzoo_fn)
@@ -83,7 +87,8 @@ def test_and_and_or_yield_an_operand():
     reverse."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_bool_operand.jaz
+        jazzoo_fn = save_fixture(
+            """# test_bool_operand.jaz
         🐭.given = ""
         🐭.name = "jane"
 
@@ -98,7 +103,8 @@ def test_and_and_or_yield_an_operand():
 
         and-yields-left():
             🐆.retval = 🐭.given and "not reached"
-        """)
+        """
+        )
 
         # Run
         root_module = parse_module(jazzoo_fn)
@@ -116,7 +122,8 @@ def test_not_always_yields_a_boolean():
     through."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_bool_not.jaz
+        jazzoo_fn = save_fixture(
+            """# test_bool_not.jaz
         🐭.verbose = "yes"
         🐭.quiet = ""
 
@@ -125,7 +132,8 @@ def test_not_always_yields_a_boolean():
 
         negate-falsy():
             🐆.retval = not 🐭.quiet
-        """)
+        """
+        )
 
         # Run
         root_module = parse_module(jazzoo_fn)
@@ -141,7 +149,8 @@ def test_precedence_follows_python():
     `a or b and not c` reads as `a or (b and (not c))`."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_bool_precedence.jaz
+        jazzoo_fn = save_fixture(
+            """# test_bool_precedence.jaz
         🐭.t = true
         🐭.f = false
 
@@ -153,7 +162,8 @@ def test_precedence_follows_python():
 
         equality-binds-tightest():
             🐆.retval = "y" if 🐭.t == true and 🐭.f == false else "n"
-        """)
+        """
+        )
 
         # Run
         root_module = parse_module(jazzoo_fn)
@@ -169,7 +179,8 @@ def test_parentheses_override_precedence():
     """Parentheses group, overriding the default precedence."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_bool_parens.jaz
+        jazzoo_fn = save_fixture(
+            """# test_bool_parens.jaz
         🐭.t = true
         🐭.f = false
 
@@ -181,7 +192,8 @@ def test_parentheses_override_precedence():
 
         nested():
             🐆.retval = "y" if 🐭.t and not (🐭.f or 🐭.f) else "n"
-        """)
+        """
+        )
 
         # Run
         root_module = parse_module(jazzoo_fn)
@@ -199,7 +211,8 @@ def test_operators_short_circuit():
     if True:
         # Config
         # The right operand writes a file, so whether it ran is observable.
-        jazzoo_fn = save_fixture("""# test_bool_short_circuit.jaz
+        jazzoo_fn = save_fixture(
+            """# test_bool_short_circuit.jaz
         🐭.truthy = "yes"
         🐭.falsy = ""
 
@@ -215,7 +228,8 @@ def test_operators_short_circuit():
 
         or-needs-right():
             🐆.retval = 🐭.falsy or 🐭._marker()
-        """)
+        """
+        )
 
         # Run
         root_module = parse_module(jazzoo_fn)
@@ -233,7 +247,8 @@ def test_short_circuiting_applies_to_resolution():
     on the skipped side raises nothing."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_bool_short_circuit_resolution.jaz
+        jazzoo_fn = save_fixture(
+            """# test_bool_short_circuit_resolution.jaz
         🐭.truthy = "yes"
         🐭.falsy = ""
 
@@ -242,7 +257,8 @@ def test_short_circuiting_applies_to_resolution():
 
         evaluated():
             🐆.retval = 🐭.falsy or 🐭.never-defined
-        """)
+        """
+        )
 
         # Run
         root_module = parse_module(jazzoo_fn)
@@ -259,7 +275,8 @@ def test_boolean_operators_compose_with_the_rest_of_the_grammar():
     condition may mix them with equality and calls."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_bool_compose.jaz
+        jazzoo_fn = save_fixture(
+            """# test_bool_compose.jaz
         🐭.level = "high"
         🐭.tracing = false
 
@@ -272,7 +289,8 @@ def test_boolean_operators_compose_with_the_rest_of_the_grammar():
         [private]
         name():
             @echo "jane"
-        """)
+        """
+        )
 
         # Run
         root_module = parse_module(jazzoo_fn)
@@ -287,7 +305,8 @@ def test_a_computed_function_value_can_be_called():
     result is a function - and it can be called directly."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_bool_call_result.jaz
+        jazzoo_fn = save_fixture(
+            """# test_bool_call_result.jaz
         🐭.absent = ""
 
         [private]
@@ -303,7 +322,8 @@ def test_a_computed_function_value_can_be_called():
 
         picks-right():
             🐆.retval = (🐭.absent or 🐭.f2)(x="3")
-        """)
+        """
+        )
 
         # Run
         root_module = parse_module(jazzoo_fn)
@@ -315,7 +335,8 @@ def test_a_computed_function_value_can_be_called():
     """The same value may be stored first and called afterwards."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_bool_call_stored.jaz
+        jazzoo_fn = save_fixture(
+            """# test_bool_call_stored.jaz
         [private]
         f1(x="?"):
             @echo "f1 got 🐆.x"
@@ -327,7 +348,8 @@ def test_a_computed_function_value_can_be_called():
         go():
             🐆.chosen = 🐭.f1 or 🐭.f2
             🐆.retval = 🐆.chosen(x="3")
-        """)
+        """
+        )
 
         # Run
         root_module = parse_module(jazzoo_fn)
@@ -338,7 +360,8 @@ def test_a_computed_function_value_can_be_called():
     """A curried operand keeps its bindings when the result is called."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_bool_call_curried.jaz
+        jazzoo_fn = save_fixture(
+            """# test_bool_call_curried.jaz
         🐭.absent = ""
 
         [private]
@@ -347,7 +370,8 @@ def test_a_computed_function_value_can_be_called():
 
         go():
             🐆.retval = (🐭.absent or 🐭.f1[y="bound"])(x="3")
-        """)
+        """
+        )
 
         # Run
         root_module = parse_module(jazzoo_fn)
@@ -361,7 +385,8 @@ def test_a_computed_function_value_can_be_piped_into():
     value is applied to whatever function it produced."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_bool_pipe_into.jaz
+        jazzoo_fn = save_fixture(
+            """# test_bool_pipe_into.jaz
         🐭.absent = ""
 
         [private]
@@ -377,7 +402,8 @@ def test_a_computed_function_value_can_be_piped_into():
 
         picks-right():
             🐆.retval = "3" | (🐭.absent or 🐭.f2)
-        """)
+        """
+        )
 
         # Run
         root_module = parse_module(jazzoo_fn)
@@ -392,7 +418,8 @@ def test_a_module_level_variable_may_hold_a_chosen_function():
     as a plain alias does, and can be called through."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_bool_module_level.jaz
+        jazzoo_fn = save_fixture(
+            """# test_bool_module_level.jaz
         [private]
         f1(x="?"):
             @echo "f1 got 🐆.x"
@@ -405,7 +432,8 @@ def test_a_module_level_variable_may_hold_a_chosen_function():
 
         go():
             🐆.retval = 🐭.chosen(x="3")
-        """)
+        """
+        )
 
         # Run
         root_module = parse_module(jazzoo_fn)
@@ -420,7 +448,8 @@ def test_calling_a_value_that_may_not_be_a_function_is_an_error():
     if True:
         # Config
         # The left operand is not a function at all; the right one is.
-        jazzoo_fn = save_fixture("""# test_bool_alternatives.jaz
+        jazzoo_fn = save_fixture(
+            """# test_bool_alternatives.jaz
         🐭.absent = ""
 
         [private]
@@ -430,7 +459,8 @@ def test_calling_a_value_that_may_not_be_a_function_is_an_error():
         go():
             🐆.chosen = 🐭.absent or 🐭.g1
             🐆.retval = 🐆.chosen(y="1")
-        """)
+        """
+        )
 
         # Run / Assert
         with pytest.raises(ParseError) as error:
@@ -443,7 +473,8 @@ def test_a_mixed_value_that_is_never_called_is_fine():
     calling through it is an error."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_bool_mixed_uncalled.jaz
+        jazzoo_fn = save_fixture(
+            """# test_bool_mixed_uncalled.jaz
         🐭.absent = ""
 
         [private]
@@ -453,7 +484,8 @@ def test_a_mixed_value_that_is_never_called_is_fine():
         go():
             🐆.thing = 🐭.absent or 🐭.g1
             @echo "assigned, never called"
-        """)
+        """
+        )
 
         # Run
         root_module = parse_module(jazzoo_fn)
@@ -467,13 +499,15 @@ def test_a_pure_value_fallback_is_unaffected():
     involved, so nothing is called and nothing is checked."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_bool_value_fallback.jaz
+        jazzoo_fn = save_fixture(
+            """# test_bool_value_fallback.jaz
         🐭.given = ""
 
         go():
             🐆.name = 🐭.given or "anonymous"
             🐆.retval = 🐆.name
-        """)
+        """
+        )
 
         # Run
         root_module = parse_module(jazzoo_fn)
@@ -487,7 +521,8 @@ def test_every_candidate_must_accept_the_call():
     the call - that is what makes it correct whichever operand wins."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_bool_alternatives_bad.jaz
+        jazzoo_fn = save_fixture(
+            """# test_bool_alternatives_bad.jaz
         [private]
         f1(x="?"):
             @echo "f1:🐆.x"
@@ -499,7 +534,8 @@ def test_every_candidate_must_accept_the_call():
         go():
             🐆.chosen = 🐭.f1 or 🐭.g1
             🐆.retval = 🐆.chosen(zzz="1")
-        """)
+        """
+        )
 
         # Run / Assert
         with pytest.raises(ArgumentError):
@@ -511,7 +547,8 @@ def test_a_call_only_one_candidate_accepts_is_rejected():
     since the wrong one may be the one that runs."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_bool_alternatives_partial.jaz
+        jazzoo_fn = save_fixture(
+            """# test_bool_alternatives_partial.jaz
         [private]
         f1(x="?"):
             @echo "f1:🐆.x"
@@ -523,7 +560,8 @@ def test_a_call_only_one_candidate_accepts_is_rejected():
         go():
             🐆.chosen = 🐭.f1 or 🐭.g1
             🐆.retval = 🐆.chosen(y="1")
-        """)
+        """
+        )
 
         # Run / Assert
         # `g1` would accept `y`, but `f1` would not - and either may win.
@@ -536,13 +574,15 @@ def test_parentheses_may_hold_a_ternary():
     """A group re-enters at the top of the grammar, so it may contain a ternary."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_bool_paren_ternary.jaz
+        jazzoo_fn = save_fixture(
+            """# test_bool_paren_ternary.jaz
         🐭.c = true
         🐭.z = "fallback"
 
         go():
             🐆.retval = ("x" if 🐭.c else "y") or 🐭.z
-        """)
+        """
+        )
 
         # Run
         root_module = parse_module(jazzoo_fn)
@@ -555,13 +595,15 @@ def test_the_documented_example():
     """The example from the design doc."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_bool_documented.jaz
+        jazzoo_fn = save_fixture(
+            """# test_bool_documented.jaz
         🐭.test = false
 
         go(foo, bar):
             🐆.doit = "yes" if 🐆.foo or (🐆.bar and not 🐭.test) else "no"
             🐆.retval = 🐆.doit
-        """)
+        """
+        )
 
         # Run
         root_module = parse_module(jazzoo_fn)

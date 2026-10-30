@@ -18,7 +18,8 @@ def test_the_module_variables_describe_the_current_file():
     """⚙️.module.basename, .path and .dirname describe the current module file."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_module_vars.jaz
+        jazzoo_fn = save_fixture(
+            """# test_module_vars.jaz
         basename():
             echo "⚙️.module.basename"
 
@@ -27,7 +28,8 @@ def test_the_module_variables_describe_the_current_file():
 
         dirname():
             echo "⚙️.module.dirname"
-        """)
+        """
+        )
 
         # Run
         root_module = parse_module(jazzoo_fn)
@@ -43,10 +45,12 @@ def test_the_module_path_is_absolute():
     directory containing it."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_module_path_absolute.jaz
+        jazzoo_fn = save_fixture(
+            """# test_module_path_absolute.jaz
         go():
             echo "⚙️.module.path|⚙️.module.dirname"
-        """)
+        """
+        )
 
         # Run
         root_module = parse_module(jazzoo_fn)
@@ -64,12 +68,15 @@ def test_the_module_variables_are_per_module():
     itself rather than the file that imported it."""
     if True:
         # Config
-        library_fn = save_fixture("""# module_vars_library.jaz
+        library_fn = save_fixture(
+            """# module_vars_library.jaz
         report():
             echo "⚙️.module.basename"
-        """)
+        """
+        )
 
-        jazzoo_fn = save_fixture("""# test_module_vars_per_module.jaz
+        jazzoo_fn = save_fixture(
+            """# test_module_vars_per_module.jaz
         from ./module_vars_library.jaz import report as lib
 
         from-the-library():
@@ -77,7 +84,8 @@ def test_the_module_variables_are_per_module():
 
         from-here():
             echo "⚙️.module.basename"
-        """)
+        """
+        )
 
         # Run
         root_module = parse_module(jazzoo_fn)
@@ -98,7 +106,8 @@ def test_the_root_module_variables_describe_the_entry_point():
     invoked by jaz."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_root_module_vars.jaz
+        jazzoo_fn = save_fixture(
+            """# test_root_module_vars.jaz
         basename():
             echo "⚙️.root_module.basename"
 
@@ -107,7 +116,8 @@ def test_the_root_module_variables_describe_the_entry_point():
 
         dirname():
             echo "⚙️.root_module.dirname"
-        """)
+        """
+        )
 
         # Run
         root_module = parse_module(jazzoo_fn)
@@ -123,17 +133,21 @@ def test_the_root_module_variables_are_the_same_in_every_module():
     reports the same values as the file that imported it."""
     if True:
         # Config
-        save_fixture("""# root_module_library.jaz
+        save_fixture(
+            """# root_module_library.jaz
         report():
             echo "⚙️.root_module.basename|⚙️.module.basename"
-        """)
+        """
+        )
 
-        jazzoo_fn = save_fixture("""# test_root_module_shared.jaz
+        jazzoo_fn = save_fixture(
+            """# test_root_module_shared.jaz
         from ./root_module_library.jaz import report as lib
 
         go():
             🐆.retval = 🐭.lib.report()
-        """)
+        """
+        )
 
         # Run
         root_module = parse_module(jazzoo_fn)
@@ -149,10 +163,12 @@ def test_the_root_module_variables_agree_with_each_other():
     """.path is absolute, .dirname is its directory, and .basename its filename."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_root_module_agreement.jaz
+        jazzoo_fn = save_fixture(
+            """# test_root_module_agreement.jaz
         go():
             echo "⚙️.root_module.path|⚙️.root_module.dirname|⚙️.root_module.basename"
-        """)
+        """
+        )
 
         # Run
         root_module = parse_module(jazzoo_fn)
@@ -169,7 +185,8 @@ def test_the_system_variables_are_constant_for_a_run():
     unlike ⚙️.stdout and ⚙️.output which jazzoo updates as a body runs."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_system_vars_constant.jaz
+        jazzoo_fn = save_fixture(
+            """# test_system_vars_constant.jaz
         go():
             #!/usr/bin/env bash
             echo "first block"
@@ -179,7 +196,8 @@ def test_the_system_variables_are_constant_for_a_run():
             echo "second block"
             🐆.second = "⚙️.module.basename"
             🐆.retval = "🐆.first/🐆.second"
-        """)
+        """
+        )
 
         # Run
         root_module = parse_module(jazzoo_fn)
@@ -196,13 +214,15 @@ def test_system_variables_can_be_used_in_expressions():
     """⚙️ variables are ordinary values: they take part in path joins and pipes."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_system_vars_in_expressions.jaz
+        jazzoo_fn = save_fixture(
+            """# test_system_vars_in_expressions.jaz
         joined():
             🐆.retval = ⚙️.module.dirname / "build/output"
 
         piped():
             🐆.retval = ⚙️.module.path | ⚙️.basename | ⚙️.stem
-        """)
+        """
+        )
 
         # Run
         root_module = parse_module(jazzoo_fn)
@@ -216,13 +236,15 @@ def test_an_unknown_system_variable_is_a_resolution_error():
     """⚙️ is a fixed set of built-ins, so an unknown name in it does not resolve."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_unknown_system_var.jaz
+        jazzoo_fn = save_fixture(
+            """# test_unknown_system_var.jaz
         go():
             echo "⚙️.module.no-such-part"
 
         top-level():
             echo "⚙️.no-such-variable"
-        """)
+        """
+        )
 
         # Run
         root_module = parse_module(jazzoo_fn)

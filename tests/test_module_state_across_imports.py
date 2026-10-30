@@ -19,7 +19,8 @@ def test_an_imported_setter_writes_the_defining_modules_scope():
     and a getter from that same file reads the value back."""
     if True:
         # Config
-        save_fixture("""# counter.jaz
+        save_fixture(
+            """# counter.jaz
         🐭.value = "initial"
 
         set-value(to):
@@ -27,15 +28,18 @@ def test_an_imported_setter_writes_the_defining_modules_scope():
 
         get-value():
             🐆.retval = 🐭.value
-        """)
+        """
+        )
 
-        jazzoo_fn = save_fixture("""# test_accessors.jaz
+        jazzoo_fn = save_fixture(
+            """# test_accessors.jaz
         from ./counter.jaz import (set-value, get-value) as c
 
         go():
             🐭.c.set-value(to="42")
             🐆.retval = 🐭.c.get-value()
-        """)
+        """
+        )
 
         # Run
         root_module = parse_module(jazzoo_fn)
@@ -51,7 +55,8 @@ def test_an_imported_setter_does_not_touch_the_callers_scope():
     not write to it."""
     if True:
         # Config
-        save_fixture("""# store.jaz
+        save_fixture(
+            """# store.jaz
         🐭.value = "callee-initial"
 
         set-value(to):
@@ -59,9 +64,11 @@ def test_an_imported_setter_does_not_touch_the_callers_scope():
 
         get-value():
             🐆.retval = 🐭.value
-        """)
+        """
+        )
 
-        jazzoo_fn = save_fixture("""# test_accessor_isolation.jaz
+        jazzoo_fn = save_fixture(
+            """# test_accessor_isolation.jaz
         🐭.value = "caller-owns-this"
 
         from ./store.jaz import (set-value, get-value) as s
@@ -70,7 +77,8 @@ def test_an_imported_setter_does_not_touch_the_callers_scope():
             🐭.s.set-value(to="written-by-caller")
             🐆.theirs = 🐭.s.get-value()
             🐆.retval = "theirs=🐆.theirs mine=🐭.value"
-        """)
+        """
+        )
 
         # Run
         root_module = parse_module(jazzoo_fn)
@@ -88,19 +96,23 @@ def test_the_write_is_visible_when_the_module_is_inspected_directly():
     evaluating against that module sees it."""
     if True:
         # Config
-        save_fixture("""# settings_store.jaz
+        save_fixture(
+            """# settings_store.jaz
         🐭.level = "info"
 
         set-level(to):
             🐭.level = 🐆.to
-        """)
+        """
+        )
 
-        jazzoo_fn = save_fixture("""# test_accessor_module_scope.jaz
+        jazzoo_fn = save_fixture(
+            """# test_accessor_module_scope.jaz
         from ./settings_store.jaz import set-level as s
 
         go():
             🐭.s.set-level(to="debug")
-        """)
+        """
+        )
 
         # Run
         root_module = parse_module(jazzoo_fn)
@@ -117,7 +129,8 @@ def test_two_importers_share_one_copy_of_the_imported_modules_state():
     one module - and a setter called through either alias moves the same value."""
     if True:
         # Config
-        save_fixture("""# shared_store.jaz
+        save_fixture(
+            """# shared_store.jaz
         🐭.value = "start"
 
         set-value(to):
@@ -125,23 +138,28 @@ def test_two_importers_share_one_copy_of_the_imported_modules_state():
 
         get-value():
             🐆.retval = 🐭.value
-        """)
+        """
+        )
 
-        save_fixture("""# writer.jaz
+        save_fixture(
+            """# writer.jaz
         from ./shared_store.jaz import set-value as store
 
         write():
             🐭.store.set-value(to="written")
-        """)
+        """
+        )
 
-        jazzoo_fn = save_fixture("""# test_accessor_shared.jaz
+        jazzoo_fn = save_fixture(
+            """# test_accessor_shared.jaz
         from ./shared_store.jaz import get-value as store
         from ./writer.jaz import write as w
 
         go():
             🐭.w.write()
             🐆.retval = 🐭.store.get-value()
-        """)
+        """
+        )
 
         # Run
         root_module = parse_module(jazzoo_fn)
@@ -157,18 +175,22 @@ def test_a_global_written_by_an_imported_function_is_shared():
     to the caller under the same name."""
     if True:
         # Config
-        save_fixture("""# global_store.jaz
+        save_fixture(
+            """# global_store.jaz
         set-shared(to):
             🐐.shared = 🐆.to
-        """)
+        """
+        )
 
-        jazzoo_fn = save_fixture("""# test_accessor_global.jaz
+        jazzoo_fn = save_fixture(
+            """# test_accessor_global.jaz
         from ./global_store.jaz import set-shared as g
 
         go():
             🐭.g.set-shared(to="from-callee")
             🐆.retval = 🐐.shared
-        """)
+        """
+        )
 
         # Run
         root_module = parse_module(jazzoo_fn)

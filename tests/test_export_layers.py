@@ -13,24 +13,30 @@ from jazzoo.runtime.entrypoints.jazzoo import main
 from jazzoo.runtime.utils.test_utils import save_fixture
 
 # The library the layer tests export from.
-save_fixture("""# lib.jaz
+save_fixture(
+    """# lib.jaz
 build(mode="release"):
     @echo "build 🐆.mode"
 
 test():
     @echo "test"
-""")
+"""
+)
 
 # A second library, so a layer can be assembled from more than one file.
-save_fixture("""# styles.jaz
+save_fixture(
+    """# styles.jaz
 lint():
     @echo "lint"
-""")
+"""
+)
 
 # A module that itself exports a layer, so layers can be shown to nest.
-save_fixture("""# nested.jaz
+save_fixture(
+    """# nested.jaz
 from ./lib.jaz export (build,) as react
-""")
+"""
+)
 
 
 def test_a_layer_groups_targets_under_a_dotted_path(capsys):
@@ -39,9 +45,11 @@ def test_a_layer_groups_targets_under_a_dotted_path(capsys):
     path."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_layer_basic.jaz
+        jazzoo_fn = save_fixture(
+            """# test_layer_basic.jaz
         from ./lib.jaz export (build,) as fe
-        """)
+        """
+        )
 
         # Run
         exit_code = main(["fe.build", "mode=dev", "--file", jazzoo_fn])
@@ -54,9 +62,11 @@ def test_a_layer_groups_targets_under_a_dotted_path(capsys):
     """A renamed symbol takes its new name inside the layer."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_layer_rename.jaz
+        jazzoo_fn = save_fixture(
+            """# test_layer_rename.jaz
         from ./lib.jaz export (build as compile,) as fe
-        """)
+        """
+        )
 
         # Run
         exit_code = main(["fe.compile", "mode=dev", "--file", jazzoo_fn])
@@ -72,9 +82,11 @@ def test_a_layered_export_does_not_land_flat():
     is not a target of the importing module."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_layer_not_flat.jaz
+        jazzoo_fn = save_fixture(
+            """# test_layer_not_flat.jaz
         from ./lib.jaz export (build,) as fe
-        """)
+        """
+        )
 
         # Run
         root_module = parse_module(jazzoo_fn)
@@ -88,9 +100,11 @@ def test_naming_symbols_into_a_layer_requires_the_tuple_form(capsys):
     exports `bar` under the name `fe`, and keeps that meaning."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_bare_as_is_rename.jaz
+        jazzoo_fn = save_fixture(
+            """# test_bare_as_is_rename.jaz
         from ./lib.jaz export build as fe
-        """)
+        """
+        )
 
         # Run
         root_module = parse_module(jazzoo_fn)
@@ -113,9 +127,11 @@ def test_a_wildcard_needs_no_tuple(capsys):
     one reading."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_layer_wildcard.jaz
+        jazzoo_fn = save_fixture(
+            """# test_layer_wildcard.jaz
         from ./lib.jaz export * as fe
-        """)
+        """
+        )
 
         # Run
         exit_code = main(["fe.test", "--file", jazzoo_fn])
@@ -132,9 +148,11 @@ def test_layers_nest(capsys):
     declares its own layer."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_layer_nested.jaz
+        jazzoo_fn = save_fixture(
+            """# test_layer_nested.jaz
         from ./nested.jaz export * as fe
-        """)
+        """
+        )
 
         # Run
         exit_code = main(["fe.react.build", "mode=dev", "--file", jazzoo_fn])
@@ -152,9 +170,11 @@ def test_a_layer_can_be_named_in_a_tuple_export(capsys):
     if True:
         # Config
         # nested.jaz exports lib.jaz's `build` as the layer `react`.
-        jazzoo_fn = save_fixture("""# test_named_layer.jaz
+        jazzoo_fn = save_fixture(
+            """# test_named_layer.jaz
         from ./nested.jaz export (react,) as fe
-        """)
+        """
+        )
 
         # Run
         exit_code = main(["fe.react.build", "mode=dev", "--file", jazzoo_fn])
@@ -180,9 +200,11 @@ def test_a_named_layer_can_be_renamed(capsys):
     segment."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_renamed_layer.jaz
+        jazzoo_fn = save_fixture(
+            """# test_renamed_layer.jaz
         from ./nested.jaz export (react as r,) as fe
-        """)
+        """
+        )
 
         # Run
         exit_code = main(["fe.r.build", "mode=dev", "--file", jazzoo_fn])
@@ -199,13 +221,17 @@ def test_exporting_a_function_and_a_layer_under_one_name_is_an_error():
     if True:
         # Config
         # `react` is both a layer and a re-exported function in the same module.
-        save_fixture("""# clash.jaz
+        save_fixture(
+            """# clash.jaz
         from ./lib.jaz export (build,) as react
         from ./lib.jaz export (test as react,)
-        """)
-        jazzoo_fn = save_fixture("""# test_layer_function_clash.jaz
+        """
+        )
+        jazzoo_fn = save_fixture(
+            """# test_layer_function_clash.jaz
         from ./clash.jaz export * as fe
-        """)
+        """
+        )
 
         # Run / Assert
         with pytest.raises(ParseError):
@@ -217,10 +243,12 @@ def test_exporting_into_the_same_layer_aggregates(capsys):
     assembled from several files."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_layer_aggregate.jaz
+        jazzoo_fn = save_fixture(
+            """# test_layer_aggregate.jaz
         from ./lib.jaz export (build,) as fe
         from ./styles.jaz export (lint,) as fe
-        """)
+        """
+        )
 
         # Run
         build_code = main(["fe.build", "mode=dev", "--file", jazzoo_fn])
@@ -238,10 +266,12 @@ def test_a_collision_within_one_layer_is_an_error():
     a ParseError, attributed to the second statement."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_layer_collision.jaz
+        jazzoo_fn = save_fixture(
+            """# test_layer_collision.jaz
         from ./lib.jaz export (build,) as fe
         from ./styles.jaz export (lint as build,) as fe
-        """)
+        """
+        )
 
         # Run / Assert
         with pytest.raises(ParseError) as error:
@@ -256,14 +286,18 @@ def test_the_same_function_exported_into_a_layer_twice_is_one_target(capsys):
     through a module that re-exports it - they are one target, not a collision."""
     if True:
         # Config
-        save_fixture("""# relay.jaz
+        save_fixture(
+            """# relay.jaz
         from ./lib.jaz export build
-        """)
-        jazzoo_fn = save_fixture("""# test_layer_same_function.jaz
+        """
+        )
+        jazzoo_fn = save_fixture(
+            """# test_layer_same_function.jaz
         from ./lib.jaz export (build,) as fe
         from ./relay.jaz export (build,) as fe
         from ./lib.jaz export (build,) as fe
-        """)
+        """
+        )
 
         # Run
         list_code = main(["--list", "fe", "--file", jazzoo_fn])
@@ -282,13 +316,15 @@ def test_a_layer_alias_and_an_import_alias_are_separate(capsys):
     populate two different surfaces and do not collide."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_layer_and_import.jaz
+        jazzoo_fn = save_fixture(
+            """# test_layer_and_import.jaz
         from ./lib.jaz import (build,) as fe
         from ./lib.jaz export (test,) as fe
 
         local():
             🐭.fe.build(mode="dev")
-        """)
+        """
+        )
 
         # Run
         # The import surface: 🐭.fe.build() resolves to the imported function.
@@ -308,9 +344,11 @@ def test_an_import_namespace_is_not_reachable_from_the_cli(capsys):
     as an import is `no such target`."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_import_not_cli.jaz
+        jazzoo_fn = save_fixture(
+            """# test_import_not_cli.jaz
         from ./lib.jaz import (build,) as fe
-        """)
+        """
+        )
 
         # Run
         exit_code = main(["fe.build", "mode=dev", "--file", jazzoo_fn])
@@ -326,12 +364,14 @@ def test_list_shows_a_layer_as_a_single_entry(capsys):
     single entry marked as a layer rather than being expanded."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_list_layer.jaz
+        jazzoo_fn = save_fixture(
+            """# test_list_layer.jaz
         from ./lib.jaz export (build,) as fe
 
         own():
             @echo "own"
-        """)
+        """
+        )
 
         # Run
         exit_code = main(["--list", "--file", jazzoo_fn])
@@ -350,10 +390,12 @@ def test_list_of_a_layer_shows_its_members(capsys):
     members - again one level deep."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_list_members.jaz
+        jazzoo_fn = save_fixture(
+            """# test_list_members.jaz
         from ./lib.jaz export (build, test) as fe
         from ./nested.jaz export * as fe
-        """)
+        """
+        )
 
         # Run
         exit_code = main(["--list", "fe", "--file", jazzoo_fn])
@@ -373,9 +415,11 @@ def test_list_of_a_target_shows_its_signature(capsys):
     finds out what arguments it takes."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_list_signature.jaz
+        jazzoo_fn = save_fixture(
+            """# test_list_signature.jaz
         from ./lib.jaz export (build,) as fe
-        """)
+        """
+        )
 
         # Run
         exit_code = main(["--list", "fe.build", "--file", jazzoo_fn])
@@ -391,12 +435,14 @@ def test_list_all_walks_the_whole_tree(capsys):
     depth."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_list_all.jaz
+        jazzoo_fn = save_fixture(
+            """# test_list_all.jaz
         from ./nested.jaz export * as fe
 
         own():
             @echo "own"
-        """)
+        """
+        )
 
         # Run
         exit_code = main(["--list-all", "--file", jazzoo_fn])
@@ -414,13 +460,17 @@ def test_list_all_distinguishes_two_layers_from_one_file(capsys):
     if True:
         # Config
         # `fe` and `fe.inner` both trace back to lib.jaz, but are distinct layers.
-        save_fixture("""# middle.jaz
+        save_fixture(
+            """# middle.jaz
         from ./lib.jaz export (test,) as inner
-        """)
-        jazzoo_fn = save_fixture("""# test_list_all_same_file.jaz
+        """
+        )
+        jazzoo_fn = save_fixture(
+            """# test_list_all_same_file.jaz
         from ./lib.jaz export (build,) as fe
         from ./middle.jaz export * as fe
-        """)
+        """
+        )
 
         # Run
         exit_code = main(["--list-all", "--file", jazzoo_fn])
@@ -440,21 +490,27 @@ def test_list_all_terminates_on_a_circular_import(capsys):
     if True:
         # Config
         # cycle_a exports cycle_b as a layer, and cycle_b exports cycle_a back.
-        save_fixture("""# cycle_a.jaz
+        save_fixture(
+            """# cycle_a.jaz
         from ./cycle_b.jaz export * as b
 
         a_target():
             @echo "a"
-        """)
-        save_fixture("""# cycle_b.jaz
+        """
+        )
+        save_fixture(
+            """# cycle_b.jaz
         from ./cycle_a.jaz export * as a
 
         b_target():
             @echo "b"
-        """)
-        jazzoo_fn = save_fixture("""# test_list_all_cycle.jaz
+        """
+        )
+        jazzoo_fn = save_fixture(
+            """# test_list_all_cycle.jaz
         from ./cycle_a.jaz export * as root
-        """)
+        """
+        )
 
         # Run
         exit_code = main(["--list-all", "--file", jazzoo_fn])

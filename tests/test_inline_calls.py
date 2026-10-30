@@ -17,7 +17,8 @@ def test_a_call_substitutes_inline_like_a_reference():
     """A call inside a shell line is replaced by its return value."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_inline_basic.jaz
+        jazzoo_fn = save_fixture(
+            """# test_inline_basic.jaz
         [private]
         _get-name(uppercase="false"):
             #!/usr/bin/env bash
@@ -28,7 +29,8 @@ def test_a_call_substitutes_inline_like_a_reference():
 
         quiet():
             echo "Hello 🐭._get-name()!"
-        """)
+        """
+        )
 
         # Run
         root_module = parse_module(jazzoo_fn)
@@ -45,7 +47,8 @@ def test_a_closing_paren_inside_an_argument_does_not_end_the_call():
     value is part of the argument."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_inline_paren_in_arg.jaz
+        jazzoo_fn = save_fixture(
+            """# test_inline_paren_in_arg.jaz
         [private]
         _echo-arg(value):
             #!/usr/bin/env bash
@@ -53,7 +56,8 @@ def test_a_closing_paren_inside_an_argument_does_not_end_the_call():
 
         go():
             echo "[🐭._echo-arg(value="a)b")]"
-        """)
+        """
+        )
 
         # Run
         root_module = parse_module(jazzoo_fn)
@@ -67,7 +71,8 @@ def test_a_call_may_be_nested_in_an_argument():
     """An argument may itself be a call, so the scanner tracks nesting."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_inline_nested.jaz
+        jazzoo_fn = save_fixture(
+            """# test_inline_nested.jaz
         [private]
         _inner():
             #!/usr/bin/env bash
@@ -80,7 +85,8 @@ def test_a_call_may_be_nested_in_an_argument():
 
         go():
             echo "🐭._outer(value=🐭._inner())"
-        """)
+        """
+        )
 
         # Run
         root_module = parse_module(jazzoo_fn)
@@ -94,12 +100,14 @@ def test_a_space_before_the_paren_means_it_is_not_a_call():
     which is what keeps ordinary parentheticals working."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_inline_space_is_text.jaz
+        jazzoo_fn = save_fixture(
+            """# test_inline_space_is_text.jaz
         🐭.tracing = "on"
 
         greet(who):
             echo "Hello 🐆.who (tracing=🐭.tracing)"
-        """)
+        """
+        )
 
         # Run
         # Loading alone is part of the assertion: validation must not read
@@ -117,7 +125,8 @@ def test_a_call_substitutes_inside_a_shebang_block():
     happens before the block is executed."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_inline_in_shebang.jaz
+        jazzoo_fn = save_fixture(
+            """# test_inline_in_shebang.jaz
         [private]
         _name():
             #!/usr/bin/env bash
@@ -126,7 +135,8 @@ def test_a_call_substitutes_inside_a_shebang_block():
         go():
             #!/usr/bin/env python3
             print("Hello 🐭._name(), from python")
-        """)
+        """
+        )
 
         # Run
         root_module = parse_module(jazzoo_fn)
