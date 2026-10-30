@@ -20,15 +20,17 @@ from jazzoo.zoo.rules.get_zoo_env_dir import get_zoo_env_dir
 from jazzoo.zoo.rules.get_zoo_link import get_zoo_link
 from jazzoo.zoo.rules.validate_zoo_env_name import validate_zoo_env_name
 
+# Deactivate only when the shell has the function: a shell may inherit VIRTUAL_ENV
+# without it, from the shell that started it
 ACTIVATE_BASH = """export JAZZOO_ENV={name}
-if [ -n "$VIRTUAL_ENV" ]; then
+if declare -F deactivate >/dev/null; then
     deactivate
 fi
 source {env_dir}/venv_dir/bin/activate
 """
 
 ACTIVATE_FISH = """set -gx JAZZOO_ENV {name}
-if test -n "$VIRTUAL_ENV"
+if functions -q deactivate
     deactivate
 end
 source {env_dir}/venv_dir/bin/activate.fish
