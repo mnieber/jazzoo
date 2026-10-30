@@ -15,10 +15,13 @@ back, and `zz` alone lists the envs. In bash, the developer defines it in `.bash
 #### It installs zz
 
 The developer runs `zoo env --install-fish`.</br>
-`install_fish_files` writes three files to the fish config directory
-(`$XDG_CONFIG_HOME/fish`, or `~/.config/fish`): the `zz` function in `functions/`, its
-completions in `completions/`, and `conf.d/zoo.fish`, which makes a new interactive fish
-start in the latest env.</br>
+`install_fish_files` writes these files to the fish config directory
+(`$XDG_CONFIG_HOME/fish`, or `~/.config/fish`): the `zz` function in `functions/`, the
+completions of `zz`, `jaz`, `jazzoo` and `zoo` in `completions/`, and
+`conf.d/zoo.fish`, which makes a new interactive fish start in the latest env.</br>
+The completions of `jaz`, `jazzoo` and `zoo` pass the command line to
+`<command> --complete`, which prints the candidates. It reads the jazzoo file without
+running its top-level statements, so that pressing tab has no side effects.</br>
 Each file starts with `# managed by zoo env --install-fish`. A file with this line is
 overwritten, so running the installer again updates the files. When a file of the
 developer is in the way, it raises a `FishFileExistsError` that lists such files, and

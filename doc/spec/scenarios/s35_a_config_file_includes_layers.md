@@ -30,8 +30,9 @@ docker:
   shell: sh
 ```
 
-The includes are resolved by `get_config`, when it reads the files; `jaz` never reads
-them. The whole `/jazzoo` subtree of the config is reserved for Jazzoo.
+The includes are resolved when the config is read (by `get_config` or
+`⚙️.get_config`), not when `⚙️.load_config` adds a file to the list. The whole
+`/jazzoo` subtree of the config is reserved for Jazzoo.
 
 ### Steps
 

@@ -32,7 +32,8 @@ root:
   build_dir: ${/root/project_dir}/build
 ```
 
-Jazzoo only manages the list of config files; it never reads them itself.
+The Jazzoo file itself reads a value with `⚙️.get_config(path=..., default=...)`
+(`jazzoo-language.md`, section 7.4), which returns what `get_config` returns.
 
 ## 2. `get_config`
 
