@@ -10,6 +10,9 @@ from jazzoo.errors import ArgumentError, JazzooError
 from jazzoo.runtime.utils.format_error import format_error
 from jazzoo.settings import DEFAULT_FILENAMES
 
+# The options of jaz that --complete offers
+OPTIONS = ("--list", "--list-all", "--file", "--trace", "--confirm", "--help")
+
 
 def _parse_args(argv: T.Optional[T.List[str]] = None):
     parser = argparse.ArgumentParser(
@@ -182,6 +185,21 @@ def _run(args, invocation_dir: T.Optional[str]) -> int:
     return 0
 
 
+def _complete(argv: T.List[str]) -> int:
+    from jazzoo.completions.rules.get_completions import get_completions
+    from jazzoo.completions.rules.load_module_for_completion import (
+        load_module_for_completion,
+    )
+    from jazzoo.completions.utils.print_completions import print_completions
+
+    def load_module(filename: T.Optional[str]):
+        return load_module_for_completion(filename, ".")
+
+    return print_completions(
+        argv, lambda words: get_completions(words, OPTIONS, load_module)
+    )
+
+
 def _run_or_help(args, invocation_dir: T.Optional[str]) -> int:
     if args.help:
         print(
@@ -196,10 +214,16 @@ def run(
     argv: T.Optional[T.List[str]] = None, invocation_dir: T.Optional[str] = None
 ) -> int:
     # Lets the errors pass. invocation_dir defaults to the current directory.
+    argv = list(sys.argv[1:] if argv is None else argv)
+    if argv[:1] == ["--complete"]:
+        return _complete(argv[1:])
     return _run_or_help(_parse_args(argv), invocation_dir)
 
 
 def main(argv: T.Optional[T.List[str]] = None) -> int:
+    argv = list(sys.argv[1:] if argv is None else argv)
+    if argv[:1] == ["--complete"]:
+        return _complete(argv[1:])
     args = _parse_args(argv)
     try:
         return _run_or_help(args, None)

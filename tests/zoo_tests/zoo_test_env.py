@@ -96,7 +96,8 @@ class TestEnv(JazzooTestEnv):
     def make_runnable_fake_venv(self, path: str):
         """Writes a fake venv whose bin/zoo, bin/jaz and bin/jazzoo run the jazzoo of
         the test run, and whose activate.fish sets VIRTUAL_ENV and puts bin on the
-        PATH, as a real venv does. A fish in a subprocess can use it."""
+        PATH, as a real venv does. Its zoo sets sys.prefix to the venv, so that it
+        finds the env of the venv. A fish in a subprocess can use it."""
         venv = self.path(path)
         self.make_fake_venv(path, with_zoo=False)
         self.write_file(
@@ -107,6 +108,7 @@ class TestEnv(JazzooTestEnv):
             f"{path}/bin/zoo",
             f"#!{sys.executable}\n"
             "import sys\n"
+            f"sys.prefix = {venv!r}\n"
             "from jazzoo.runtime.entrypoints.zoo import main\n"
             "sys.exit(main())\n",
         )

@@ -37,6 +37,19 @@ ZZ_COMPLETIONS = """{managed_line}
 complete -c zz -f -n __fish_is_first_arg -a "(zz --list --names) -"
 """
 
+# The words after the command, and the word that is being completed (also when it
+# is empty), are passed to `<command> --complete`
+COMPLETIONS = """{managed_line}
+function __zoo_complete_{command}
+    set -l words (commandline -opc)
+    set -e words[1]
+    set -l word (commandline -ct)
+    {command} --complete -- $words "$word"
+end
+
+complete -c {command} -f -a "(__zoo_complete_{command})"
+"""
+
 STARTUP = """{managed_line}
 if status is-interactive; and test -f {latest}
     source {latest}
@@ -58,6 +71,9 @@ def install_fish_files() -> T.List[str]:
         ),
         os.path.join(fish_dir, "conf.d", "zoo.fish"): STARTUP.format(**values),
     }
+    for command in ["jaz", "jazzoo", "zoo"]:
+        path = os.path.join(fish_dir, "completions", f"{command}.fish")
+        texts[path] = COMPLETIONS.format(command=command, **values)
 
     # Nothing is written when a file of the developer is in the way
     foreign = [path for path in texts if os.path.exists(path) and not _is_managed(path)]

@@ -59,3 +59,7 @@ class NoZooInVenvError(ZooError):
 
 class FishFileExistsError(ZooError):
     pass
+
+
+class ZooUsageError(ZooError):
+    pass
