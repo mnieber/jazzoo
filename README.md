@@ -31,12 +31,14 @@ Defaults are expressions, a task returns a value, and you can pre-fill arguments
 chain tasks in a pipe:
 
 ```
-🐭.build-dev = 🐭.build[mode="dev"]               # currying
-🐆.version   = 🐭.read-version() | ⚙️.parse        # return values, JSON
+# currying
+🐭.build-dev = 🐭.build[mode="dev"]
+# return values, JSON
+🐆.version   = 🐭.read-version() | ⚙️.parse
 🐆.path      = "input.json" | 🐭.make-full-path[path] | ⚙️.abs
 ```
 
-The three sigils are the scopes: 🐐 global, 🐭 this file, 🐆 this call. You can tell
+The three sigils are the scopes: 🐐 global, 🐭 (module) this file, 🐆 (local) this call. You can tell
 at a glance where a value comes from, and a reference needs no quoting or braces in
 a shell line.
 
@@ -65,11 +67,12 @@ batteries that come with jazzoo:
 ```
 ⚙️.load_config(path=⚙️.module.dirname / "config/base.yaml")
 
-deploy(env="staging"):
+deploy(stage="staging"):
     #!/usr/bin/env python3
     from jazzoo import get_config as get, run
 
-    for service in get("/🐆.env/services"):
+    # Jazzoo substitutes 🐆.stage before Python runs: get("/staging/services")
+    for service in get("/🐆.stage/services"):
         run(f"docker compose up -d {service}")
 ```
 
