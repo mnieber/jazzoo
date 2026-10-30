@@ -20,17 +20,7 @@ ALL_TEST_PACKAGES = [
 ]
 
 # Test files whose code is not written yet
-DISABLED_TEST_FILES = [
-    "zoo_tests/test_zoo_impl/test_list_names.py",
-    "zoo_tests/test_zoo_impl/test_install_fish_usage_errors.py",
-    "zoo_tests/test_zoo/test_install_the_fish_shortcut.py",
-    "zoo_tests/test_zoo_impl/test_install_fish_errors.py",
-    "zoo_tests/test_zoo_impl/test_install_fish_locations.py",
-    "zoo_tests/test_zoo/test_switch_projects_with_zz.py",
-    "zoo_tests/test_zoo_impl/test_zz_errors.py",
-    "zoo_tests/test_zoo_impl/test_zz_finds_zoo.py",
-    "zoo_tests/test_zoo_impl/test_fish_startup.py",
-]
+DISABLED_TEST_FILES = []
 
 collect_ignore = [
     package for package in ALL_TEST_PACKAGES if package not in ENABLED_TEST_PACKAGES

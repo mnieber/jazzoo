@@ -10,6 +10,7 @@ from jazzoo.settings import get_active_zoo_env
 from jazzoo.zoo.actions.activate_zoo_env import activate_zoo_env
 from jazzoo.zoo.actions.forget_zoo_env import forget_zoo_env
 from jazzoo.zoo.actions.init_zoo_env import init_zoo_env
+from jazzoo.zoo.actions.install_fish_files import install_fish_files
 from jazzoo.zoo.actions.run_in_zoo_env import run_in_zoo_env
 from jazzoo.zoo.errors import ZooError
 from jazzoo.zoo.rules.format_zoo_env_list import format_zoo_env_list
@@ -26,6 +27,8 @@ def _parse_env_args(argv: T.List[str]):
     parser.add_argument("--init", action="store_true")
     parser.add_argument("--forget", action="store_true")
     parser.add_argument("--list", dest="list_envs", action="store_true")
+    parser.add_argument("--names", action="store_true")
+    parser.add_argument("--install-fish", action="store_true")
     venv_group = parser.add_mutually_exclusive_group()
     venv_group.add_argument("--create-venv", action="store_true")
     venv_group.add_argument("--use-venv")
@@ -33,8 +36,12 @@ def _parse_env_args(argv: T.List[str]):
     args = parser.parse_args(argv)
 
     # The rules of how the options combine (design section 3.1)
-    if args.init + args.forget + args.list_envs > 1:
-        parser.error("--init, --forget and --list exclude one another")
+    if args.init + args.forget + args.list_envs + args.install_fish > 1:
+        parser.error("--init, --forget, --list and --install-fish exclude one another")
+    if args.install_fish and (args.name or args.latest):
+        parser.error("--install-fish takes no environment")
+    if args.names and not args.list_envs:
+        parser.error("--names is only valid with --list")
     if args.latest and args.name:
         parser.error("<name>, - and --latest exclude one another")
     if args.list_envs and (args.name or args.latest):
@@ -49,7 +56,14 @@ def _parse_env_args(argv: T.List[str]):
         parser.error("--create-venv and --use-venv are only valid with --init")
     if args.without_pip and not args.create_venv:
         parser.error("--without-pip is only valid with --create-venv")
-    if not (args.init or args.forget or args.list_envs or args.name or args.latest):
+    if not (
+        args.init
+        or args.forget
+        or args.list_envs
+        or args.install_fish
+        or args.name
+        or args.latest
+    ):
         parser.error("no environment was given")
     return args
 
@@ -58,8 +72,19 @@ def _run_env(argv: T.List[str]) -> int:
     args = _parse_env_args(argv)
 
     if args.list_envs:
-        for line in format_zoo_env_list(list_zoo_envs(), get_active_zoo_env()):
+        if args.names:
+            lines = [env.name for env in list_zoo_envs()]
+        else:
+            lines = format_zoo_env_list(list_zoo_envs(), get_active_zoo_env())
+        for line in lines:
             print(line)
+        return 0
+
+    if args.install_fish:
+        # The messages go to stderr: the stdout of zoo env is for lines to source
+        for path in install_fish_files():
+            print(f"Wrote {path}", file=sys.stderr)
+        print("Open a new fish shell to use zz.", file=sys.stderr)
         return 0
 
     if args.forget:

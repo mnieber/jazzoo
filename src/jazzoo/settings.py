@@ -16,9 +16,12 @@ KNOWN_ATTRIBUTES: T.FrozenSet[str] = frozenset(["private", "interactive"])
 
 # The zoo registry, and where the zoo-<name> links go. These are functions, because
 # they depend on environment variables that may change after jazzoo is imported.
+def get_config_home() -> str:
+    return os.environ.get("XDG_CONFIG_HOME") or os.path.expanduser("~/.config")
+
+
 def get_zoo_config_dir() -> str:
-    config_home = os.environ.get("XDG_CONFIG_HOME") or os.path.expanduser("~/.config")
-    return os.path.join(config_home, "jazzoo")
+    return os.path.join(get_config_home(), "jazzoo")
 
 
 def get_zoo_bin_dir() -> str:
