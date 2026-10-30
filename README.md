@@ -1,6 +1,6 @@
 # jazzoo 🐐🐭🐆
 
-**A beast of a task runner.**
+**A beast of a task-runner.**
 
 Jazzoo starts out as simple as `just` or `make`: a file of named tasks whose bodies are
 shell lines. But where those tools stop, Jazzoo keeps going. Your tasks are real
@@ -174,8 +174,13 @@ pip install git+https://github.com/mnieber/jazzoo.git
 
 Jazzoo needs Python 3 and has no dependencies.
 
+The sigils are emoji. Bind them to keys in your editor, as
+[Editor setup](extra/spec_src/reference/jazzoo-editor-setup.md) describes, and they
+are as quick to type as `$`.
+
 ## Documentation
 
 - [The Jazzoo language](extra/spec_src/reference/jazzoo-language.md)
 - [Running commands: `run`, `jaz-run` and `--confirm`](extra/spec_src/reference/jazzoo-commands.md)
 - [Config files](extra/spec_src/reference/jazzoo-config.md)
+- [Editor setup: typing the sigils](extra/spec_src/reference/jazzoo-editor-setup.md)

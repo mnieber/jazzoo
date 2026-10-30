@@ -3,14 +3,15 @@
 ⚙️.stdout and ⚙️.output are covered in test_shebang_blocks.py, since their values
 follow from how blocks execute. ⚙️.env is covered in test_substitutions.py, and the
 path operators (⚙️.abs, ⚙️.basename, ...) in test_expressions.py. What is left here
-are the module and root_module variables, which are constant for a whole run.
+are the module and root_module variables, which are constant for a whole run, and
+the spelling of the ⚙️ sigil.
 """
 
 import os
 
 import pytest
 
-from jazzoo import ResolutionError, evaluate, parse_module
+from jazzoo import ParseError, ResolutionError, evaluate, parse_module
 from jazzoo.runtime.utils.test_utils import save_fixture
 
 
@@ -254,3 +255,60 @@ def test_an_unknown_system_variable_is_a_resolution_error():
             evaluate(root_module, "🐭.go()")
         with pytest.raises(ResolutionError):
             evaluate(root_module, "🐭.top-level()")
+
+
+def test_the_gear_without_variation_selector_is_the_system_sigil(monkeypatch):
+    """The system sigil is a gear followed by the variation selector U+FE0F. Some input
+    methods drop the selector, and the two forms look the same, so the bare gear
+    (U+2699) is accepted in every position where ⚙️ is."""
+    if True:
+        # Config
+        monkeypatch.setenv("JAZZOO_TEST_GEAR", "gear")
+        # ⚙ is written as an escape, since it looks the same as ⚙️.
+        jazzoo_fn = save_fixture(
+            """# test_bare_gear.jaz
+        bare():
+            echo "\u2699.module.basename"
+
+        braced():
+            echo "{{ \u2699.env.JAZZOO_TEST_GEAR }}-value"
+
+        assigned():
+            🐆.name = \u2699.module.path | \u2699.stem | \u2699.basename
+            echo "🐆.name"
+
+        statement():
+            \u2699.load_env(path="does-not-exist.env", required=false)
+            echo "loaded"
+
+        shebang():
+            #!/usr/bin/env python3
+            print("\u2699.env.JAZZOO_TEST_GEAR")
+        """
+        )
+
+        # Run
+        root_module = parse_module(jazzoo_fn)
+
+        # Assert
+        assert evaluate(root_module, "🐭.bare()") == "test_bare_gear.jaz"
+        assert evaluate(root_module, "🐭.braced()") == "gear-value"
+        assert evaluate(root_module, "🐭.assigned()") == "test_bare_gear"
+        assert evaluate(root_module, "🐭.statement()") == "loaded"
+        assert evaluate(root_module, "🐭.shebang()") == "gear"
+
+
+def test_the_bare_gear_namespace_is_read_only():
+    """The bare gear names the same read-only namespace as ⚙️."""
+    if True:
+        # Config
+        jazzoo_fn = save_fixture(
+            """# test_bare_gear_read_only.jaz
+        go():
+            \u2699.foo = "bar"
+        """
+        )
+
+        # Run & Assert
+        with pytest.raises(ParseError):
+            parse_module(jazzoo_fn)
