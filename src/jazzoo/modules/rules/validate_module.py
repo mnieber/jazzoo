@@ -55,10 +55,19 @@ def validate_builtin_call(
 def _validate_function(
     function: Function, module: Module, function_valued: T.Dict[str, Function]
 ) -> None:
-    # A default is an expression, so an unquoted string in it is a ParseError.
+    # A default is an expression, so an unquoted string in it is a ParseError, and a
+    # call in it is checked like a call in the body.
     for parameter in function.parameters:
         if parameter.default is not None:
             _validate_expression(parameter.default, function.filename, function.line)
+            _validate_call_text(
+                parameter.default.strip(),
+                module,
+                function,
+                function.filename,
+                function.line,
+                function_valued,
+            )
 
     for dependency in function.dependencies:
         _validate_call(
@@ -90,9 +99,18 @@ def _validate_function(
                         filename=block.filename,
                         line=block_line.line,
                     )
-            _validate_braced_expressions(
+            for expression in _braced_expressions(
                 block_line.text, block.filename, block_line.line
-            )
+            ):
+                _validate_expression(expression, block.filename, block_line.line)
+                _validate_call_text(
+                    expression.strip(),
+                    module,
+                    function,
+                    block.filename,
+                    block_line.line,
+                    in_scope,
+                )
             candidate = assignment.group("rhs").strip() if assignment else trimmed
             if assignment is not None:
                 # An unquoted string on the right-hand side is a ParseError, and is
@@ -101,30 +119,41 @@ def _validate_function(
             _validate_pipes(
                 candidate, module, in_scope, block.filename, block_line.line
             )
-            match = _CALL_RE.match(candidate)
-            if match is None:
-                continue
-            arguments = parse_call_arguments(match.group("args"), None, None)
-            if _SIGIL_TEXTS[match.group("sigil")] is Sigil.SYSTEM:
-                validate_builtin_call(
-                    match.group("path"),
-                    [(a.name, a.value) for a in arguments],
-                    block.filename,
-                    block_line.line,
-                )
-                continue
-            _validate_call(
-                match.group("path"),
-                [(a.name, a.value) for a in arguments],
-                module,
-                function,
-                block.filename,
-                block_line.line,
-                in_scope,
+            _validate_call_text(
+                candidate, module, function, block.filename, block_line.line, in_scope
             )
 
     for local in function.functions:
         _validate_function(local, module, in_scope)
+
+
+def _validate_call_text(
+    text: str,
+    module: Module,
+    function: Function,
+    filename: T.Optional[str],
+    line: T.Optional[int],
+    function_valued: T.Dict[str, Function],
+) -> None:
+    """Check the call that is the whole of text, if text is a call."""
+    match = _CALL_RE.match(text)
+    if match is None:
+        return
+    arguments = parse_call_arguments(match.group("args"), None, None)
+    if _SIGIL_TEXTS[match.group("sigil")] is Sigil.SYSTEM:
+        validate_builtin_call(
+            match.group("path"), [(a.name, a.value) for a in arguments], filename, line
+        )
+        return
+    _validate_call(
+        match.group("path"),
+        [(a.name, a.value) for a in arguments],
+        module,
+        function,
+        filename,
+        line,
+        function_valued,
+    )
 
 
 def _function_valued_locals(
@@ -200,15 +229,17 @@ def _validate_expression(
         raise ParseError(error.message, filename=filename, line=line) from None
 
 
-def _validate_braced_expressions(
+def _braced_expressions(
     text: str, filename: T.Optional[str], line: T.Optional[int]
-) -> None:
-    """Parse the expressions written between braces in a body line."""
+) -> T.List[str]:
+    """The expressions written between braces in a body line."""
     from jazzoo.expressions.rules.parse_references import parse_references
 
-    for match in parse_references(text, filename=filename, line=line):
-        if match.expression_text is not None:
-            _validate_expression(match.expression_text, filename, line)
+    return [
+        match.expression_text
+        for match in parse_references(text, filename=filename, line=line)
+        if match.expression_text is not None
+    ]
 
 
 def _validate_pipes(

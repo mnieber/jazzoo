@@ -9,13 +9,12 @@ from jazzoo.modules.rules.parse_attribute_line import (
     is_attribute_line,
     parse_attribute_line,
 )
+from jazzoo.modules.rules.match_function_header import match_function_header
 from jazzoo.modules.rules.parse_parameters import parse_parameters
 from jazzoo.utils.indent_of import indent_of
 
-# A local function definition: `🐆.name(params):`
-_LOCAL_FUNCTION_RE = re.compile(
-    r"^🐆\.(?P<name>[A-Za-z_][A-Za-z0-9_-]*)\s*\((?P<params>[^)]*)\)\s*:\s*$"
-)
+# The start of a local function definition: `🐆.name(params):`
+_LOCAL_FUNCTION_NAME_RE = re.compile(r"^🐆\.(?P<name>[A-Za-z_][A-Za-z0-9_-]*)\s*\(")
 
 
 def parse_body(
@@ -52,7 +51,9 @@ def parse_body(
             index += 1
             continue
 
-        local_match = _LOCAL_FUNCTION_RE.match(trimmed)
+        local_match = match_function_header(_LOCAL_FUNCTION_NAME_RE, trimmed)
+        if local_match is not None and local_match.rest.strip():
+            local_match = None
         if pending_attributes and not local_match:
             raise _attribute_without_function_error(filename, attribute_line_no)
 
@@ -69,10 +70,8 @@ def parse_body(
                 index += 1
             inner_blocks, inner_locals = parse_body(inner, filename, header_indent + 4)
             local_fn = Function(
-                name=local_match.group("name"),
-                parameters=parse_parameters(
-                    local_match.group("params"), filename, line_no
-                ),
+                name=local_match.name,
+                parameters=parse_parameters(local_match.params, filename, line_no),
                 is_target=False,
                 is_interactive="interactive" in pending_attributes,
                 body=inner_blocks,

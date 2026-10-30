@@ -22,13 +22,7 @@ ALL_TEST_PACKAGES = [
 ]
 
 # Test files whose code is not written yet
-DISABLED_TEST_FILES = [
-    "config_tests/test_config/test_jazzoo_file_reads_config.py",
-    "config_tests/test_config_impl/test_get_config_errors.py",
-    "config_tests/test_config_impl/test_get_config_timing.py",
-    "config_tests/test_config_impl/test_get_config_values.py",
-    "test_parameter_default_calls.py",
-]
+DISABLED_TEST_FILES = []
 
 collect_ignore = [
     package for package in ALL_TEST_PACKAGES if package not in ENABLED_TEST_PACKAGES
