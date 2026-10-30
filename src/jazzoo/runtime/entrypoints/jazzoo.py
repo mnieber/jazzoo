@@ -105,6 +105,29 @@ def _print_listing(module, path: T.Optional[str]) -> int:
     raise JazzooError(f"no such target: {path}", filename=module.filename)
 
 
+def _switch_on_confirm():
+    if not has_terminal():
+        raise JazzooError("--confirm needs a terminal")
+    os.environ[CONFIRM_ENV_VAR] = "1"
+
+
+def _expand_alias(alias: str, args, filename: str) -> T.Tuple[str, T.List[str]]:
+    from jazzoo.aliases.rules.expand_alias import expand_alias
+
+    expansion = expand_alias(alias)
+    if expansion is None:
+        raise JazzooError(f"no such target: {alias}", filename=filename)
+
+    # The options of the expansion are added to those of the command line
+    alias_args = _parse_args(expansion)
+    if alias_args.confirm and not args.confirm:
+        args.confirm = True
+        _switch_on_confirm()
+    args.trace = args.trace or alias_args.trace
+
+    return alias_args.rest[0], alias_args.rest[1:]
+
+
 def _run(args, invocation_dir: T.Optional[str]) -> int:
     from jazzoo.expressions.actions.evaluate_expression import evaluate_expression
     from jazzoo.functions.actions.call_function import call_function
@@ -115,9 +138,7 @@ def _run(args, invocation_dir: T.Optional[str]) -> int:
     # Only the commands of a target are confirmed, so listing needs no terminal
     runs_target = bool(args.rest) and not args.list_targets and not args.list_all
     if args.confirm and runs_target:
-        if not has_terminal():
-            raise JazzooError("--confirm needs a terminal")
-        os.environ[CONFIRM_ENV_VAR] = "1"
+        _switch_on_confirm()
 
     filename = args.file or _find_default_file()
     module = parse_module(filename, invocation_dir=invocation_dir)
@@ -136,15 +157,25 @@ def _run(args, invocation_dir: T.Optional[str]) -> int:
 
     target_name, tokens = tokens[0], tokens[1:]
     target = get_target_by_path(module, target_name)
+    alias_tokens: T.List[str] = []
     if target is None:
-        raise JazzooError(f"no such target: {target_name}", filename=module.filename)
+        alias = target_name
+        target_name, alias_tokens = _expand_alias(alias, args, module.filename)
+        target = get_target_by_path(module, target_name)
+        if target is None:
+            raise JazzooError(
+                f'no such target: {target_name} (the expansion of alias "{alias}")',
+                filename=module.filename,
+            )
 
-    arguments = _split_target_arguments(
-        target_name,
-        tokens,
-        [p.name for p in target.parameters],
-        module.filename,
-    )
+    # The arguments of the alias are presets that the command line overrides
+    parameters = [p.name for p in target.parameters]
+    arguments = {
+        **_split_target_arguments(
+            target_name, alias_tokens, parameters, module.filename
+        ),
+        **_split_target_arguments(target_name, tokens, parameters, module.filename),
+    }
 
     frame = Frame(module=module, root_module=module, globals_=_GLOBALS)
     call_function(target, arguments, frame, evaluate_expression)
