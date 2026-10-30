@@ -7,10 +7,6 @@ sys.path.insert(
 )
 
 # Test files whose code is not written yet
-DISABLED_TEST_FILES = [
-    "zoo_e2e_tests/test_zoo_e2e/test_replace_the_linked_jazzoo_with_pip.py",
-    "zoo_e2e_tests/test_zoo_e2e_impl/test_pip_uninstall_the_link.py",
-    "zoo_e2e_tests/test_zoo_e2e_impl/test_pip_install_the_same_version.py",
-]
+DISABLED_TEST_FILES = []
 
 collect_ignore = DISABLED_TEST_FILES

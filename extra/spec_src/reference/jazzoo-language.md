@@ -101,7 +101,14 @@ Every Jazzoo name begins with a sigil that selects its namespace:
 | 🐆    | Leopard | local               |
 | ⚙️    | System  | built-in, read-only |
 
-Namespaces are defined in section 3.
+The system sigil is the gear `U+2699` followed by the variation selector `U+FE0F`,
+which asks for its emoji form. The gear without the selector (`⚙`) is accepted as the
+same sigil, everywhere: some input methods drop the selector, and the two forms look
+the same, so a reference with the bare gear would otherwise pass to the shell as
+literal text.
+
+Namespaces are defined in section 3. To type the sigils, see
+[jazzoo-editor-setup.md](./jazzoo-editor-setup.md).
 
 ### 2.2 Names and paths
 
