@@ -11,7 +11,7 @@ from jazzoo.zoo.rules.find_zoo_env_of_venv import find_zoo_env_of_venv
 from jazzoo.zoo.rules.get_zoo_venv_dir import get_zoo_venv_dir
 
 # The options of jaz that zoo takes: all but --file
-ZOO_OPTIONS = ("--list", "--list-all", "--trace", "--confirm", "--help")
+ZOO_OPTIONS = ("--list", "--list-all", "--which", "--trace", "--confirm", "--help")
 
 
 def get_zoo_completions(words: T.List[str]) -> T.List[Candidate]:

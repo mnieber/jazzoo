@@ -5,6 +5,7 @@ import traceback
 import typing as T
 
 from jazzoo.errors import JazzooError
+from jazzoo.runtime.entrypoints.jazzoo import _parse_args as _parse_jaz_args
 from jazzoo.runtime.utils.format_error import format_error
 from jazzoo.settings import get_active_zoo_env
 from jazzoo.zoo.actions.activate_zoo_env import activate_zoo_env
@@ -13,8 +14,10 @@ from jazzoo.zoo.actions.init_zoo_env import init_zoo_env
 from jazzoo.zoo.actions.install_fish_files import install_fish_files
 from jazzoo.zoo.actions.run_in_zoo_env import run_in_zoo_env
 from jazzoo.zoo.errors import ZooError, ZooUsageError
+from jazzoo.zoo.rules.format_zoo_env_line import format_zoo_env_line
 from jazzoo.zoo.rules.format_zoo_env_list import format_zoo_env_list
 from jazzoo.zoo.rules.get_recent_zoo_env import get_recent_zoo_env
+from jazzoo.zoo.rules.get_zoo_env import get_zoo_env
 from jazzoo.zoo.rules.list_zoo_envs import list_zoo_envs
 
 
@@ -138,6 +141,24 @@ def _refuse_file_option(argv: T.List[str]):
             )
 
 
+def _print_active_env(args) -> int:
+    """`zoo --which` without a path: print the env that the shell activated, if any.
+
+    It only reads the registry, so unlike a target it needs no venv of an env.
+    """
+    for option, is_set in (
+        ("--list", args.list_targets),
+        ("--list-all", args.list_all),
+    ):
+        if is_set:
+            raise JazzooError(f"--which cannot be combined with {option}")
+
+    name = get_active_zoo_env()
+    if name:
+        print(format_zoo_env_line(get_zoo_env(name)))
+    return 0
+
+
 def run(argv: T.Optional[T.List[str]] = None) -> int:
     argv = list(sys.argv[1:] if argv is None else argv)
     if argv[:1] == ["env"]:
@@ -147,6 +168,9 @@ def run(argv: T.Optional[T.List[str]] = None) -> int:
 
     # Everything else is a jaz call, also `zoo -- env`
     _refuse_file_option(argv)
+    args = _parse_jaz_args(argv)
+    if args.which and not args.rest and not args.help:
+        return _print_active_env(args)
     return run_in_zoo_env(argv)
 
 
