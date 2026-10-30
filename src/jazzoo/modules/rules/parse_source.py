@@ -11,6 +11,7 @@ from jazzoo.modules.rules.parse_attribute_line import (
     is_attribute_line,
     parse_attribute_line,
 )
+from jazzoo.modules.rules.match_function_header import match_function_header
 from jazzoo.modules.rules.parse_body import parse_body
 from jazzoo.modules.rules.parse_call_arguments import parse_call_arguments
 from jazzoo.modules.rules.parse_dependencies import parse_dependencies
@@ -26,10 +27,8 @@ _ASSIGNMENT_RE = re.compile(
     r"^(?P<sigil>🐐|🐭|🐆|⚙️|⚙)\.(?P<name>[A-Za-z0-9_][A-Za-z0-9_.-]*)\s*=\s*(?P<rhs>.*)$"
 )
 
-# `name(params):` optionally preceded by nothing, optionally followed by deps.
-_FUNCTION_RE = re.compile(
-    r"^(?P<name>[A-Za-z_][A-Za-z0-9_-]*)\s*\((?P<params>[^)]*)\)\s*:(?P<deps>.*)$"
-)
+# The start of `name(params):`, optionally followed by deps.
+_FUNCTION_NAME_RE = re.compile(r"^(?P<name>[A-Za-z_][A-Za-z0-9_-]*)\s*\(")
 
 # `⚙️.<name>(args)` as a whole top-level line: a call to a ⚙️ function statement.
 _BUILTIN_CALL_RE = re.compile(
@@ -64,7 +63,7 @@ def parse_source(source: str, filename: str) -> ParsedSource:
             index += 1
             continue
 
-        function_match = _FUNCTION_RE.match(trimmed)
+        function_match = match_function_header(_FUNCTION_NAME_RE, trimmed)
         is_function = bool(function_match) and indent_of(raw) == 0
         if pending_attributes and not is_function:
             raise _attribute_without_function_error(filename, attribute_line_no)
@@ -86,14 +85,14 @@ def parse_source(source: str, filename: str) -> ParsedSource:
             blocks, local_functions = parse_body(body_entries, filename, 4)
             result.functions.append(
                 Function(
-                    name=function_match.group("name"),
+                    name=function_match.name,
                     parameters=parse_parameters(
-                        function_match.group("params"), filename, line_no
+                        function_match.params, filename, line_no
                     ),
                     is_target="private" not in pending_attributes,
                     is_interactive="interactive" in pending_attributes,
                     dependencies=parse_dependencies(
-                        function_match.group("deps"), filename, line_no
+                        function_match.rest, filename, line_no
                     ),
                     body=blocks,
                     functions=local_functions,
