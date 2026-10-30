@@ -7,11 +7,22 @@ import sys
 import typing as T
 from pathlib import Path
 
+import pytest
 from jazzoo_test_env import Context, TestEnv as JazzooTestEnv
 
 from jazzoo.runtime.entrypoints.zoo import main, run as run_zoo
 
-__all__ = ["Context", "TestEnv", "SHOP_JAZZOO"]
+__all__ = ["Context", "TestEnv", "SHOP_JAZZOO", "FISH_FILES", "FISH_MANAGED_LINE"]
+
+# The files that `zoo env --install-fish` writes, relative to the fish config dir
+FISH_FILES = ["functions/zz.fish", "completions/zz.fish", "conf.d/zoo.fish"]
+
+# The first line of each of these files
+FISH_MANAGED_LINE = "# managed by zoo env --install-fish"
+
+# The PATH of a fish that a test runs: the zoo-<name> links, and the system
+# directories, but never a zoo or venv of the developer.
+FISH_PATH_DIRS = ["/usr/local/bin", "/usr/bin", "/bin"]
 
 # The jazzoo file of most projects. `where` shows the directories of the run, and is
 # silent about its commands, so that the output only has the values.
@@ -56,10 +67,34 @@ class TestEnv(JazzooTestEnv):
         if with_zoo:
             self.write_executable(f"{path}/bin/zoo", "#!/bin/sh\nexit 0\n")
 
-    def add_project(self, name: str, jazzoo_text: str = SHOP_JAZZOO):
-        """Writes projects/<name> with a jazzoo file and a fake venv in .venv."""
+    def make_runnable_fake_venv(self, path: str):
+        """Writes a fake venv whose bin/zoo runs the jazzoo of the test run, and whose
+        activate.fish sets VIRTUAL_ENV and puts bin on the PATH, as a real venv does.
+        A fish in a subprocess can use it."""
+        venv = self.path(path)
+        self.make_fake_venv(path, with_zoo=False)
+        self.write_file(
+            f"{path}/bin/activate.fish",
+            f"set -gx VIRTUAL_ENV {venv}\nset -gx PATH {venv}/bin $PATH\n",
+        )
+        self.write_executable(
+            f"{path}/bin/zoo",
+            f"#!{sys.executable}\n"
+            "import sys\n"
+            "from jazzoo.runtime.entrypoints.zoo import main\n"
+            "sys.exit(main())\n",
+        )
+
+    def add_project(
+        self, name: str, jazzoo_text: str = SHOP_JAZZOO, runnable_zoo: bool = False
+    ):
+        """Writes projects/<name> with a jazzoo file and a fake venv in .venv. With
+        runnable_zoo, the zoo of the venv runs (see make_runnable_fake_venv)."""
         self.write_project(name, jazzoo_text)
-        self.make_fake_venv(f"projects/{name}/.venv")
+        if runnable_zoo:
+            self.make_runnable_fake_venv(f"projects/{name}/.venv")
+        else:
+            self.make_fake_venv(f"projects/{name}/.venv")
 
     def init_env(
         self,
@@ -120,6 +155,29 @@ class TestEnv(JazzooTestEnv):
             timeout=60,
         )
 
+    def run_fish(self, script: str, interactive: bool = False):
+        """Runs script in a new fish, in a subprocess, and stores the result in
+        completed. Fish reads its config below tmp_path (HOME is set there), and gets
+        a PATH without any zoo of the developer. Skips the test when fish is not
+        installed."""
+        fish = shutil.which("fish")
+        if fish is None:
+            pytest.skip("fish is not installed")
+        environ = dict(os.environ)
+        environ["PATH"] = os.pathsep.join(
+            [self.path("home/.local/bin"), os.path.dirname(fish), *FISH_PATH_DIRS]
+        )
+        options = ["-i"] if interactive else []
+        self.completed = subprocess.run(
+            [fish, *options, "-c", script],
+            cwd=self.path(""),
+            env=environ,
+            stdin=subprocess.DEVNULL,
+            capture_output=True,
+            text=True,
+            timeout=60,
+        )
+
     def write_executable(self, name: str, text: str):
         self.write_file(name, text)
         path = self.path(name)
@@ -138,6 +196,16 @@ class TestEnv(JazzooTestEnv):
 
     def env_dir(self, name: str) -> str:
         return os.path.join(self.config_dir(), "envs", name)
+
+    def fish_dir(self) -> str:
+        return self.path("home/.config/fish")
+
+    def fish_file(self, name: str) -> str:
+        return os.path.join(self.fish_dir(), name)
+
+    def fish_lines(self) -> T.List[str]:
+        """The lines of the stdout of the last fish run."""
+        return self.completed.stdout.splitlines()
 
     def zoo_link(self, name: str) -> str:
         return self.path(f"home/.local/bin/zoo-{name}")
