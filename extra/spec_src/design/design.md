@@ -95,3 +95,86 @@ use it. `--names` is only valid with `--list`.
   templates in this module, like the activate scripts in `init_zoo_env.py`),
   `rules/get_fish_config_dir.py`, and `FishFileExistsError` in `errors.py`. The
   entrypoint `zoo.py` handles `--install-fish` and `--names`.
+
+# A linked jazzoo that pip understands
+
+`zoo env --init --create-venv` creates a venv that uses the jazzoo that runs `zoo`, e.g.
+a development checkout, without copying it. Today it symlinks the package into the
+venv (`site-packages/jazzoo -> <checkout>/src/jazzoo`), and writes the console scripts.
+pip does not know about this link, because it has no package metadata. When the
+developer runs `pip install jazzoo==0.2.0` in the venv, pip writes the new files through
+the symlink, into the checkout, and a later `pip uninstall jazzoo` deletes files of the
+checkout.
+
+Instead, `create_venv` makes a linked install, as `pip install -e` does: package metadata
+that pip reads, and an import hook that finds the linked package. Then pip treats the
+link like any other install:
+
+```
+$ pip list | grep jazzoo
+jazzoo  0.1.0  /home/me/projects/jazzoo/src/src/jazzoo
+$ pip install jazzoo==0.2.0      # uninstalls the link, installs 0.2.0
+$ pip uninstall jazzoo           # removes the link; the checkout is not touched
+```
+
+## The files of the linked install
+
+`create_venv` writes these files to the venv, and no symlink:
+
+- `site-packages/_jazzoo_link.pth`, with the line `import _jazzoo_link`. Python runs it
+  when the venv starts.
+- `site-packages/_jazzoo_link.py`, an import hook: it adds a finder to the end of
+  `sys.meta_path` that finds the package `jazzoo`, and only that package, in the
+  directory of the linked package. Its subpackages are found through the package itself.
+- `site-packages/jazzoo-<version>.dist-info/`, with:
+  - `METADATA`: the name `jazzoo` and the version of the linked jazzoo.
+  - `INSTALLER`: `zoo`.
+  - `entry_points.txt`: the console scripts `zoo`, `jaz`, `jazzoo` and `jaz-run`.
+  - `direct_url.json`: the linked directory as an editable install (PEP 610), so that
+    `pip list` shows where it points to.
+  - `RECORD`: every file above, and the four console scripts in `bin`.
+- `bin/zoo`, `bin/jaz`, `bin/jazzoo` and `bin/jaz-run`, as today.
+
+## Decisions
+
+- **No symlink, and nothing of the checkout in RECORD.** pip uninstalls a distribution by
+  removing the files in its `RECORD`. These are only the files that `create_venv` wrote,
+  so uninstalling never touches the linked directory.
+- **An import hook, not a path in the .pth file.** A path line in a `.pth` file puts a
+  whole directory on `sys.path`. For a checkout this is `src/`, but for a jazzoo that pip
+  installed, it is the `site-packages` of another environment, which would leak all its
+  packages into the venv. The finder only answers for `jazzoo`.
+- **A real install wins.** The finder is at the end of `sys.meta_path`, after the finder of
+  `sys.path`. Should a real `jazzoo` package end up in `site-packages` (e.g. installed
+  with `pip install --no-deps --ignore-installed`), that one is imported.
+- **The version.** The version in `METADATA` is the version of the linked jazzoo, read with
+  `importlib.metadata`. It has no local label (such as `+linked`), so that `pip list`
+  shows the real version. A consequence: `pip install jazzoo==<the same version>` says
+  "Requirement already satisfied", because pip sees that version installed. To replace
+  the link with the released package of the same version, the developer adds
+  `--force-reinstall`.
+- **No version found.** When the linked jazzoo has no package metadata (it was not
+  installed by pip, e.g. it runs from a source tree on `PYTHONPATH`), the version is
+  `0.0.0`.
+- **What is linked.** The directory of the package that runs `zoo`
+  (`os.path.dirname(jazzoo.__file__)`), as today. When that `zoo` runs in a venv with a
+  linked install, this is the directory of the link, not a link to a link.
+- **Venvs that zoo did not create.** `--use-venv` registers a venv in which jazzoo is
+  installed with pip; zoo does not change it.
+- **Existing venvs.** Venvs that were created with the symlink keep it. There is no
+  migration command: zoo is new, and such a venv can be created again with
+  `zoo env --forget <name>` and `zoo env --init --create-venv`, after removing `.venv`.
+  `create_venv` itself already refuses an existing directory.
+- **Tests of pip.** The tests that run pip in a venv are end-to-end tests in
+  `e2e_tests/` (next to `tests/`). They use a real pip, offline: the newer jazzoo is a
+  small wheel that the test builds, installed with `--no-index --find-links`. pip is
+  required to run them; they are not skipped when `ensurepip` is missing.
+- **A copy of jazzoo in the tests.** Tests that uninstall the link, or that need a
+  jazzoo without package metadata, link a copy of the jazzoo package in `tmp_path`,
+  not the checkout that runs the tests. zoo runs from that copy in a subprocess with
+  `PYTHONPATH`, and with `python -S`, so that the package metadata of the test run is
+  not found.
+- **Where the code lives.** In `jazzoo/zoo/actions/create_venv.py`, which writes the files
+  (the contents of `_jazzoo_link.py` and of the metadata files are templates in this
+  module, like the console scripts). The version is read by the rule
+  `jazzoo/zoo/rules/get_jazzoo_version.py`.
