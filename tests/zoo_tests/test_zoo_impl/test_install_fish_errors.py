@@ -15,6 +15,11 @@ OWN_STARTUP = """
 set -gx EDITOR vim
 """
 
+OWN_JAZ_COMPLETIONS = """
+# my own completions
+complete -c jaz -f -a "build deploy"
+"""
+
 MANAGED_ZZ = f"""
 {FISH_MANAGED_LINE}
 function zz
@@ -61,7 +66,7 @@ def test_install_fish_errors(context: Context):
     # and run the installer again.
     #
     # A file with the managed line is not in the way, so the installer should
-    # write all three files.
+    # write all files.
     if env.step(
         env.write_file(env.fish_file("functions/zz.fish"), MANAGED_ZZ),
         env.remove_file(env.fish_file("conf.d/zoo.fish")),
@@ -71,6 +76,20 @@ def test_install_fish_errors(context: Context):
         assert env.exists(env.fish_file("completions/zz.fish"))
         assert env.read_lines(env.fish_file("conf.d/zoo.fish"))[0] == (
             FISH_MANAGED_LINE
+        )
+
+    # We replace completions/jaz.fish with our own, and run the installer again.
+    #
+    # The completions of jaz are in the way, so it should raise a
+    # FishFileExistsError that names the file, and leave our file unchanged.
+    if env.step(
+        env.write_file(env.fish_file("completions/jaz.fish"), OWN_JAZ_COMPLETIONS),
+        env.run_zoo_and_catch_error("env", "--install-fish"),
+    ):
+        assert isinstance(env.error, FishFileExistsError)
+        assert env.fish_file("completions/jaz.fish") in str(env.error)
+        assert "my own completions" in env.read_file(
+            env.fish_file("completions/jaz.fish")
         )
 
 

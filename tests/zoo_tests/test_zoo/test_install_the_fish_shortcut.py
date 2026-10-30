@@ -18,8 +18,9 @@ def test_install_the_fish_shortcut(context: Context):
 
     # We run `zoo env --install-fish`.
     #
-    # It should write the zz function, its completions and the startup file to
-    # ~/.config/fish, each starting with the managed line. It should name the
+    # It should write the zz function, the completions of zz, jaz, jazzoo and
+    # zoo, and the startup file to ~/.config/fish, each starting with the
+    # managed line. It should name the
     # files and remind us to open a new shell on stderr, and print nothing on
     # stdout, which is for lines to source.
     if env.step(

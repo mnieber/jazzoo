@@ -26,7 +26,14 @@ __all__ = [
 ]
 
 # The files that `zoo env --install-fish` writes, relative to the fish config dir
-FISH_FILES = ["functions/zz.fish", "completions/zz.fish", "conf.d/zoo.fish"]
+FISH_FILES = [
+    "functions/zz.fish",
+    "completions/zz.fish",
+    "completions/jaz.fish",
+    "completions/jazzoo.fish",
+    "completions/zoo.fish",
+    "conf.d/zoo.fish",
+]
 
 # The first line of each of these files
 FISH_MANAGED_LINE = "# managed by zoo env --install-fish"
@@ -87,9 +94,9 @@ class TestEnv(JazzooTestEnv):
             self.write_executable(f"{path}/bin/zoo", "#!/bin/sh\nexit 0\n")
 
     def make_runnable_fake_venv(self, path: str):
-        """Writes a fake venv whose bin/zoo runs the jazzoo of the test run, and whose
-        activate.fish sets VIRTUAL_ENV and puts bin on the PATH, as a real venv does.
-        A fish in a subprocess can use it."""
+        """Writes a fake venv whose bin/zoo, bin/jaz and bin/jazzoo run the jazzoo of
+        the test run, and whose activate.fish sets VIRTUAL_ENV and puts bin on the
+        PATH, as a real venv does. A fish in a subprocess can use it."""
         venv = self.path(path)
         self.make_fake_venv(path, with_zoo=False)
         self.write_file(
@@ -103,6 +110,14 @@ class TestEnv(JazzooTestEnv):
             "from jazzoo.runtime.entrypoints.zoo import main\n"
             "sys.exit(main())\n",
         )
+        for name in ["jaz", "jazzoo"]:
+            self.write_executable(
+                f"{path}/bin/{name}",
+                f"#!{sys.executable}\n"
+                "import sys\n"
+                "from jazzoo.runtime.entrypoints.jazzoo import main\n"
+                "sys.exit(main())\n",
+            )
 
     def add_project(
         self, name: str, jazzoo_text: str = SHOP_JAZZOO, runnable_zoo: bool = False
@@ -155,6 +170,12 @@ class TestEnv(JazzooTestEnv):
             self.run_zoo(*args)
         except SystemExit as system_exit:
             self.system_exit = system_exit
+
+    def complete_zoo(self, *words: str):
+        """Runs `zoo --complete -- <words>` as fish does: through the console
+        script, so that an error would be printed, not raised. The last word is the
+        one that is being completed."""
+        self.run_zoo_cli("--complete", "--", *words)
 
     def run_zoo_cli(self, *args: str):
         """Runs zoo as the console script does: errors are printed, not raised."""
@@ -260,6 +281,11 @@ class TestEnv(JazzooTestEnv):
 
     def fish_file(self, name: str) -> str:
         return os.path.join(self.fish_dir(), name)
+
+    def candidates(self) -> T.List[str]:
+        """The candidates that zoo --complete printed, without their descriptions,
+        in the printed order."""
+        return [line.split("\t")[0] for line in (self.output or "").splitlines()]
 
     def fish_lines(self) -> T.List[str]:
         """The lines of the stdout of the last fish run."""
