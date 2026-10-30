@@ -1,4 +1,5 @@
 import os
+import sys
 import typing as T
 
 from jazzoo.enums import Sigil
@@ -24,6 +25,8 @@ def _system_value(reference: Reference, context) -> T.Any:
 
     if parts == ["invocation_dir"]:
         return context.root_module.invocation_dir
+    if parts == ["python"]:
+        return sys.executable
 
     if parts[0] in ("module", "root_module") and len(parts) == 2:
         module = context.module if parts[0] == "module" else context.root_module
