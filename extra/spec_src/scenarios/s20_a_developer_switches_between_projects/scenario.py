@@ -64,7 +64,9 @@ before. Running `zoo env -` again goes back and forth between the two envs.</br>
 
 #### It starts a new terminal in the latest project
 
-The startup file of the shell sources `~/.config/jazzoo/latest.<shell>`.</br>
+The startup file of the shell sources `~/.config/jazzoo/latest.<shell>`. In fish, this
+is `conf.d/zoo.fish`, which `zoo env --install-fish` writes, and which only does this in
+an interactive shell. In bash, the developer adds the line to `.bashrc`.</br>
 This script sources the activate script of the latest env, so the new terminal starts
 with its venv active. No Python runs, and no `zoo` is needed on the `PATH`.</br>
 
