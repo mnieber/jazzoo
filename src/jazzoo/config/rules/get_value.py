@@ -4,6 +4,11 @@ from ..errors import ConfigExpansionError
 from ..models.loaded_config import LoadedConfig
 from ..utils.format_config_path import format_config_path
 from ..utils.render_scalar import render_scalar
+from ..utils.split_expressions import (
+    Expression,
+    UnclosedExpressionError,
+    split_expressions,
+)
 
 Path = T.Tuple[T.Any, ...]
 
@@ -101,12 +106,12 @@ def _expand_string(
     parts = _parse(loaded, text, path)
 
     # A string that is one reference yields the referenced value with its own type
-    if len(parts) == 1 and isinstance(parts[0], _Expression):
+    if len(parts) == 1 and isinstance(parts[0], Expression):
         return _evaluate(loaded, parts[0].content, path, stack)
 
     result = []
     for part in parts:
-        if isinstance(part, _Expression):
+        if isinstance(part, Expression):
             value = _evaluate(loaded, part.content, path, stack)
             if isinstance(value, (dict, list)):
                 raise ConfigExpansionError(
@@ -150,7 +155,7 @@ def _expand_nested(
 ) -> str:
     result = []
     for part in _parse(loaded, content, path):
-        if isinstance(part, _Expression):
+        if isinstance(part, Expression):
             value = _evaluate(loaded, part.content, path, stack)
             if isinstance(value, bool) or not isinstance(value, (str, int, float)):
                 raise ConfigExpansionError(
@@ -163,59 +168,15 @@ def _expand_nested(
     return "".join(result)
 
 
-class _Expression:
-    def __init__(self, content: str):
-        self.content = content
-
-
 def _parse(
     loaded: LoadedConfig, text: str, path: Path
-) -> T.List[T.Union[str, _Expression]]:
-    parts: T.List[T.Union[str, _Expression]] = []
-    literal: T.List[str] = []
-    index = 0
-
-    while index < len(text):
-        if text.startswith("$${", index):
-            literal.append("${")
-            index += 3
-        elif text.startswith("${", index):
-            end = _find_closing_brace(text, index + 2)
-            if end is None:
-                raise ConfigExpansionError(
-                    f"{_context(loaded, path)}: unclosed '${{' in: {text}"
-                )
-            if literal:
-                parts.append("".join(literal))
-                literal = []
-            parts.append(_Expression(text[index + 2 : end]))
-            index = end + 1
-        else:
-            literal.append(text[index])
-            index += 1
-
-    if literal:
-        parts.append("".join(literal))
-    return parts
-
-
-def _find_closing_brace(text: str, start: int) -> T.Optional[int]:
-    depth = 1
-    index = start
-    while index < len(text):
-        if text.startswith("$${", index):
-            index += 3
-        elif text.startswith("${", index):
-            depth += 1
-            index += 2
-        elif text[index] == "}":
-            depth -= 1
-            if depth == 0:
-                return index
-            index += 1
-        else:
-            index += 1
-    return None
+) -> T.List[T.Union[str, Expression]]:
+    try:
+        return split_expressions(text)
+    except UnclosedExpressionError:
+        raise ConfigExpansionError(
+            f"{_context(loaded, path)}: unclosed '${{' in: {text}"
+        )
 
 
 def _context(loaded: LoadedConfig, path: Path) -> str:
