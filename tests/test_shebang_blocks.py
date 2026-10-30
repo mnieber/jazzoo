@@ -9,7 +9,8 @@ def test_each_jazzoo_mode_line_is_its_own_subprocess():
     shebang block - so nothing carries over from one line to the next."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_line_isolation.jaz
+        jazzoo_fn = save_fixture(
+            """# test_line_isolation.jaz
         working-directory():
             cd /tmp
             pwd
@@ -17,7 +18,8 @@ def test_each_jazzoo_mode_line_is_its_own_subprocess():
         shell-variables():
             FOO=bar
             echo "[$FOO]"
-        """)
+        """
+        )
 
         # Run
         root_module = parse_module(jazzoo_fn)
@@ -33,7 +35,8 @@ def test_each_jazzoo_mode_line_is_its_own_subprocess():
     subprocess, so the cd applies."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_block_shares_state.jaz
+        jazzoo_fn = save_fixture(
+            """# test_block_shares_state.jaz
         working-directory():
             #!/usr/bin/env bash
             cd /tmp
@@ -43,7 +46,8 @@ def test_each_jazzoo_mode_line_is_its_own_subprocess():
             #!/usr/bin/env bash
             FOO=bar
             echo "[$FOO]"
-        """)
+        """
+        )
 
         # Run
         root_module = parse_module(jazzoo_fn)
@@ -58,20 +62,24 @@ def test_the_default_mode_is_equivalent_to_per_line_bash_blocks():
     bash shebang block each."""
     if True:
         # Config
-        implicit_fn = save_fixture("""# test_implicit_mode.jaz
+        implicit_fn = save_fixture(
+            """# test_implicit_mode.jaz
         help():
             echo "hello"
             echo "world"
-        """)
+        """
+        )
 
-        explicit_fn = save_fixture("""# test_explicit_mode.jaz
+        explicit_fn = save_fixture(
+            """# test_explicit_mode.jaz
         help():
             #!/usr/bin/env bash
             echo "hello"
 
             #!/usr/bin/env bash
             echo "world"
-        """)
+        """
+        )
 
         # Run
         implicit_module = parse_module(implicit_fn)
@@ -87,13 +95,15 @@ def test_an_alternative_interpreter_runs_the_block():
     """A function body can use a shebang block to run an alternative interpreter."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_alternative_interpreter.jaz
+        jazzoo_fn = save_fixture(
+            """# test_alternative_interpreter.jaz
         🐭.tracing = "on"
 
         help():
             #!/usr/bin/env python3
             print("Tracing is: 🐭.tracing, fyi")
-        """)
+        """
+        )
 
         # Run
         root_module = parse_module(jazzoo_fn)
@@ -107,14 +117,16 @@ def test_a_bare_shebang_returns_to_the_default_mode():
     default jazzoo execution mode."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_bare_shebang.jaz
+        jazzoo_fn = save_fixture(
+            """# test_bare_shebang.jaz
         help():
             #!/usr/bin/env python3
             print("from python")
 
             #!
             echo "back in jazzoo mode"
-        """)
+        """
+        )
 
         # Run
         root_module = parse_module(jazzoo_fn)
@@ -128,7 +140,8 @@ def test_stdout_captures_the_last_block_and_output_strips_the_newline():
     to stdout. ⚙️.output equals ⚙️.stdout minus the trailing newline, if it has one."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_stdout_and_output.jaz
+        jazzoo_fn = save_fixture(
+            """# test_stdout_and_output.jaz
         raw():
             #!/usr/bin/env bash
             echo "Test"
@@ -149,7 +162,8 @@ def test_stdout_captures_the_last_block_and_output_strips_the_newline():
 
             #!
             🐆.retval = "[⚙️.output]"
-        """)
+        """
+        )
 
         # Run
         root_module = parse_module(jazzoo_fn)
@@ -166,7 +180,8 @@ def test_each_block_replaces_the_previous_stdout():
     one before it left behind."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_stdout_replaced.jaz
+        jazzoo_fn = save_fixture(
+            """# test_stdout_replaced.jaz
         help():
             #!/usr/bin/env python3
             print("Tracing is: on, fyi")
@@ -175,7 +190,8 @@ def test_each_block_replaces_the_previous_stdout():
             echo "We just wrote ⚙️.output"
             echo "Test"
             echo "Last message was: ⚙️.output"
-        """)
+        """
+        )
 
         # Run
         root_module = parse_module(jazzoo_fn)
@@ -191,7 +207,8 @@ def test_stdout_is_not_affected_by_calls_to_other_functions():
     it is local to the function whose body is running."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_stdout_is_local.jaz
+        jazzoo_fn = save_fixture(
+            """# test_stdout_is_local.jaz
         [private]
         _noisy():
             #!/usr/bin/env bash
@@ -204,7 +221,8 @@ def test_stdout_is_not_affected_by_calls_to_other_functions():
             #!
             🐭._noisy()
             🐆.retval = "⚙️.output"
-        """)
+        """
+        )
 
         # Run
         root_module = parse_module(jazzoo_fn)
@@ -220,7 +238,8 @@ def test_sweeping_extracts_assignments_and_substitutes_references():
     using the namespace state at that point. The block then runs as one subprocess."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_sweeping.jaz
+        jazzoo_fn = save_fixture(
+            """# test_sweeping.jaz
         info():
             #!/usr/bin/env python3
             🐆.config = "hello.json"
@@ -230,7 +249,8 @@ def test_sweeping_extracts_assignments_and_substitutes_references():
             🐆.config = "bye.json"
 
             print("second: 🐆.config")
-        """)
+        """
+        )
 
         # Run
         root_module = parse_module(jazzoo_fn)
@@ -248,7 +268,8 @@ def test_a_swept_assignment_outlives_its_block():
     the current value in the next one."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_assignment_outlives_block.jaz
+        jazzoo_fn = save_fixture(
+            """# test_assignment_outlives_block.jaz
         info():
             #!/usr/bin/env python3
             🐆.config = "hello.json"
@@ -259,7 +280,8 @@ def test_a_swept_assignment_outlives_its_block():
 
             #!/usr/bin/env bash
             echo "The 🐆.config file was used in our Python shebang block"
-        """)
+        """
+        )
 
         # Run
         root_module = parse_module(jazzoo_fn)
@@ -277,13 +299,15 @@ def test_indentation_does_not_affect_whether_a_line_is_an_assignment():
     no difference - an assignment inside a Python for loop is still extracted."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_indented_assignment.jaz
+        jazzoo_fn = save_fixture(
+            """# test_indented_assignment.jaz
         info():
             #!/usr/bin/env python3
             for i in range(3):
                 🐆.config = "in-loop.json"
                 print("🐆.config")
-        """)
+        """
+        )
 
         # Run
         root_module = parse_module(jazzoo_fn)
@@ -302,14 +326,16 @@ def test_a_braced_reference_passes_through_the_sweep():
     regular line rather than being extracted as an assignment."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_braced_not_extracted.jaz
+        jazzoo_fn = save_fixture(
+            """# test_braced_not_extracted.jaz
         🐭.variable = "foo"
 
         info():
             #!/usr/bin/env python3
             {{ 🐭.variable }} = "bar"
             print(foo)
-        """)
+        """
+        )
 
         # Run
         root_module = parse_module(jazzoo_fn)

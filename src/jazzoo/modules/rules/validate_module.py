@@ -49,9 +49,7 @@ def validate_builtin_call(
         raise ResolutionError(
             f"no such function: ⚙️.{name}", filename=filename, line=line
         )
-    _validate_arguments(
-        f"⚙️.{name}", f"⚙️.{name}", parameters, arguments, filename, line
-    )
+    _validate_arguments(f"⚙️.{name}", f"⚙️.{name}", parameters, arguments, filename, line)
 
 
 def _validate_function(

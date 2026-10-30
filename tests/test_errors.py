@@ -28,10 +28,12 @@ def test_syntax_that_does_not_parse_is_a_parse_error():
     """Syntax that does not parse is a ParseError, detected in phase 1."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_bad_syntax.jaz
+        jazzoo_fn = save_fixture(
+            """# test_bad_syntax.jaz
         debug(name="me"
             echo "never gets here"
-        """)
+        """
+        )
 
         # Run / Assert
         with pytest.raises(ParseError):
@@ -86,14 +88,16 @@ def test_a_parse_time_error_carries_its_source_location():
         # Config
         # The bad call site is on line 6 of the fixture body: the `# <filename>`
         # directive is stripped by save_fixture, so line 1 is `build(target):`.
-        jazzoo_fn = save_fixture("""# test_parse_error_location.jaz
+        jazzoo_fn = save_fixture(
+            """# test_parse_error_location.jaz
         build(target):
             #!/usr/bin/env bash
             echo "🐆.target"
 
         test():
             🐭.build(profile="dev")
-        """)
+        """
+        )
 
         # Run
         with pytest.raises(ArgumentError) as excinfo:
@@ -111,11 +115,13 @@ def test_a_run_time_error_carries_its_source_location():
     if True:
         # Config
         # `false` is on line 3 of the fixture body.
-        jazzoo_fn = save_fixture("""# test_run_error_location.jaz
+        jazzoo_fn = save_fixture(
+            """# test_run_error_location.jaz
         run():
             echo "fine"
             false
-        """)
+        """
+        )
 
         # Run
         root_module = parse_module(jazzoo_fn)
@@ -134,13 +140,15 @@ def test_an_error_in_a_jazzoo_statement_carries_its_source_location():
     if True:
         # Config
         # The ⚙️.parse assignment is on line 2, the ⚙️.load_env statement on line 5.
-        jazzoo_fn = save_fixture("""# test_statement_error_location.jaz
+        jazzoo_fn = save_fixture(
+            """# test_statement_error_location.jaz
         bad-json():
             🐆.config = "not json" | ⚙️.parse
 
         missing-env():
             ⚙️.load_env(path="/no/such/file.env")
-        """)
+        """
+        )
 
         # Run
         root_module = parse_module(jazzoo_fn)
@@ -161,17 +169,21 @@ def test_an_error_is_attributed_to_the_module_that_contains_it():
     the entry-point file."""
     if True:
         # Config
-        library_fn = save_fixture("""# broken_library.jaz
+        library_fn = save_fixture(
+            """# broken_library.jaz
         run():
             false
-        """)
+        """
+        )
 
-        jazzoo_fn = save_fixture("""# test_error_in_import.jaz
+        jazzoo_fn = save_fixture(
+            """# test_error_in_import.jaz
         from ./broken_library.jaz import run as lib
 
         go():
             🐭.lib.run()
-        """)
+        """
+        )
 
         # Run
         root_module = parse_module(jazzoo_fn)
@@ -191,14 +203,16 @@ def test_parse_time_errors_fire_regardless_of_the_target_invoked():
     target is run."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_early_detection.jaz
+        jazzoo_fn = save_fixture(
+            """# test_early_detection.jaz
         healthy():
             #!/usr/bin/env bash
             echo "nothing wrong with me"
 
         broken():
             🐭.no-such-function()
-        """)
+        """
+        )
 
         # Run / Assert
         # Loading fails on its own, without naming a target at all.
@@ -211,14 +225,16 @@ def test_list_fails_on_a_file_with_a_parse_time_error(capsys):
     rarely-used branch is first exercised."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_list_fails.jaz
+        jazzoo_fn = save_fixture(
+            """# test_list_fails.jaz
         healthy():
             #!/usr/bin/env bash
             echo "nothing wrong with me"
 
         broken():
             🐭.no-such-function()
-        """)
+        """
+        )
 
         # Run
         exit_code = main(["--list", "--file", jazzoo_fn])
@@ -235,14 +251,16 @@ def test_the_user_sees_only_the_message_and_its_location(capsys):
     location, and exits with a non-zero status."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_error_output.jaz
+        jazzoo_fn = save_fixture(
+            """# test_error_output.jaz
         build(target):
             #!/usr/bin/env bash
             echo "🐆.target"
 
         test():
             🐭.build(profile="dev")
-        """)
+        """
+        )
 
         # Run
         exit_code = main(["test", "--file", jazzoo_fn])
@@ -260,10 +278,12 @@ def test_a_stack_trace_is_shown_only_with_trace(capsys):
     internals, not the user's .jaz file. Passing --trace adds one."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_trace_flag.jaz
+        jazzoo_fn = save_fixture(
+            """# test_trace_flag.jaz
         run():
             false
-        """)
+        """
+        )
 
         # Run
         without_trace_code = main(["run", "--file", jazzoo_fn])

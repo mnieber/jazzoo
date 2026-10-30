@@ -15,10 +15,12 @@ def test_a_commands_output_reaches_the_console(capsys):
     ⚙️.stdout."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_output_reaches_console.jaz
+        jazzoo_fn = save_fixture(
+            """# test_output_reaches_console.jaz
         quiet():
             @echo "the real output"
-        """)
+        """
+        )
 
         # Run
         root_module = parse_module(jazzoo_fn)
@@ -37,10 +39,12 @@ def test_output_and_command_both_appear_without_the_marker(capsys):
     """Without `@`, the console shows the command and then what it printed."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_command_then_output.jaz
+        jazzoo_fn = save_fixture(
+            """# test_command_then_output.jaz
         loud():
             echo "hello there"
-        """)
+        """
+        )
 
         # Run
         root_module = parse_module(jazzoo_fn)
@@ -59,11 +63,13 @@ def test_a_shebang_blocks_output_reaches_the_console(capsys):
     """An alternative interpreter's output is forwarded the same way."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_shebang_output_console.jaz
+        jazzoo_fn = save_fixture(
+            """# test_shebang_output_console.jaz
         go():
             #!/usr/bin/env python3
             print("from python")
-        """)
+        """
+        )
 
         # Run
         root_module = parse_module(jazzoo_fn)
@@ -79,12 +85,14 @@ def test_a_shebang_blocks_body_is_not_echoed(capfd):
     swept body is a script, not a command, and only its output is shown."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_shebang_not_echoed.jaz
+        jazzoo_fn = save_fixture(
+            """# test_shebang_not_echoed.jaz
         go(name="jane"):
             #!/usr/bin/env python3
             greeting = "hello"
             print(greeting + " 🐆.name")
-        """)
+        """
+        )
 
         # Run
         root_module = parse_module(jazzoo_fn)
@@ -104,7 +112,8 @@ def test_a_call_whose_value_is_used_runs_quietly(capfd):
     output reach the console. Its value is unaffected."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_captured_call_is_quiet.jaz
+        jazzoo_fn = save_fixture(
+            """# test_captured_call_is_quiet.jaz
         [private]
         _config():
             echo '{"host": "captured-host"}'
@@ -121,7 +130,8 @@ def test_a_call_whose_value_is_used_runs_quietly(capfd):
 
         inline():
             @echo "length:" $(echo '🐭._config()' | wc -c)
-        """)
+        """
+        )
 
         # Run
         root_module = parse_module(jazzoo_fn)
@@ -145,14 +155,16 @@ def test_a_call_used_as_a_statement_still_prints(capfd):
     dependency - prints its commands and their output, like a target does."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_statement_call_prints.jaz
+        jazzoo_fn = save_fixture(
+            """# test_statement_call_prints.jaz
         [private]
         _step(name):
             echo "step 🐆.name ran"
 
         go(): _step(name="dependency")
             🐭._step(name="mid-body")
-        """)
+        """
+        )
 
         # Run
         root_module = parse_module(jazzoo_fn)
@@ -170,7 +182,8 @@ def test_a_quiet_call_is_quiet_all_the_way_down(capfd):
     that it calls as statements."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_quiet_call_nested.jaz
+        jazzoo_fn = save_fixture(
+            """# test_quiet_call_nested.jaz
         [private]
         _inner():
             echo "inner-output"
@@ -182,7 +195,8 @@ def test_a_quiet_call_is_quiet_all_the_way_down(capfd):
 
         go():
             🐆.retval = 🐭._outer()
-        """)
+        """
+        )
 
         # Run
         root_module = parse_module(jazzoo_fn)
@@ -200,7 +214,8 @@ def test_a_quiet_call_still_shows_stderr(capfd):
     so its warnings and errors stay visible."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_quiet_call_stderr.jaz
+        jazzoo_fn = save_fixture(
+            """# test_quiet_call_stderr.jaz
         [private]
         _value():
             @echo "a warning" >&2
@@ -208,7 +223,8 @@ def test_a_quiet_call_still_shows_stderr(capfd):
 
         go():
             🐆.retval = 🐭._value()
-        """)
+        """
+        )
 
         # Run
         root_module = parse_module(jazzoo_fn)
@@ -226,7 +242,8 @@ def test_a_module_level_call_runs_quietly(capfd):
     for `jaz --list` - so a call on its right-hand side is quiet as well."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_module_level_call_quiet.jaz
+        jazzoo_fn = save_fixture(
+            """# test_module_level_call_quiet.jaz
         [private]
         _host-ip():
             echo "10.1.2.3"
@@ -235,7 +252,8 @@ def test_a_module_level_call_runs_quietly(capfd):
 
         show():
             @echo "ip is 🐐.host-ip"
-        """)
+        """
+        )
 
         # Run
         root_module = parse_module(jazzoo_fn)

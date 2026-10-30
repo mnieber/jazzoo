@@ -10,7 +10,8 @@ from jazzoo import (
 from jazzoo.runtime.utils.test_utils import save_fixture
 
 # A library module of small string helpers, used as pipe stages.
-save_fixture("""# helpers.jaz
+save_fixture(
+    """# helpers.jaz
 make-full-path(input, style="posix"):
     #!/usr/bin/env bash
     echo "/data/🐆.style/🐆.input"
@@ -22,7 +23,8 @@ drop-config-dir-part(path):
 clean_up(name, max_length="10", suffix=""):
     #!/usr/bin/env bash
     echo "🐆.name🐆.suffix" | cut -c1-🐆.max_length
-""")
+"""
+)
 
 
 def test_currying_binds_a_parameter():
@@ -30,14 +32,16 @@ def test_currying_binds_a_parameter():
     bound, so the caller may no longer supply an argument for it."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_curry_binds.jaz
+        jazzoo_fn = save_fixture(
+            """# test_curry_binds.jaz
         from ./helpers.jaz import make-full-path as h
 
         🐭.build-windows = 🐭.h.make-full-path[style="windows"]
 
         go():
             🐆.retval = 🐭.build-windows(input="input.json")
-        """)
+        """
+        )
 
         # Run
         root_module = parse_module(jazzoo_fn)
@@ -53,7 +57,8 @@ def test_a_bound_value_is_an_expression_evaluated_at_curry_time():
     afterwards does not change the curried function."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_curry_binds_expression.jaz
+        jazzoo_fn = save_fixture(
+            """# test_curry_binds_expression.jaz
         from ./helpers.jaz import make-full-path as h
 
         🐭.style = "windows"
@@ -68,7 +73,8 @@ def test_a_bound_value_is_an_expression_evaluated_at_curry_time():
             🐆.build = 🐭.h.make-full-path[style=🐆.style]
             🐆.style = "changed"
             🐆.retval = "input.json" | 🐆.build
-        """)
+        """
+        )
 
         # Run
         root_module = parse_module(jazzoo_fn)
@@ -83,13 +89,15 @@ def test_an_unquoted_string_in_a_curry_is_a_parse_error():
     quoted - and the mistake is reported when the file is loaded."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_curry_unquoted.jaz
+        jazzoo_fn = save_fixture(
+            """# test_curry_unquoted.jaz
         from ./helpers.jaz import make-full-path as h
 
         go():
             🐆.build = 🐭.h.make-full-path[style=windows]
             🐆.retval = 🐆.build(input="input.json")
-        """)
+        """
+        )
 
         # Run and assert
         with pytest.raises(ParseError):
@@ -101,7 +109,8 @@ def test_currying_leaves_other_parameters_open():
     the caller."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_curry_open.jaz
+        jazzoo_fn = save_fixture(
+            """# test_curry_open.jaz
         from ./helpers.jaz import make-full-path as h
 
         🐭.build = 🐭.h.make-full-path[style="linux"]
@@ -111,7 +120,8 @@ def test_currying_leaves_other_parameters_open():
 
         go2():
             🐆.retval = 🐭.build(input="b.json")
-        """)
+        """
+        )
 
         # Run
         root_module = parse_module(jazzoo_fn)
@@ -126,7 +136,8 @@ def test_empty_brackets_are_the_function_itself():
     `f()` is different - it calls the function."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_empty_brackets.jaz
+        jazzoo_fn = save_fixture(
+            """# test_empty_brackets.jaz
         from ./helpers.jaz import make-full-path as h
 
         🐭.a = 🐭.h.make-full-path[]
@@ -137,7 +148,8 @@ def test_empty_brackets_are_the_function_itself():
 
         go2():
             🐆.retval = 🐭.b(input="x.json")
-        """)
+        """
+        )
 
         # Run
         root_module = parse_module(jazzoo_fn)
@@ -152,14 +164,16 @@ def test_bare_name_marks_a_parameter_as_unbound():
     every other parameter is bound in the curry expression or by its default."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_bare_name.jaz
+        jazzoo_fn = save_fixture(
+            """# test_bare_name.jaz
         from ./helpers.jaz import clean_up as h
 
         🐭.shorten = 🐭.h.clean_up[name, max_length="3"]
 
         go():
             🐆.retval = 🐭.shorten(name="jane")
-        """)
+        """
+        )
 
         # Run
         root_module = parse_module(jazzoo_fn)
@@ -174,12 +188,14 @@ def test_pipe_feeds_the_unbound_parameter():
     parameter."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_pipe_single.jaz
+        jazzoo_fn = save_fixture(
+            """# test_pipe_single.jaz
         from ./helpers.jaz import make-full-path as h
 
         go():
             🐆.retval = "input.json" | 🐭.h.make-full-path[style="linux"]
-        """)
+        """
+        )
 
         # Run
         root_module = parse_module(jazzoo_fn)
@@ -193,12 +209,14 @@ def test_pipe_without_brackets():
     exactly one parameter in total - otherwise the free one is ambiguous."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_pipe_no_brackets.jaz
+        jazzoo_fn = save_fixture(
+            """# test_pipe_no_brackets.jaz
         from ./helpers.jaz import drop-config-dir-part as h
 
         go():
             🐆.retval = "/data/config/input.json" | 🐭.h.drop-config-dir-part
-        """)
+        """
+        )
 
         # Run
         root_module = parse_module(jazzoo_fn)
@@ -213,7 +231,8 @@ def test_the_free_parameter_must_be_unambiguous():
     else are equivalent."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_free_param.jaz
+        jazzoo_fn = save_fixture(
+            """# test_free_param.jaz
         from ./helpers.jaz import make-full-path as h
 
         by-naming-the-free-one():
@@ -221,7 +240,8 @@ def test_the_free_parameter_must_be_unambiguous():
 
         by-binding-the-rest():
             🐆.retval = "input.json" | 🐭.h.make-full-path[style="posix"]
-        """)
+        """
+        )
 
         # Run
         root_module = parse_module(jazzoo_fn)
@@ -242,7 +262,8 @@ def test_pipe_chain_passes_return_values_onwards():
     """Each stage's return value is piped onwards to the next stage."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_pipe_chain.jaz
+        jazzoo_fn = save_fixture(
+            """# test_pipe_chain.jaz
         from ./helpers.jaz import * as h
 
         go():
@@ -250,7 +271,8 @@ def test_pipe_chain_passes_return_values_onwards():
                 | 🐭.h.make-full-path[style="config"] \\
                 | 🐭.h.drop-config-dir-part \\
                 | 🐭.h.clean_up[name, max_length="7"]
-        """)
+        """
+        )
 
         # Run
         root_module = parse_module(jazzoo_fn)
@@ -264,13 +286,15 @@ def test_pipe_applies_to_builtin_functions():
     """Built-in ⚙️ functions are piped exactly like user functions."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_pipe_builtin.jaz
+        jazzoo_fn = save_fixture(
+            """# test_pipe_builtin.jaz
         go():
             🐆.retval = "/data/sub/../input.json" | ⚙️.abs
 
         go2():
             🐆.retval = "/data/input.json" | ⚙️.basename | ⚙️.stem
-        """)
+        """
+        )
 
         # Run
         root_module = parse_module(jazzoo_fn)
@@ -285,12 +309,14 @@ def test_a_pipe_stage_binding_every_parameter_is_an_argument_error():
     leaves nowhere for the piped value to go, and is an ArgumentError."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_pipe_zero_unbound.jaz
+        jazzoo_fn = save_fixture(
+            """# test_pipe_zero_unbound.jaz
         from ./helpers.jaz import make-full-path as h
 
         go():
             🐆.retval = "x.json" | 🐭.h.make-full-path[input="a.json", style="linux"]
-        """)
+        """
+        )
 
         # Run / Assert
         with pytest.raises(ArgumentError):
@@ -303,12 +329,14 @@ def test_a_pipe_stage_leaving_two_parameters_unbound_is_an_argument_error():
     no part in deciding it."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_pipe_two_unbound.jaz
+        jazzoo_fn = save_fixture(
+            """# test_pipe_two_unbound.jaz
         from ./helpers.jaz import make-full-path as h
 
         go():
             🐆.retval = "x.json" | 🐭.h.make-full-path
-        """)
+        """
+        )
 
         # Run / Assert
         # make-full-path(input, style="posix") has two parameters, so the bare
@@ -322,11 +350,13 @@ def test_binding_an_unknown_parameter_in_a_curry_is_an_argument_error():
     """A curry expression may only bind parameters the function declares."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_curry_unknown_param.jaz
+        jazzoo_fn = save_fixture(
+            """# test_curry_unknown_param.jaz
         from ./helpers.jaz import make-full-path as h
 
         🐭.build = 🐭.h.make-full-path[nonesuch="x"]
-        """)
+        """
+        )
 
         # Run / Assert
         with pytest.raises(ArgumentError):
@@ -338,11 +368,13 @@ def test_naming_an_unknown_parameter_as_unbound_is_an_argument_error():
     parameter the function declares."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_curry_unknown_bare_name.jaz
+        jazzoo_fn = save_fixture(
+            """# test_curry_unknown_bare_name.jaz
         from ./helpers.jaz import make-full-path as h
 
         🐭.build = 🐭.h.make-full-path[nonesuch, style="linux"]
-        """)
+        """
+        )
 
         # Run / Assert
         with pytest.raises(ArgumentError):
@@ -354,14 +386,16 @@ def test_supplying_an_argument_for_a_bound_parameter_is_an_argument_error():
     for it."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_curry_rebind.jaz
+        jazzoo_fn = save_fixture(
+            """# test_curry_rebind.jaz
         from ./helpers.jaz import make-full-path as h
 
         🐭.build-windows = 🐭.h.make-full-path[style="windows"]
 
         go():
             🐆.retval = 🐭.build-windows(input="input.json", style="linux")
-        """)
+        """
+        )
 
         # Run / Assert
         with pytest.raises(ArgumentError):
@@ -373,7 +407,8 @@ def test_a_variable_holding_a_function_is_callable():
     function symbol is equivalent to applying empty square brackets to it."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_variable_is_callable.jaz
+        jazzoo_fn = save_fixture(
+            """# test_variable_is_callable.jaz
         [private]
         _greet(who, punctuation="!"):
             echo "Hello 🐆.who🐆.punctuation"
@@ -385,7 +420,8 @@ def test_a_variable_holding_a_function_is_callable():
 
         with-every-argument():
             🐆.retval = 🐭.greet(who="jane", punctuation="?")
-        """)
+        """
+        )
 
         # Run
         root_module = parse_module(jazzoo_fn)
@@ -400,7 +436,8 @@ def test_a_local_variable_may_hold_and_call_a_function():
     """A 🐆 variable can hold a function too, and is called the same way."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_local_variable_is_callable.jaz
+        jazzoo_fn = save_fixture(
+            """# test_local_variable_is_callable.jaz
         [private]
         _greet(who):
             echo "Hello 🐆.who"
@@ -408,7 +445,8 @@ def test_a_local_variable_may_hold_and_call_a_function():
         go():
             🐆.greet = 🐭._greet
             🐆.retval = 🐆.greet(who="jane")
-        """)
+        """
+        )
 
         # Run
         root_module = parse_module(jazzoo_fn)
@@ -422,7 +460,8 @@ def test_a_variable_holding_a_function_can_be_reassigned_and_piped():
     to another variable, and used as a pipe stage."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_function_value_flows.jaz
+        jazzoo_fn = save_fixture(
+            """# test_function_value_flows.jaz
         from ./helpers.jaz import drop-config-dir-part as h
 
         🐭.first = 🐭.h.drop-config-dir-part
@@ -433,7 +472,8 @@ def test_a_variable_holding_a_function_can_be_reassigned_and_piped():
 
         piped():
             🐆.retval = "/data/config/input.json" | 🐭.second
-        """)
+        """
+        )
 
         # Run
         root_module = parse_module(jazzoo_fn)
@@ -448,12 +488,14 @@ def test_calling_a_variable_that_holds_a_string_is_an_error():
     ordinary string does not resolve to a function."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_calling_a_string.jaz
+        jazzoo_fn = save_fixture(
+            """# test_calling_a_string.jaz
         🐭.not-a-function = "just a string"
 
         go():
             🐆.retval = 🐭.not-a-function()
-        """)
+        """
+        )
 
         # Run / Assert
         with pytest.raises(ResolutionError):
@@ -465,11 +507,13 @@ def test_calling_a_function_symbol_without_arguments_is_an_error():
     any arguments rather than referring to it."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_symbol_vs_call.jaz
+        jazzoo_fn = save_fixture(
+            """# test_symbol_vs_call.jaz
         from ./helpers.jaz import make-full-path as h
 
         🐭.executed-too-early = 🐭.h.make-full-path()
-        """)
+        """
+        )
 
         # Run / Assert
         # `make-full-path` requires `input`, so calling it here is a missing argument.

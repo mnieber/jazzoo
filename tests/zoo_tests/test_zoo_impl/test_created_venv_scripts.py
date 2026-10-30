@@ -3,13 +3,16 @@ import os
 from zoo_tests.zoo_test_env import SHOP_JAZZOO, Context, TestEnv
 
 # A target with a Python block that imports jazzoo, and shows which python runs it
-JAZZOO = SHOP_JAZZOO + """
+JAZZOO = (
+    SHOP_JAZZOO
+    + """
 check():
     #!/usr/bin/env python3
     import sys
     from jazzoo import run
     print("prefix=" + sys.prefix)
 """
+)
 
 
 def create_env(context: Context):

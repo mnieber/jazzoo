@@ -14,7 +14,8 @@ from jazzoo import (
 from jazzoo.runtime.utils.test_utils import save_fixture
 
 # A library module used as the import source.
-save_fixture("""# foo.jaz
+save_fixture(
+    """# foo.jaz
 🐐.test = 123
 🐭.test = "mouse"
 
@@ -27,14 +28,17 @@ bar():
 okay():
     #!/usr/bin/env bash
     echo "okay"
-""")
+"""
+)
 
 # A second-level module that foo.jaz privately imports from.
-save_fixture("""# helper.jaz
+save_fixture(
+    """# helper.jaz
 secret():
     #!/usr/bin/env bash
     echo "secret"
-""")
+"""
+)
 
 
 def test_single_import():
@@ -42,9 +46,11 @@ def test_single_import():
     become available."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_single_import.jaz
+        jazzoo_fn = save_fixture(
+            """# test_single_import.jaz
         from ./foo.jaz import bar as baz
-        """)
+        """
+        )
 
         # Run
         root_module = parse_module(jazzoo_fn)
@@ -68,9 +74,11 @@ def test_import_tuple_and_assign_alias():
     """You can import a function from a module into an alias sub-module, and assign an alias."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_import_tuple_and_assign_alias.jaz
+        jazzoo_fn = save_fixture(
+            """# test_import_tuple_and_assign_alias.jaz
         from ./foo.jaz import (bar as hello, okay) as baz
-        """)
+        """
+        )
 
         # Run
         root_module = parse_module(jazzoo_fn)
@@ -85,9 +93,11 @@ def test_import_star():
     """Import star imports all targets."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_import_star.jaz
+        jazzoo_fn = save_fixture(
+            """# test_import_star.jaz
         from ./foo.jaz import * as foo
-        """)
+        """
+        )
 
         # Run
         root_module = parse_module(jazzoo_fn)
@@ -105,11 +115,13 @@ def test_resolve_module_symbols():
         # Config
         # Caller defines its own 🐭.test; the imported bar() must still resolve
         # 🐭.test against foo.jaz, not against the caller.
-        root_module_fn = save_fixture("""# test_resolve_module_symbols.jaz
+        root_module_fn = save_fixture(
+            """# test_resolve_module_symbols.jaz
         🐭.test = "caller"
 
         from ./foo.jaz import bar as baz
-        """)
+        """
+        )
         root_module = parse_module(root_module_fn)
         foo_module = get_module_by_path(root_module, "baz")
 
@@ -121,17 +133,21 @@ def test_resolve_module_symbols():
 def test_global_symbols_are_shared_across_modules():
     if True:
         # Config
-        save_fixture("""# glob.jaz
+        save_fixture(
+            """# glob.jaz
         touch():
             #!/usr/bin/env bash
             echo 🐐.shared
-        """)
+        """
+        )
 
-        jazzoo_fn = save_fixture("""# test_global_shared.jaz
+        jazzoo_fn = save_fixture(
+            """# test_global_shared.jaz
         🐐.shared = "from-root"
 
         from ./glob.jaz import touch as g
-        """)
+        """
+        )
 
         # Run
         root_module = parse_module(jazzoo_fn)
@@ -150,9 +166,11 @@ def test_targets_from_imported_modules_are_not_listed():
     are not listed by `jaz --list`."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_import_not_listed.jaz
+        jazzoo_fn = save_fixture(
+            """# test_import_not_listed.jaz
         from ./foo.jaz import bar as baz
-        """)
+        """
+        )
 
         # Run
         root_module = parse_module(jazzoo_fn)
@@ -171,9 +189,11 @@ def test_importing_a_missing_file_is_a_module_import_error():
     always explicit relative or absolute - there is no search path to fall back on."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_missing_file.jaz
+        jazzoo_fn = save_fixture(
+            """# test_missing_file.jaz
         from ./nope.jaz import bar as baz
-        """)
+        """
+        )
 
         # Run / Assert
         with pytest.raises(ModuleImportError):
@@ -185,9 +205,11 @@ def test_importing_an_unknown_symbol_is_a_module_import_error():
     ModuleImportError."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_unknown_symbol.jaz
+        jazzoo_fn = save_fixture(
+            """# test_unknown_symbol.jaz
         from ./foo.jaz import no-such-function as baz
-        """)
+        """
+        )
 
         # Run / Assert
         with pytest.raises(ModuleImportError):
@@ -201,9 +223,11 @@ def test_importing_a_privately_imported_symbol_is_a_module_import_error():
         # Config
         # foo.jaz privately imports `secret` from helper.jaz, so `secret` is not a
         # symbol foo.jaz offers to its own importers.
-        jazzoo_fn = save_fixture("""# test_private_symbol.jaz
+        jazzoo_fn = save_fixture(
+            """# test_private_symbol.jaz
         from ./foo.jaz import secret as baz
-        """)
+        """
+        )
 
         # Run / Assert
         with pytest.raises(ModuleImportError):
@@ -215,27 +239,33 @@ def test_call_time_circular_imports_are_safe():
     first load, and circular references used only at call time are safe."""
     if True:
         # Config
-        save_fixture("""# ping.jaz
+        save_fixture(
+            """# ping.jaz
         from ./pong.jaz import pong as p
 
         ping():
             🐆.retval = "ping/🐭.p.pong()"
-        """)
+        """
+        )
 
-        save_fixture("""# pong.jaz
+        save_fixture(
+            """# pong.jaz
         from ./ping.jaz import ping as p
 
         pong():
             #!/usr/bin/env bash
             echo "pong"
-        """)
+        """
+        )
 
-        jazzoo_fn = save_fixture("""# test_circular_call_time.jaz
+        jazzoo_fn = save_fixture(
+            """# test_circular_call_time.jaz
         from ./ping.jaz import ping as entry
 
         go():
             🐆.retval = 🐭.entry.ping()
-        """)
+        """
+        )
 
         # Run
         root_module = parse_module(jazzoo_fn)
@@ -252,7 +282,8 @@ def test_load_time_circular_imports_are_a_module_import_error():
     if True:
         # Config
         # left.jaz needs a value from right.jaz while right.jaz is still loading.
-        save_fixture("""# left.jaz
+        save_fixture(
+            """# left.jaz
         from ./right.jaz import value as r
 
         🐭.eager = 🐭.r.value()
@@ -260,9 +291,11 @@ def test_load_time_circular_imports_are_a_module_import_error():
         value():
             #!/usr/bin/env bash
             echo "left"
-        """)
+        """
+        )
 
-        save_fixture("""# right.jaz
+        save_fixture(
+            """# right.jaz
         from ./left.jaz import value as l
 
         🐭.eager = 🐭.l.value()
@@ -270,11 +303,14 @@ def test_load_time_circular_imports_are_a_module_import_error():
         value():
             #!/usr/bin/env bash
             echo "right"
-        """)
+        """
+        )
 
-        jazzoo_fn = save_fixture("""# test_circular_load_time.jaz
+        jazzoo_fn = save_fixture(
+            """# test_circular_load_time.jaz
         from ./left.jaz import value as entry
-        """)
+        """
+        )
 
         # Run / Assert
         with pytest.raises(ModuleImportError):
@@ -286,13 +322,17 @@ def test_the_same_function_imported_into_a_namespace_twice_is_one_function():
     directly and once through a module that re-exports it - binds it once."""
     if True:
         # Config
-        save_fixture("""# relay_foo.jaz
+        save_fixture(
+            """# relay_foo.jaz
         from ./foo.jaz export bar
-        """)
-        jazzoo_fn = save_fixture("""# test_import_same_twice.jaz
+        """
+        )
+        jazzoo_fn = save_fixture(
+            """# test_import_same_twice.jaz
         from ./foo.jaz import bar as ns
         from ./relay_foo.jaz import bar as ns
-        """)
+        """
+        )
 
         # Run
         root_module = parse_module(jazzoo_fn)
@@ -308,10 +348,12 @@ def test_different_functions_imported_under_one_name_collide():
     attributed to the second import - rather than the first one silently winning."""
     if True:
         # Config
-        jazzoo_fn = save_fixture("""# test_import_name_clash.jaz
+        jazzoo_fn = save_fixture(
+            """# test_import_name_clash.jaz
         from ./foo.jaz import okay as ns
         from ./helper.jaz import (secret as okay,) as ns
-        """)
+        """
+        )
 
         # Run / Assert
         with pytest.raises(ParseError) as error:
