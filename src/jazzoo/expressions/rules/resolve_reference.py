@@ -4,10 +4,10 @@ import typing as T
 
 from jazzoo.enums import Sigil
 from jazzoo.errors import ResolutionError
-from jazzoo.expressions.models.reference import Reference
 from jazzoo.expressions.rules.get_by_path import get_by_path
 from jazzoo.expressions.utils.strip_one_newline import strip_one_newline
 from jazzoo.modules.models.absent import ABSENT
+from jazzoo.references.models.reference import Reference
 
 
 def _system_value(reference: Reference, context) -> T.Any:

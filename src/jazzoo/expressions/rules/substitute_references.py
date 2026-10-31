@@ -1,7 +1,8 @@
 import typing as T
 
-from jazzoo.expressions.rules.parse_references import ReferenceMatch, parse_references
 from jazzoo.expressions.utils.render_value import render_value
+from jazzoo.references.models.reference_match import ReferenceMatch
+from jazzoo.references.rules.parse_references import parse_references
 
 
 def substitute_references(

@@ -29,7 +29,7 @@ def get_boolean_operand_functions(
     """
     from jazzoo.expressions.models.boolean import And, Or
     from jazzoo.expressions.rules.parse_expression import Curry, ReferenceText
-    from jazzoo.expressions.rules.split_reference_path import split_reference_path
+    from jazzoo.references.rules.split_reference_path import split_reference_path
     from jazzoo.functions.rules.get_function_by_path import get_function_by_path
 
     if not isinstance(node, (And, Or)):

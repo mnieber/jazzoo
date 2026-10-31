@@ -9,7 +9,7 @@ def resolve_function_value(text: str, frame) -> T.Optional[CurriedFunction]:
     Returns None when the name resolves to an ordinary string, which is what makes
     calling a string a ResolutionError rather than a silent no-op.
     """
-    from jazzoo.expressions.rules.split_reference_path import split_reference_path
+    from jazzoo.references.rules.split_reference_path import split_reference_path
     from jazzoo.functions.rules.get_function_by_path import get_function_by_path
 
     split = split_reference_path(text)
