@@ -29,6 +29,7 @@ the three namespace sigils.
 | work with JSON                                           | [4.4](#44-structured-values), [7.5](#75-pipe-operators)                       |
 | build and manipulate file paths                          | [6.5](#65-path-joins), [7.5](#75-pipe-operators)                              |
 | run several lines in one shell, or run Python            | [9.2](#92-shebang-blocks)                                                     |
+| split a long command over several lines                  | [2.6](#26-line-continuation)                                                  |
 | show a command's output live, or prompt the user         | [9.7](#97-interactive-functions)                                              |
 | run commands from a Python script                        | [jazzoo-commands.md](./jazzoo-commands.md)                                    |
 | confirm each command before it runs                      | [jazzoo-commands.md, 3](./jazzoo-commands.md#3-confirming-commands)           |
@@ -198,6 +199,37 @@ grep '#define' 🐆.header      # this entire line, comment included, goes to th
 
 Inside a shebang block, `#` lines belong to the block's interpreter and are passed
 through unchanged, so interpreter comments and pragmas such as `# noqa` survive.
+
+A comment never continues onto the next line, even when it ends in `\` (section 2.6).
+
+### 2.6 Line continuation
+
+A line that jazzoo parses itself — a top-level line, or a jazzoo-mode body line
+(section 9.1) — continues onto the next line when it ends in `\`. The `\` is removed
+and the next line is appended, stripped of its indentation and separated by a single
+space. Continuation repeats while the joined line still ends in `\`, and errors report
+the number of the first line.
+
+```
+🐭.image = \
+    "registry.example.com/team/app"
+
+build(): \
+        _fetch() \
+        _configure()
+    docker run --rm \
+        -v ⚙️.env.HOME:/data \
+        🐭.image
+```
+
+Two kinds of lines never continue:
+
+- a comment (section 2.5): as in bash, the line after it is an ordinary line;
+- a line in a shebang block (section 9.2): it belongs to the interpreter, which handles
+  its own `\` continuations, so jazzoo passes it through unchanged.
+
+Continuation lines in a function body must still be indented like the body: an
+unindented line ends the function.
 
 ---
 
@@ -874,7 +906,7 @@ is always an attribute line. A shell test needs a space after `[` or `[[`, so
 ### 8.5 Dependencies
 
 Dependencies follow the colon and run, in order, before the body. Use `\` to continue
-the list over several lines:
+the list over several lines (section 2.6):
 
 ```
 debug(name="me"): _helper(name=🐆.name)

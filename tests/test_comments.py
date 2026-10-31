@@ -222,3 +222,23 @@ def test_a_comment_may_be_indented_to_any_depth():
 
         # Assert
         assert evaluate(root_module, "🐭.build()") == "from the local function"
+
+
+def test_a_comment_ending_in_a_backslash_does_not_continue():
+    """A trailing `\\` continues a jazzoo-mode line, but not a comment: as in bash,
+    the line after the comment is an ordinary line."""
+    if True:
+        # Config
+        jazzoo_fn = save_fixture(
+            """# test_comment_backslash.jaz
+        build():
+            # files live under C:\\
+            echo "done"
+        """
+        )
+
+        # Run
+        root_module = parse_module(jazzoo_fn)
+
+        # Assert
+        assert evaluate(root_module, "🐭.build()") == "done"

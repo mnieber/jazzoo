@@ -12,6 +12,7 @@ from jazzoo.modules.rules.parse_attribute_line import (
 from jazzoo.modules.rules.match_function_header import match_function_header
 from jazzoo.modules.rules.parse_parameters import parse_parameters
 from jazzoo.utils.indent_of import indent_of
+from jazzoo.utils.join_continuations import join_continuations
 
 # The start of a local function definition: `🐆.name(params):`
 _LOCAL_FUNCTION_NAME_RE = re.compile(r"^🐆\.(?P<name>[A-Za-z_][A-Za-z0-9_-]*)\s*\(")
@@ -24,6 +25,7 @@ def parse_body(
     blocks: T.List[Block] = []
     locals_: T.List[Function] = []
 
+    entries = list(entries)
     current = Block(mode=BlockMode.JAZZOO, shebang=None, lines=[], filename=filename)
     pending_attributes: T.List[str] = []
     attribute_line_no = 0
@@ -35,6 +37,14 @@ def parse_body(
         if not trimmed:
             index += 1
             continue
+
+        # Only jazzoo-mode lines continue: a shebang body is the interpreter's, and a
+        # comment never continues
+        if current.mode == BlockMode.JAZZOO and not trimmed.startswith("#"):
+            joined, end = join_continuations(entries, index)
+            entries[index:end] = [joined]
+            raw = joined[1]
+            trimmed = raw.strip()
 
         # Inside a shebang block the line belongs to that interpreter
         if current.mode == BlockMode.JAZZOO and is_attribute_line(trimmed):
