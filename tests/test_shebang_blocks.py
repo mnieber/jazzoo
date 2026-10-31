@@ -343,3 +343,50 @@ def test_a_braced_reference_passes_through_the_sweep():
         # Assert
         # `foo = "bar"` survived into the Python that ran.
         assert evaluate(root_module, "🐭.info()") == "bar"
+
+
+def test_a_trailing_backslash_continues_a_jazzoo_mode_line():
+    """A jazzoo-mode line that ends in `\\` continues on the next line, so a long
+    command can be split without a shebang block."""
+    if True:
+        # Config
+        jazzoo_fn = save_fixture(
+            """# test_continued_line.jaz
+        🐭.greeting = \\
+            "hello world"
+
+        build():
+            echo one \\
+                two \\
+                "🐭.greeting"
+        """
+        )
+
+        # Run
+        root_module = parse_module(jazzoo_fn)
+
+        # Assert
+        assert evaluate(root_module, "🐭.build()") == "one two hello world"
+
+
+def test_a_shebang_block_body_is_not_continued_by_jazzoo():
+    """Lines in a shebang block belong to the interpreter, so jazzoo leaves a
+    trailing `\\` for the interpreter to handle, here inside a quoted heredoc."""
+    if True:
+        # Config
+        jazzoo_fn = save_fixture(
+            """# test_shebang_backslash.jaz
+        build():
+            #!/usr/bin/env bash
+            cat <<'X'
+            literal \\
+            next
+            X
+        """
+        )
+
+        # Run
+        root_module = parse_module(jazzoo_fn)
+
+        # Assert
+        assert evaluate(root_module, "🐭.build()") == "literal \\\nnext"

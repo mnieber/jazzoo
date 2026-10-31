@@ -43,7 +43,7 @@ def parse_source(source: str, filename: str) -> ParsedSource:
     (design section 11).
     """
     result = ParsedSource(assignments=[], functions=[], imports=[], statements=[])
-    entries = join_continuations(source.splitlines())
+    entries = list(enumerate(source.splitlines(), start=1))
 
     pending_attributes: T.List[str] = []
     attribute_line_no = 0
@@ -55,6 +55,12 @@ def parse_source(source: str, filename: str) -> ParsedSource:
         if not trimmed or trimmed.startswith("#"):
             index += 1
             continue
+
+        # Join before matching, so a continued header never leaks into the body
+        joined, end = join_continuations(entries, index)
+        entries[index:end] = [joined]
+        raw = joined[1]
+        trimmed = raw.strip()
 
         if is_attribute_line(trimmed):
             if not pending_attributes:
