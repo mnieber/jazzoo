@@ -8,7 +8,7 @@ USAGE_ERRORS = [
     ["env", "--install-fish", "shop"],
     ["env", "--install-fish", "-"],
     ["env", "--install-fish", "--latest"],
-    ["env", "--install-fish", "--init", "shop", "--use-venv", ".venv"],
+    ["env", "--install-fish", "--init", "shop", "--venv-path", ".venv"],
     ["env", "--install-fish", "--forget", "shop"],
     ["env", "--install-fish", "--list"],
 ]

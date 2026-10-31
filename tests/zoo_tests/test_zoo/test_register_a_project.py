@@ -10,7 +10,7 @@ def test_register_a_project(context: Context):
     env = create_env(context)
 
     # We have a project "shop" with a jazzoo file and a venv in .venv. In the
-    # project directory, we run `zoo env --init --use-venv .venv`.
+    # project directory, we run `zoo env --init --venv-path .venv`.
     #
     # The env should be called "shop", after the directory. Its directory in the
     # registry should link to the project and the venv, and zoo should print the
@@ -18,7 +18,7 @@ def test_register_a_project(context: Context):
     if env.step(
         env.add_project("shop"),
         env.change_dir("projects/shop"),
-        env.run_zoo("env", "--init", "--use-venv", ".venv"),
+        env.run_zoo("env", "--init", "--venv-path", ".venv"),
     ):
         assert env.is_dir(env.env_dir("shop"))
         assert env.read_link(env.env_dir("shop") + "/root_dir") == env.path(

@@ -3,9 +3,10 @@ from zoo_tests.zoo_test_env import Context, TestEnv
 # Each of these breaks a rule of how the options of `zoo env` combine
 USAGE_ERRORS = [
     ["env", "--init", "shop"],
+    ["env", "--venv-path", ".venv"],
+    ["env", "--create-venv"],
+    ["env", "--init", "shop", "--venv-path", ".venv", "--without-pip"],
     ["env", "--init", "shop", "--create-venv", "--use-venv", ".venv"],
-    ["env", "--use-venv", ".venv"],
-    ["env", "--init", "shop", "--use-venv", ".venv", "--without-pip"],
     ["env", "--init", "shop", "--forget", "shop"],
     ["env", "--list", "shop"],
     ["env", "shop", "--latest"],

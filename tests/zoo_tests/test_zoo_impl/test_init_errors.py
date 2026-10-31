@@ -90,6 +90,20 @@ def test_init_errors(context: Context):
         assert isinstance(env.error, NotAVenvError)
         assert not env.exists(env.env_dir("docs"))
 
+    # We register a project with a venv path that does not exist, as if we forgot
+    # --create-venv.
+    #
+    # This should raise a NotAVenvError that suggests --create-venv, and create
+    # nothing.
+    if env.step(
+        env.write_project("wiki"),
+        env.init_env_and_catch_error("wiki", venv="projects/wiki/venvs/wiki"),
+    ):
+        assert isinstance(env.error, NotAVenvError)
+        assert "--create-venv" in str(env.error)
+        assert not env.exists(env.env_dir("wiki"))
+        assert not env.exists(env.path("projects/wiki/venvs"))
+
     # We register a project with a venv that has no zoo.
     #
     # Jazzoo is not installed in it, so this should raise a NoZooInVenvError.

@@ -139,12 +139,12 @@ class TestEnv(JazzooTestEnv):
         venv: T.Optional[str] = None,
     ):
         """Changes to the project directory, and registers it with
-        `zoo env --init <name> --use-venv <venv>`."""
+        `zoo env --init <name> --venv-path <venv>`."""
         project = project or f"projects/{name}"
         venv = venv or f"{project}/.venv"
         self.change_dir(project)
         name_args = [name] if name else []
-        self.run_zoo("env", "--init", *name_args, "--use-venv", self.path(venv))
+        self.run_zoo("env", "--init", *name_args, "--venv-path", self.path(venv))
 
     def use_zoo_of(self, venv: str):
         """Makes the in-process zoo run in the given venv, as if it were the zoo of

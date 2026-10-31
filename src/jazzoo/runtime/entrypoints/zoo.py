@@ -32,9 +32,9 @@ def _parse_env_args(argv: T.List[str]):
     parser.add_argument("--list", dest="list_envs", action="store_true")
     parser.add_argument("--names", action="store_true")
     parser.add_argument("--install-fish", action="store_true")
-    venv_group = parser.add_mutually_exclusive_group()
-    venv_group.add_argument("--create-venv", action="store_true")
-    venv_group.add_argument("--use-venv")
+    parser.add_argument("--create-venv", action="store_true")
+    # The venv to create or to register, relative to the current directory
+    parser.add_argument("--venv-path")
     parser.add_argument("--without-pip", action="store_true")
     args = parser.parse_args(argv)
 
@@ -53,10 +53,10 @@ def _parse_env_args(argv: T.List[str]):
         parser.error("--init and --forget take a name, not - or --latest")
     if args.forget and not args.name:
         parser.error("--forget needs a name")
-    if args.init and not (args.create_venv or args.use_venv):
-        parser.error("--init needs --create-venv or --use-venv")
-    if (args.create_venv or args.use_venv) and not args.init:
-        parser.error("--create-venv and --use-venv are only valid with --init")
+    if args.init and not (args.create_venv or args.venv_path):
+        parser.error("--init needs --create-venv or --venv-path")
+    if (args.create_venv or args.venv_path is not None) and not args.init:
+        parser.error("--create-venv and --venv-path are only valid with --init")
     if args.without_pip and not args.create_venv:
         parser.error("--without-pip is only valid with --create-venv")
     if not (
@@ -102,11 +102,7 @@ def _run_env(argv: T.List[str]) -> int:
     if args.init:
         root_dir = os.getcwd()
         name = args.name or os.path.basename(root_dir)
-        venv_dir = (
-            os.path.join(root_dir, ".venv")
-            if args.create_venv
-            else os.path.abspath(args.use_venv)
-        )
+        venv_dir = os.path.abspath(args.venv_path or ".venv")
         init_zoo_env(
             name,
             root_dir,

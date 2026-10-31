@@ -29,7 +29,7 @@ def test_init_options(context: Context):
     if env.step(
         env.add_project("blog"),
         env.change_dir("projects/blog"),
-        env.run_zoo("env", "--init", "--use-venv", "./.venv"),
+        env.run_zoo("env", "--init", "--venv-path", "./.venv"),
     ):
         assert env.read_link(env.env_dir("blog") + "/venv_dir") == env.path(
             "projects/blog/.venv"
