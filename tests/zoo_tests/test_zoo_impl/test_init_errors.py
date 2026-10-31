@@ -4,7 +4,6 @@ from jazzoo.zoo.errors import (
     InvalidZooEnvNameError,
     NoRootFileError,
     NotAVenvError,
-    NoZooInVenvError,
     VenvInUseError,
     ZooEnvExistsError,
     ZooLinkExistsError,
@@ -103,16 +102,6 @@ def test_init_errors(context: Context):
         assert "--create-venv" in str(env.error)
         assert not env.exists(env.env_dir("wiki"))
         assert not env.exists(env.path("projects/wiki/venvs"))
-
-    # We register a project with a venv that has no zoo.
-    #
-    # Jazzoo is not installed in it, so this should raise a NoZooInVenvError.
-    if env.step(
-        env.make_fake_venv("projects/docs/.venv", with_zoo=False),
-        env.init_env_and_catch_error("docs"),
-    ):
-        assert isinstance(env.error, NoZooInVenvError)
-        assert not env.exists(env.env_dir("docs"))
 
     # We register a project with the venv of shop.
     #

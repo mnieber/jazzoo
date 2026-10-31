@@ -7,7 +7,7 @@ from pathlib import Path
 
 from zoo_tests.zoo_test_env import LINKED_DIR, Context, TestEnv
 
-from jazzoo.zoo.actions.create_venv import CONSOLE_SCRIPTS
+from jazzoo.zoo.actions.link_jazzoo import CONSOLE_SCRIPTS
 
 VENV = "projects/shop/.venv"
 

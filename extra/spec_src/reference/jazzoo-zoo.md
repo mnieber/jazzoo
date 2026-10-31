@@ -48,7 +48,12 @@ of letters, digits, `-`, `_` and `.`, and does not start with `-` or `.`.
   has the scripts `zoo`, `jaz`, `jazzoo` and `jaz-run`. `--without-pip` creates the venv
   without pip.
 - `--venv-path <venv>` without `--create-venv` registers an existing venv, which must
-  have jazzoo installed (a `bin/zoo`), and must not belong to another env.
+  not belong to another env. When it has no `bin/zoo`, it gets the same linked install
+  of jazzoo as a new venv (it does not need pip). A jazzoo that is installed already
+  is kept.
+
+Whenever zoo links jazzoo into a venv, it says so on stderr, and names the linked
+directory. The python of the venv must be 3.10 or newer.
 
 A relative `--venv-path` is relative to the current directory, and is stored as an
 absolute path.

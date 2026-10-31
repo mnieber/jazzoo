@@ -1,10 +1,13 @@
+import glob
 import os
 import shutil
 import sys
 import typing as T
 
+import jazzoo
 from jazzoo.settings import DEFAULT_FILENAMES, get_path_dirs, get_zoo_bin_dir
 from jazzoo.zoo.actions.create_venv import create_venv
+from jazzoo.zoo.actions.link_jazzoo import link_jazzoo
 from jazzoo.zoo.errors import (
     NoRootFileError,
     NotAVenvError,
@@ -45,7 +48,8 @@ def init_zoo_env(
     with_pip: bool = True,
 ) -> ZooEnv:
     # Everything is checked before anything is written. With create, venv_dir is
-    # the venv to create.
+    # the venv to create. Without it, jazzoo is linked into the venv when it has
+    # no zoo.
     env_dir = get_zoo_env_dir(name)
     link = get_zoo_link(name)
     zoo_script = os.path.join(venv_dir, "bin", "zoo")
@@ -54,9 +58,18 @@ def init_zoo_env(
     # Undo what was created when a later step fails, so that --init can be retried
     created: T.List[str] = []
     try:
+        linked = create or not os.path.exists(zoo_script)
         if create:
             created.append(venv_dir)
             create_venv(venv_dir, prompt=name, with_pip=with_pip)
+        elif linked:
+            created.extend(link_jazzoo(venv_dir))
+        if linked:
+            linked_dir = os.path.dirname(jazzoo.__file__)
+            print(
+                f"zoo: linked the jazzoo in {linked_dir} into the venv {venv_dir}",
+                file=sys.stderr,
+            )
 
         created.append(env_dir)
         _write_env_dir(name, env_dir, root_dir, venv_dir)
@@ -103,8 +116,18 @@ def _check(name, root_dir, venv_dir, create, env_dir, link, zoo_script):
             )
         if not os.path.exists(os.path.join(venv_dir, "pyvenv.cfg")):
             raise NotAVenvError(f"not a venv (it has no pyvenv.cfg): {venv_dir}")
-        if not os.path.exists(zoo_script):
-            raise NoZooInVenvError(f"jazzoo is not installed in the venv {venv_dir}")
+        # A dist-info without a zoo script is a broken install, which zoo does not
+        # try to repair
+        dist_infos = glob.glob(
+            os.path.join(
+                venv_dir, "lib", "python*", "site-packages", "jazzoo-*.dist-info"
+            )
+        )
+        if dist_infos and not os.path.exists(zoo_script):
+            raise NoZooInVenvError(
+                f"the venv {venv_dir} has {dist_infos[0]}, but no bin/zoo; "
+                "reinstall jazzoo in it"
+            )
         other = find_zoo_env_of_venv(venv_dir)
         if other is not None:
             raise VenvInUseError(

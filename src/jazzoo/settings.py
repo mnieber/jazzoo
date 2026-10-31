@@ -14,6 +14,11 @@ DEFAULT_SHEBANG = "#!/usr/bin/env bash"
 KNOWN_ATTRIBUTES: T.FrozenSet[str] = frozenset(["private", "interactive"])
 
 
+# The oldest python that can run jazzoo; the same as requires-python in pyproject.toml.
+# zoo checks it before it links jazzoo into a venv.
+MIN_PYTHON_VERSION: T.Tuple[int, int] = (3, 10)
+
+
 # The zoo registry, and where the zoo-<name> links go. These are functions, because
 # they depend on environment variables that may change after jazzoo is imported.
 def get_config_home() -> str:

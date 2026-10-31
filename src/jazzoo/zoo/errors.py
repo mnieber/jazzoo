@@ -49,6 +49,10 @@ class VenvCreationError(ZooError):
     pass
 
 
+class JazzooLinkError(ZooError):
+    pass
+
+
 class NotAVenvError(ZooError):
     pass
 

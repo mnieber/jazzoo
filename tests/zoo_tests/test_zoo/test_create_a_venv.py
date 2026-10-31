@@ -27,7 +27,7 @@ def test_create_a_venv(context: Context):
     # `zoo env --init --create-venv --without-pip`.
     #
     # zoo should create the venv .venv, with the name of the env as its prompt,
-    # and register it.
+    # and register it. It should say that it linked jazzoo into the venv.
     if env.step(
         env.write_project("shop"),
         env.change_dir("projects/shop"),
@@ -39,6 +39,10 @@ def test_create_a_venv(context: Context):
             "projects/shop/.venv"
         )
         assert env.output == env.source_line("shop")
+        assert (
+            f"zoo: linked the jazzoo in {LINKED_DIR} into the venv "
+            f"{env.path(VENV)}" in env.printed_err
+        )
 
     # We look at the venv, and ask its python where it imports jazzoo from.
     #
