@@ -23,7 +23,7 @@ def run_scenario():
             with it().calls(r.init_zoo_env_action):
                 it().checks_the(r.name).and_the(r.root_jazzoo_file)
                 with it().calls(r.create_venv_action):
-                    it().creates_the(r.venv).in_the(r.project_dir)
+                    it().creates_the(r.venv).at_the(r.venv_path)
                     with it().makes_a(r.linked_install).of_the(r.jazzoo_package):
                         it().writes_the(r.import_hook).into_the(r.venv)
                         it().calls(r.get_jazzoo_version_rule)
@@ -62,11 +62,15 @@ In the project directory, the developer runs
 `eval "$(zoo env --init --create-venv)"`.</br>
 `init_zoo_env` checks the name (by default the name of the directory) and that the
 directory has a root jazzoo file.</br>
-`create_venv` creates `.venv` in the project directory, and makes a linked install
+`create_venv` creates the venv: `.venv` in the project directory, or the path that
+the developer gives with `--venv-path`. It makes a linked install
 of the jazzoo package that runs `zoo`, as `pip install -e` does: an import hook that
 finds the package in its own directory, and package metadata that pip reads. The
 version in the metadata comes from `get_jazzoo_version`. `create_venv` also writes the
 `zoo`, `jaz`, `jazzoo` and `jaz-run` scripts into the `bin` directory of the venv.</br>
+A developer who already has a venv with jazzoo installed leaves out `--create-venv`,
+and gives its path with `--venv-path`; `init_zoo_env` then checks that venv instead
+of creating one.</br>
 `init_zoo_env` writes the env directory in `~/.config/jazzoo/envs/<name>`: links to the
 root directory and the venv, and an activate script per shell. It also links
 `~/.local/bin/zoo-<name>` to the `zoo` of the venv.</br>

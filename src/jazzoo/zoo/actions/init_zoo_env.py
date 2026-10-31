@@ -94,9 +94,13 @@ def _check(name, root_dir, venv_dir, create, env_dir, link, zoo_script):
     if create:
         if os.path.lexists(venv_dir):
             raise VenvExistsError(
-                f"{venv_dir} already exists; use --use-venv to register it"
+                f"{venv_dir} already exists; leave out --create-venv to register it"
             )
     else:
+        if not os.path.lexists(venv_dir):
+            raise NotAVenvError(
+                f"{venv_dir} does not exist; add --create-venv to create it"
+            )
         if not os.path.exists(os.path.join(venv_dir, "pyvenv.cfg")):
             raise NotAVenvError(f"not a venv (it has no pyvenv.cfg): {venv_dir}")
         if not os.path.exists(zoo_script):

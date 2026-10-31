@@ -13,8 +13,8 @@ ZOO_ENV_OPTIONS = (
     "--forget",
     "--install-fish",
     "--create-venv",
-    "--use-venv",
     "--without-pip",
+    "--venv-path",
 )
 
 
@@ -22,7 +22,7 @@ def complete_zoo_env(words: T.List[str]) -> T.List[Candidate]:
     *done, word = words or [""]
     previous = done[-1] if done else None
 
-    if previous == "--use-venv":
+    if previous == "--venv-path":
         return complete_file_names(word)
 
     names = [env.name for env in list_zoo_envs()]

@@ -31,23 +31,27 @@ has lines to source.
 ## 2. Registering a project
 
 ```
-zoo env --init [<name>] --create-venv [--without-pip]
-zoo env --init [<name>] --use-venv <venv>
+zoo env --init [<name>] --create-venv [--venv-path <venv>] [--without-pip]
+zoo env --init [<name>] --venv-path <venv>
 ```
 
 `zoo env --init` registers the current directory as an env, and activates it (it
 prints the line to source). The name defaults to the name of the directory; it consists
 of letters, digits, `-`, `_` and `.`, and does not start with `-` or `.`.
 
-- `--create-venv` creates the venv `.venv` in the project directory. The venv gets a
+- `--create-venv` creates the venv: at `--venv-path`, or else `.venv` in the project
+  directory. Directories above the venv are created when needed. The venv gets a
   **linked install** of the jazzoo that runs `zoo` (e.g. a development checkout): the
   venv uses that jazzoo without copying it, as `pip install -e` would. pip sees it as an
   editable install, so `pip install jazzoo==<version>` replaces it with a release, and
   `pip uninstall jazzoo` removes it, without touching the linked directory. The venv
   has the scripts `zoo`, `jaz`, `jazzoo` and `jaz-run`. `--without-pip` creates the venv
   without pip.
-- `--use-venv <venv>` registers an existing venv, which must have jazzoo installed
-  (a `bin/zoo`), and must not belong to another env.
+- `--venv-path <venv>` without `--create-venv` registers an existing venv, which must
+  have jazzoo installed (a `bin/zoo`), and must not belong to another env.
+
+A relative `--venv-path` is relative to the current directory, and is stored as an
+absolute path.
 
 Registering fails, and writes nothing, when the env exists, when the directory has no
 root jazzoo file (`jazzoo` or `jazzoo.jaz`), or when the venv is not valid.

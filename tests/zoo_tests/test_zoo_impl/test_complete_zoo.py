@@ -67,14 +67,14 @@ def test_complete_zoo(context: Context):
     ):
         assert sorted(env.candidates()) == ["echo-all", "greet", "where"]
 
-    # We complete `zoo env --use-venv ` and `zoo greet name=` in the directory
+    # We complete `zoo env --venv-path ` and `zoo greet name=` in the directory
     # elsewhere, which has a file.
     #
     # Both should offer the file names of the current directory, not of the root
     # directory of shop.
     if env.step(
         env.write_file("elsewhere/notes.txt", ""),
-        env.complete_zoo("env", "--use-venv", ""),
+        env.complete_zoo("env", "--venv-path", ""),
     ):
         assert env.candidates() == ["notes.txt"]
 
