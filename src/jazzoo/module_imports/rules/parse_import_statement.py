@@ -2,7 +2,10 @@ import re
 import typing as T
 
 from jazzoo.errors import ParseError
-from jazzoo.modules.models.import_statement import ImportedSymbol, ImportStatement
+from jazzoo.module_imports.models.import_statement import (
+    ImportedSymbol,
+    ImportStatement,
+)
 
 _IMPORT_RE = re.compile(
     r"^from\s+(?P<path>\S+)\s+(?P<kind>import|export)\s+(?P<rest>.*)$"
