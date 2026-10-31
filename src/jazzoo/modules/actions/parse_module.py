@@ -9,11 +9,9 @@ from jazzoo.modules.models.builtin_call import BuiltinCall
 from jazzoo.modules.models.frame import Frame
 from jazzoo.modules.models.module import Module
 from jazzoo.module_imports.rules.parse_import_statement import parse_import_statement
+from jazzoo.module_validation.rules.validate_builtin_call import validate_builtin_call
+from jazzoo.module_validation.rules.validate_module import validate_module
 from jazzoo.modules.rules.parse_source import parse_source
-from jazzoo.modules.rules.validate_module import (
-    validate_builtin_call,
-    validate_module,
-)
 
 # 🐐 is shared by every module in a run.
 _GLOBALS: T.Dict[str, T.Any] = {}
@@ -195,8 +193,8 @@ def _resolve_function_valued(parsed, module: Module) -> T.Dict[str, T.Any]:
 def _function_valued_branch(node: T.Any) -> T.Any:
     """The branch of a boolean expression that decides whether it is callable.
 
-    Shares the reasoning in validate_module's copy: `and` and `or` yield one of
-    their operands, so the left one stands in for a value only known at run time.
+    Shares the reasoning in get_boolean_operand_functions: `and` and `or` yield one
+    of their operands, so the left one stands in for a value only known at run time.
     """
     from jazzoo.expressions.models.boolean import And, Or
 
