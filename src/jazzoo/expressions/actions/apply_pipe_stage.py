@@ -12,7 +12,7 @@ from jazzoo.expressions.rules.apply_builtin_pipe import (
     is_builtin_pipe,
 )
 from jazzoo.expressions.rules.parse_expression import CallValue, Curry, ReferenceText
-from jazzoo.expressions.rules.parse_references import parse_references
+from jazzoo.references.rules.parse_references import parse_references
 from jazzoo.expressions.rules.resolve_function_value import resolve_function_value
 from jazzoo.expressions.utils.join_path import join_path
 from jazzoo.expressions.utils.render_value import render_value

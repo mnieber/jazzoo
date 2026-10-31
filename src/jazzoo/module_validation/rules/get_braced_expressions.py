@@ -5,7 +5,7 @@ def get_braced_expressions(
     text: str, filename: T.Optional[str], line: T.Optional[int]
 ) -> T.List[str]:
     """The expressions written between braces in a body line."""
-    from jazzoo.expressions.rules.parse_references import parse_references
+    from jazzoo.references.rules.parse_references import parse_references
 
     return [
         match.expression_text

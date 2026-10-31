@@ -24,7 +24,7 @@ def validate_pipes(
         ReferenceText,
         parse_expression,
     )
-    from jazzoo.expressions.rules.split_reference_path import split_reference_path
+    from jazzoo.references.rules.split_reference_path import split_reference_path
     from jazzoo.functions.rules.get_function_by_path import get_function_by_path
     from jazzoo.functions.rules.parse_curry import get_free_parameters, parse_curry
 

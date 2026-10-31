@@ -18,7 +18,7 @@ def get_function_valued_locals(
         ReferenceText,
         parse_expression,
     )
-    from jazzoo.expressions.rules.split_reference_path import split_reference_path
+    from jazzoo.references.rules.split_reference_path import split_reference_path
     from jazzoo.functions.rules.get_function_by_path import get_function_by_path
     from jazzoo.functions.rules.parse_curry import parse_curry
 

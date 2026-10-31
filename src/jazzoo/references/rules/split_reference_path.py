@@ -1,11 +1,7 @@
 import typing as T
 
 from jazzoo.enums import Sigil
-
-_SIGIL_BY_TEXT = {s.value: s for s in Sigil}
-_SIGIL_BY_TEXT["⚙"] = Sigil.SYSTEM
-
-_SIGILS = sorted(_SIGIL_BY_TEXT, key=len, reverse=True)
+from jazzoo.references.rules.match_sigil import SIGIL_BY_TEXT, SIGILS
 
 
 def split_reference_path(text: str) -> T.Optional[T.Tuple[Sigil, str]]:
@@ -16,10 +12,10 @@ def split_reference_path(text: str) -> T.Optional[T.Tuple[Sigil, str]]:
     references stop at the first dot instead, which is what parse_references does.
     """
     text = text.strip()
-    for sigil in _SIGILS:
+    for sigil in SIGILS:
         if text.startswith(sigil):
             rest = text[len(sigil) :]
             if rest.startswith("."):
-                return _SIGIL_BY_TEXT[sigil], rest[1:]
+                return SIGIL_BY_TEXT[sigil], rest[1:]
             return None
     return None

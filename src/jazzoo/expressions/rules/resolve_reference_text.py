@@ -1,6 +1,6 @@
 import typing as T
 
-from jazzoo.expressions.rules.parse_references import parse_references
+from jazzoo.references.rules.parse_references import parse_references
 from jazzoo.expressions.rules.resolve_function_value import resolve_function_value
 from jazzoo.expressions.utils.render_value import render_value
 from jazzoo.modules.models.absent import ABSENT
