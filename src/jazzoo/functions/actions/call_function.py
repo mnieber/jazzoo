@@ -3,11 +3,12 @@ import re
 import typing as T
 
 from jazzoo.blocks.actions.run_block import run_block
-from jazzoo.enums import BlockMode, Sigil
+from jazzoo.enums import BlockMode
 from jazzoo.errors import ArgumentError, JazzooError
 from jazzoo.expressions.rules.substitute_references import substitute_references
 from jazzoo.expressions.utils.strip_one_newline import strip_one_newline
 from jazzoo.functions.models.function import Function
+from jazzoo.functions.rules.lookup_function import lookup_function
 from jazzoo.modules.models.frame import Frame
 from jazzoo.modules.rules.parse_source import _ASSIGNMENT_RE, _SIGIL_TEXTS
 
@@ -95,7 +96,7 @@ def call_function(
                 argument.name: evaluate_expression(argument.value, call_frame)
                 for argument in dependency.arguments
             }
-        target = _lookup_function(dependency.target_path, call_frame, dependency)
+        target = lookup_function(dependency.target_path, call_frame, dependency)
         call_function(
             target,
             dependency_arguments,
@@ -111,47 +112,6 @@ def call_function(
     if "retval" in call_frame.locals:
         return call_frame.locals["retval"]
     return strip_one_newline(call_frame.stdout)
-
-
-def _lookup_function(path: str, frame: Frame, call_site) -> Function:
-    from jazzoo.functions.rules.get_function_by_path import get_function_by_path
-    from jazzoo.errors import ResolutionError
-
-    local_functions = getattr(frame, "local_functions", {})
-    if path in local_functions:
-        return local_functions[path]
-
-    # A variable may hold a function; calling it calls what it holds.
-    if "." not in path:
-        from jazzoo.functions.models.curried_function import CurriedFunction
-
-        for sigil in (Sigil.LEOPARD, Sigil.MOUSE, Sigil.GOAT):
-            held = frame.lookup(sigil, path)
-            if isinstance(held, CurriedFunction):
-                return held.function
-
-    function = get_function_by_path(frame.module, path)
-    if function is None:
-        raise ResolutionError(
-            f"no such function: {path}",
-            filename=getattr(call_site, "filename", None),
-            line=getattr(call_site, "line", None),
-        )
-
-    # A circular import hands back the cached, partially-initialized module. Using
-    # it at call time is fine; reaching it while it is still loading is not, because
-    # its own top-level assignments have not run yet (design section 14).
-    owner = function.module
-    if owner is not None and not owner.is_initialized and owner is not frame.module:
-        from jazzoo.errors import ModuleImportError
-
-        raise ModuleImportError(
-            f"'{path}' is not available yet: {owner.name} is still loading",
-            filename=getattr(call_site, "filename", None),
-            line=getattr(call_site, "line", None),
-        )
-
-    return function
 
 
 def _run_one_block(
@@ -242,7 +202,7 @@ def _sweep_line(block_line, block, frame: Frame) -> str:
 
 
 def _evaluate_call(call_text: str, frame: Frame) -> T.Any:
-    from jazzoo.expressions.actions.evaluate_expression import evaluate_call
+    from jazzoo.expressions.actions.evaluate_call import evaluate_call
 
     # An inline call is substituted into the line, so its value is used.
     with frame.quietly():
