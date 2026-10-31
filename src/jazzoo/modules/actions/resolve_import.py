@@ -83,9 +83,11 @@ def resolve_import(
 
     if statement.is_export:
         if statement.alias is None:
-            _bind_flat_export(selected, into, statement)
+            _bind_flat_export(selected, selected_layers, into, statement)
         else:
-            _bind_layered_export(selected, selected_layers, into, statement, source)
+            _bind_layered_export(
+                selected, selected_layers, into, statement, source, statement.alias
+            )
         return
 
     _bind_private_import(selected, into, statement, source)
@@ -118,6 +120,7 @@ def _is_same_definition(existing: T.Optional[Function], function: Function) -> b
 
 def _bind_flat_export(
     selected: T.List[T.Tuple[Function, str]],
+    selected_layers: T.List[T.Tuple[Module, str]],
     into: Module,
     statement: ImportStatement,
 ) -> None:
@@ -125,6 +128,10 @@ def _bind_flat_export(
 
     A different function under a name that is already taken is left in place, so
     the module's collision check can report whichever declaration came second.
+
+    A re-exported layer becomes a layer of this module. Its contents are exported
+    into a layer of the same name, so it aggregates with other exports into that
+    name.
     """
     for function, alias in selected:
         if _is_same_definition(_find_bound(into.functions, alias), function):
@@ -133,6 +140,16 @@ def _bind_flat_export(
         exported.is_target = True
         into.functions.append(exported)
 
+    for layer, alias in selected_layers:
+        _bind_layered_export(
+            [(f, f.name) for f in layer.functions],
+            [(l, l.name) for l in layer.layers],
+            into,
+            statement,
+            layer,
+            alias,
+        )
+
 
 def _bind_layered_export(
     selected: T.List[T.Tuple[Function, str]],
@@ -140,6 +157,7 @@ def _bind_layered_export(
     into: Module,
     statement: ImportStatement,
     source: Module,
+    layer_alias: str,
 ) -> None:
     """Exported symbols grouped under a layer, reachable from the CLI only.
 
@@ -148,10 +166,10 @@ def _bind_layered_export(
     by a nested layer, so both are checked: two exports landing different symbols
     under one name in a layer is a ParseError, attributed to the second statement.
     """
-    layer = _get_or_create_layer(into, statement.alias, source, statement.line)
+    layer = _get_or_create_layer(into, layer_alias, source, statement.line)
 
     for nested, alias in selected_layers:
-        _check_free(layer, alias, statement)
+        _check_free(layer, alias, layer_alias, statement)
         # Re-bound under its new name, so renaming a layer renames the path segment
         # without disturbing the layer it came from.
         layer.layers.append(_rebind_layer(nested, alias))
@@ -159,20 +177,22 @@ def _bind_layered_export(
     for function, alias in selected:
         if _is_same_definition(_find_bound(layer.functions, alias), function):
             continue
-        _check_free(layer, alias, statement)
+        _check_free(layer, alias, layer_alias, statement)
         exported = _bind_copy(function, alias, statement)
         exported.is_target = True
         layer.functions.append(exported)
 
 
-def _check_free(layer: Module, alias: str, statement: ImportStatement) -> None:
+def _check_free(
+    layer: Module, alias: str, layer_alias: str, statement: ImportStatement
+) -> None:
     """A name in a layer denotes one thing: a target or a nested layer, never both."""
     taken = any(f.name == alias for f in layer.functions) or any(
         l.name == alias for l in layer.layers
     )
     if taken:
         raise ParseError(
-            f"'{alias}' is already exported into '{statement.alias}'",
+            f"'{alias}' is already exported into '{layer_alias}'",
             filename=statement.filename,
             line=statement.line,
         )
