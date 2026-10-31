@@ -4,9 +4,10 @@ import typing as T
 
 from jazzoo.blocks.actions.run_block import run_block
 from jazzoo.enums import BlockMode
-from jazzoo.errors import ArgumentError, JazzooError
+from jazzoo.errors import JazzooError
 from jazzoo.expressions.rules.substitute_references import substitute_references
 from jazzoo.expressions.utils.strip_one_newline import strip_one_newline
+from jazzoo.functions.actions.bind_arguments import bind_arguments
 from jazzoo.functions.models.function import Function
 from jazzoo.functions.rules.lookup_function import lookup_function
 from jazzoo.modules.models.frame import Frame
@@ -18,42 +19,6 @@ from jazzoo.modules.rules.parse_source import _ASSIGNMENT_RE, _SIGIL_TEXTS
 _STATEMENT_CALL_RE = re.compile(
     r"^(?:🐐|🐭|🐆|⚙️|⚙)\.[A-Za-z0-9_][A-Za-z0-9_.-]*\([^)]*\)$"
 )
-
-
-def bind_arguments(
-    function: Function,
-    arguments: T.Dict[str, str],
-    evaluate_default: T.Callable[[str], T.Any],
-    filename: T.Optional[str] = None,
-    line: T.Optional[int] = None,
-) -> T.Dict[str, T.Any]:
-    """Validate arguments against parameters and produce the 🐆 variables.
-
-    A default is an expression, evaluated by `evaluate_default` only when the
-    caller does not supply that argument.
-    """
-    names = {p.name for p in function.parameters}
-    for name in arguments:
-        if name not in names:
-            raise ArgumentError(
-                f"{function.name}() has no parameter named '{name}'",
-                filename=filename or function.filename,
-                line=line if line is not None else function.line,
-            )
-
-    bound: T.Dict[str, T.Any] = {}
-    for parameter in function.parameters:
-        if parameter.name in arguments:
-            bound[parameter.name] = arguments[parameter.name]
-        elif parameter.default is not None:
-            bound[parameter.name] = evaluate_default(parameter.default)
-        else:
-            raise ArgumentError(
-                f"{function.name}() is missing a value for '{parameter.name}'",
-                filename=filename or function.filename,
-                line=line if line is not None else function.line,
-            )
-    return bound
 
 
 def _echo(line_text: str, is_quiet: bool, frame: Frame) -> None:
