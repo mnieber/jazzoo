@@ -215,6 +215,78 @@ def test_a_named_layer_can_be_renamed(capsys):
         assert "build dev" in captured.out
 
 
+def test_a_flat_wildcard_export_includes_layers(capsys):
+    """`export *` without a layer includes the layers of the exported module, so a
+    root module can proxy another module that exports layers."""
+    if True:
+        # Config
+        jazzoo_fn = save_fixture(
+            """# test_flat_wildcard_layers.jaz
+        from ./nested.jaz export *
+        """
+        )
+
+        # Run
+        exit_code = main(["react.build", "mode=dev", "--file", jazzoo_fn])
+        captured = capsys.readouterr()
+
+        # Assert
+        assert exit_code == 0
+        assert "build dev" in captured.out
+
+    """The re-exported layer also shows up in a listing."""
+    if True:
+        # Run
+        exit_code = main(["--list-all", "--file", jazzoo_fn])
+        captured = capsys.readouterr()
+
+        # Assert
+        assert exit_code == 0
+        assert "react.build" in captured.out
+
+
+def test_a_layer_can_be_named_in_a_flat_export(capsys):
+    """A flat export may name a layer, and rename it, as it would a function."""
+    if True:
+        # Config
+        jazzoo_fn = save_fixture(
+            """# test_flat_named_layer.jaz
+        from ./nested.jaz export (react as r,)
+        """
+        )
+
+        # Run
+        exit_code = main(["r.build", "mode=dev", "--file", jazzoo_fn])
+        captured = capsys.readouterr()
+
+        # Assert
+        assert exit_code == 0
+        assert "build dev" in captured.out
+
+
+def test_a_flat_exported_layer_aggregates_with_a_layer_of_the_same_name(capsys):
+    """A layer that is re-exported flat merges with a layer of the same name in the
+    importing module, like two exports into one layer do."""
+    if True:
+        # Config
+        jazzoo_fn = save_fixture(
+            """# test_flat_layer_aggregate.jaz
+        from ./nested.jaz export *
+        from ./styles.jaz export (lint,) as react
+        """
+        )
+
+        # Run
+        build_code = main(["react.build", "mode=dev", "--file", jazzoo_fn])
+        build_out = capsys.readouterr().out
+        lint_code = main(["react.lint", "--file", jazzoo_fn])
+        lint_out = capsys.readouterr().out
+
+        # Assert
+        assert build_code == 0 and "build dev" in build_out
+        assert lint_code == 0 and "lint" in lint_out
+
+
 def test_exporting_a_function_and_a_layer_under_one_name_is_an_error():
     """Because a layer and a function are both symbols, a module may not export both
     under one name."""
