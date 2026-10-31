@@ -175,7 +175,7 @@ you are. See [Projects and their environments](extra/spec_src/reference/jazzoo-z
 ## Install
 
 ```
-pip install git+https://github.com/mnieber/jazzoo.git
+pip install jazzoo
 ```
 
 Jazzoo needs Python 3 and has no dependencies.
