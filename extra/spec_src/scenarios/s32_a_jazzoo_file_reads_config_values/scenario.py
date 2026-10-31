@@ -9,7 +9,7 @@ scenario = sunya.add_scenario("s32_a_jazzoo_file_reads_config_values")
 def run_scenario():
     r.developer = c.External.Actors.Developer
     r.jaz_entrypoint = c.Runtime.Entrypoints.Jazzoo
-    r.validate_module_rule = c.Modules.Rules.ValidateModule
+    r.validate_module_rule = c.ModuleValidation.Rules.ValidateModule
     r.match_function_header_rule = c.Modules.Rules.MatchFunctionHeader
     r.call_builtin_function_action = c.Functions.Actions.CallBuiltinFunction
     r.read_config_value_rule = c.Environment.Rules.ReadConfigValue
