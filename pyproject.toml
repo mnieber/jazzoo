@@ -1,6 +1,6 @@
 [project]
 name = "jazzoo"
-version = "0.2.0"
+version = "0.2.1"
 description = "A beast of a task-runner"
 readme = "README.md"
 authors = [{ name = "Maarten Nieber" }]
