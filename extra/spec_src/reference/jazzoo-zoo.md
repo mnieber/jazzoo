@@ -155,7 +155,10 @@ This writes, to the fish config directory (`$XDG_CONFIG_HOME/fish`, or
 
 - the function `zz` in `functions/zz.fish`, and its completions;
 - the completions of `jaz`, `jazzoo` and `zoo` in `completions/`;
-- `conf.d/zoo.fish`, which makes a new interactive fish start in the latest env.
+- `conf.d/zoo.fish`, which makes a new interactive fish start in the latest env, and
+  registers the completions of each `zoo-<name>` link, which complete the targets of
+  <name>. A link that `zoo env --init` adds or `zoo env --forget` removes is picked up
+  by the next fish.
 
 Each file starts with `# managed by zoo env --install-fish`, and is overwritten when
 the installer runs again. When a file of the developer is in the way, nothing is

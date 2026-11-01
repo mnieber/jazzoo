@@ -54,6 +54,21 @@ STARTUP = """{managed_line}
 if status is-interactive; and test -f {latest}
     source {latest}
 end
+
+# Each zoo-<name> link runs the zoo of <name>, which completes the targets of <name>.
+# The links are found at every start, so that zoo env --init and --forget need not
+# write fish files.
+function __zoo_complete_link --argument-names command
+    set -l words (commandline -opc)
+    set -e words[1]
+    set -l word (commandline -ct)
+    $command --complete -- $words "$word"
+end
+
+for zoo in {bin_dir}/zoo-*
+    set -l command (string replace -r '.*/' '' -- $zoo)
+    complete -c $command -f -a "(__zoo_complete_link $command)"
+end
 """
 
 
