@@ -90,7 +90,7 @@ do, without adding a dry-run mode to it. `jaz-run` gives shell scripts the same 
 
 `zoo` registers your projects, each with its own venv. `zz blog` switches to a project,
 `zz -` switches back, and `zoo build` runs a target of the active project from wherever
-you are. See [Projects and their environments](extra/spec_src/reference/jazzoo-zoo.md).
+you are. See [Projects and their environments](extra/spec/reference/jazzoo-zoo.md).
 
 ---
 
@@ -181,13 +181,13 @@ pip install jazzoo
 Jazzoo needs Python 3 and has no dependencies.
 
 The sigils are emoji. Bind them to keys in your editor, as
-[Editor setup](extra/spec_src/reference/jazzoo-editor-setup.md) describes, and they
+[Editor setup](extra/spec/reference/jazzoo-editor-setup.md) describes, and they
 are as quick to type as `$`.
 
 ## Documentation
 
-- [The Jazzoo language](extra/spec_src/reference/jazzoo-language.md)
-- [Running commands: `run`, `jaz-run` and `--confirm`](extra/spec_src/reference/jazzoo-commands.md)
-- [Config files](extra/spec_src/reference/jazzoo-config.md)
-- [Projects and their environments: `zoo` and `zz`](extra/spec_src/reference/jazzoo-zoo.md)
-- [Editor setup: typing the sigils](extra/spec_src/reference/jazzoo-editor-setup.md)
+- [The Jazzoo language](extra/spec/reference/jazzoo-language.md)
+- [Running commands: `run`, `jaz-run` and `--confirm`](extra/spec/reference/jazzoo-commands.md)
+- [Config files](extra/spec/reference/jazzoo-config.md)
+- [Projects and their environments: `zoo` and `zz`](extra/spec/reference/jazzoo-zoo.md)
+- [Editor setup: typing the sigils](extra/spec/reference/jazzoo-editor-setup.md)
