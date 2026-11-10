@@ -19,6 +19,10 @@ The developer runs `zoo env --install-fish`.</br>
 (`$XDG_CONFIG_HOME/fish`, or `~/.config/fish`): the `zz` function in `functions/`, the
 completions of `zz`, `jaz`, `jazzoo` and `zoo` in `completions/`, and
 `conf.d/zoo.fish`, which makes a new interactive fish start in the latest env.</br>
+At every fish start, `conf.d/zoo.fish` also registers the completions of each
+`zoo-<name>` link. Such a link runs the `zoo` of <name>, so it completes the targets of
+<name>, also while another env is active. Links that `zoo env --init` adds or
+`zoo env --forget` removes are picked up by the next fish.</br>
 The completions of `jaz`, `jazzoo` and `zoo` pass the command line to
 `<command> --complete`, which prints the candidates. It reads the jazzoo file without
 running its top-level statements, so that pressing tab has no side effects.</br>

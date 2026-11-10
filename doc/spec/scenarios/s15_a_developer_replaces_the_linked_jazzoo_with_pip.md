@@ -4,8 +4,8 @@
 
 ## A developer replaces the linked jazzoo with pip
 
-A venv that `zoo env --init --create-venv` creates uses the jazzoo that runs `zoo`
-(e.g. a development checkout) without copying it. pip sees this linked jazzoo as an
+A venv that `zoo env --init` links jazzoo into uses the jazzoo that runs `zoo` (e.g. a
+development checkout) without copying it. pip sees this linked jazzoo as an
 editable install, so the developer can replace it, or remove it, with pip, and pip
 never touches the linked directory.
 
@@ -23,7 +23,7 @@ out of the venv.</br>
 #### It shows the linked jazzoo in pip
 
 The developer runs `pip list`.</br>
-pip reads the dist-info that `create_venv` wrote, and shows jazzoo with the version of
+pip reads the dist-info that `link_jazzoo` wrote, and shows jazzoo with the version of
 the linked jazzoo, and the linked directory as its location:
 `jazzoo  0.1.0  /home/me/projects/jazzoo/src/src/jazzoo`.</br>
 
@@ -32,7 +32,7 @@ the linked jazzoo, and the linked directory as its location:
 The developer runs `pip install jazzoo==0.2.0`.</br>
 pip uninstalls the linked jazzoo by removing the files in its `RECORD`: the
 `_jazzoo_link` files, the dist-info and the console scripts. These are only the files
-that `create_venv` wrote, so the linked directory is not touched. Then pip installs the
+that `link_jazzoo` wrote, so the linked directory is not touched. Then pip installs the
 release. `pip uninstall jazzoo` removes the link in the same way.</br>
 To replace the link with a release of the same version, the developer adds
 `--force-reinstall`: otherwise pip sees that version installed.</br>
