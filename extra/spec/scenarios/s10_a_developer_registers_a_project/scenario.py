@@ -18,6 +18,7 @@ def run_scenario():
     r.activate_zoo_env_action = c.Zoo.Actions.ActivateZooEnv
     r.run_in_zoo_env_action = c.Zoo.Actions.RunInZooEnv
     r.find_zoo_env_of_venv_rule = c.Zoo.Rules.FindZooEnvOfVenv
+    r.pip = c.External.Actors.Pip
 
     with goal().register_the(r.project_dir).as_a(r.zoo_env).with_a(r.venv):
         with the(r.developer).runs(r.zoo_entrypoint).with_the(r.init_options):
@@ -52,6 +53,11 @@ def run_scenario():
                 it().changes_to_the(r.root_dir).of_the(r.zoo_env)
                 it().calls(r.jaz_entrypoint).with_the(r.jaz_arguments)
 
+    with goal().replace_the(r.linked_install).with_a(r.jazzoo_release):
+        with the(r.developer).runs(r.pip).with_the(r.install_command):
+            it().uninstalls_the(r.linked_install).as_an(r.editable_install)
+            it().installs_the(r.jazzoo_release).into_the(r.venv)
+
 
 markdown_node = sunya.add_markdown_node(scenario, "A developer registers a project")
 
@@ -75,6 +81,12 @@ may not expect it.</br>
 `zoo` takes the options of `jaz`, except `--file`: it always runs the root jazzoo
 file of the env.</br>
 
+#### It replaces the linked install with pip
+
+The developer runs `pip install jazzoo==0.2.0`.</br>
+pip uninstalls the linked install as an editable install, without touching the linked directory, and installs the
+release into the venv.</br>
+
 ### Diagram
 
 ```mermaid
@@ -83,6 +95,7 @@ sequenceDiagram
     participant Zoo as zoo (entrypoint)
     participant Init as InitZooEnv (action)
     participant Jaz as jaz (entrypoint)
+    participant Pip as pip
 
     Note over Developer,Init: Register the project
     Developer->>Zoo: zoo env --init --create-venv --venv-path=...
@@ -94,5 +107,9 @@ sequenceDiagram
     Note over Developer,Jaz: Run a target from any directory
     Developer->>Zoo: zoo build
     Zoo->>Jaz: jaz build (in the project directory)
+
+    Note over Developer,Pip: Replace the linked install with pip
+    Developer->>Pip: pip install jazzoo==0.2.0
+    Pip->>Pip: uninstall the linked install, install the release
 ```
 """
