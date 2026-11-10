@@ -4,21 +4,10 @@
 
 ## A script runs commands with confirmation
 
-A script that a jazzoo file runs (a Python shebang block, or any `python foo.py`
-shell line) runs commands with `run`. With `jaz --confirm`, the developer is asked
-before each of these commands, and can run it, skip it or abort. The shell lines and
-shebang blocks of the jazzoo file itself are never confirmed.
-
-```python
-from jazzoo import run
-
-run("docker compose logs | grep error")                 # a string runs in bash
-run(["tmux", "send-keys", "-t", pane, command, "C-m"])  # a list runs directly
-head = run("git rev-parse HEAD", capture=True).stdout
-```
-
-`run`, `CommandResult` and the command errors live in the self-contained sub-package
-`jazzoo.commands`, which a project can copy into its own source tree.
+A script (that is triggered by jazzoo) can use the run function to run commands. With
+`jaz --confirm`, the developer is asked before each of these commands, and can run it,
+skip it or abort. The shell lines and shebang blocks of the jazzoo file itself are never
+confirmed.
 
 ### Steps
 
@@ -31,20 +20,19 @@ nested `jaz`) inherits, and runs the target.</br>
 
 #### It runs a command
 
-The script calls `run` with a command, and optionally `cwd`, `env`, `capture`,
-`check` and `echo`.</br>
-`run` checks the command and `cwd` before anything runs. A string command runs in
-bash; for a list command, `find_executable` looks up the executable on the `PATH` of
-the command's environment.</br>
+The script calls `run` with a command.</br>
 When `is_confirm_on` finds `JAZZOO_CONFIRM=1`, `confirm_command` shows the command
-with its directory on the terminal (`/dev/tty`), and reads the answer from it. On
-`n`, `run` skips the command and returns a `CommandResult` with `skipped=True`; on
-`q`, `confirm_command` raises `CommandAbortedError`, so the script fails and `jaz`
-stops the run.</br>
-`run` runs the command in the foreground (or captures its output with
-`capture=True`), while a ctrl-c reaches the command only.</br>
-It returns a `CommandResult`, or raises `CommandFailedError` when the command exits
-non-zero and `check` is true.</br>
+with its directory on the terminal, and reads the answer. On `y`, `run` runs the
+command; on `n`, it skips the command and returns a `CommandResult` with `skipped=True`;
+on `q`, `confirm_command` raises `CommandAbortedError`, so `jaz` stops the run.</br>
+
+#### It runs a command from a shell script
+
+A shell script, or a shell line of a jazzoo file, runs `jaz-run <executable> [<argument> ...]`,
+or `jaz-run -c "<command>"` for a command that runs in bash.</br>
+`jaz-run` calls `run` with the command, so the command is confirmed in the same way, and exits
+with the exit code of the command (`0` when the developer skipped it, `130` when they
+aborted).</br>
 
 ### Diagram
 
@@ -55,6 +43,7 @@ sequenceDiagram
     participant Script
     participant Run as Run (action)
     participant Confirm as ConfirmCommand (action)
+    participant JazRun as jaz-run (entrypoint)
 
     Note over Developer,Script: Switch on confirmation
     Developer->>Jaz: jaz --confirm deploy
@@ -70,5 +59,11 @@ sequenceDiagram
     Confirm-->>Run: True
     Run->>Run: run the command in the foreground
     Run-->>Script: CommandResult
+
+    Note over Script,JazRun: Run a command from a shell script
+    Script->>JazRun: jaz-run -c "docker compose logs | grep error"
+    JazRun->>Run: run(command)
+    Run-->>JazRun: CommandResult
+    JazRun-->>Script: exit code
 ```
 

@@ -46,20 +46,9 @@ the config is not built yet. A layer may include layers of its own.</br>
 
 #### It reads a value from a layer
 
-The script calls `get_config`, and `get_loaded_config` builds the `LoadedConfig`. It
-first copies the environment, which include paths and values both read.</br>
-For each file in `JAZZOO_CONFIG_FILES`, `read_config_layers` reads the file with
-`read_config_file`, and takes the includes out of its tree. `expand_include_path`
-turns each include into an absolute path, and `read_config_layers` reads that layer
-in the same way, depth-first.</br>
-Every file is read once in the whole config list, at its first position: a file
-that was read already (a cycle, a layer that two files include, or a file in the
-list that an earlier file included) is skipped.</br>
-`read_config_layers` returns the files in merge order: the layers of a file come
-before the file, a layer's own includes before the layer. So a file wins over its
-layers. `merge_config` merges all the files in this order.</br>
-`get_config` reads the value from the merged tree as usual. An error about a value
-names the layer that supplied it.</br>
+The script calls `get_config`, which reads each config file together with its layers.
+The layers are applied in their order of appearance, followed by the file itself, so that a
+file wins over its layers.</br>
 
 #### It finds all the config files of a project
 

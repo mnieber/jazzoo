@@ -4,9 +4,8 @@
 
 ## A script runs commands in a container
 
-A script decorates `run` with `run_docker`, so that its commands run in a Docker
-container that is already running, with `docker exec`. The undecorated `run` still
-runs commands on the host.
+A script decorates `run` with `run_docker`, so that its commands run in an already running Docker
+container. The undecorated `run` still runs commands on the host.
 
 ```python
 from jazzoo import get_config as get, run, run_docker
@@ -17,10 +16,6 @@ run_be("python manage.py migrate")
 run_be(["pytest", "-x"], cwd="/app/src")
 run("docker compose ps")
 ```
-
-The decorated function only rewrites the command, and passes it to the function that
-it decorates. Echo, confirmation, `capture`, `check` and the `CommandResult` are
-therefore those of `run`, and they all show the full `docker exec` command.
 
 ### Steps
 

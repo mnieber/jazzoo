@@ -12,27 +12,27 @@ starts in the env that was activated last.
 
 #### It switches to another project
 
-The developer runs `eval "$(zoo env blog)"` (in fish: `zoo env blog | source`).</br>
-`activate_zoo_env` records the latest env as the previous one, and `blog` as the latest
-one, in `~/.config/jazzoo/recent.json`.</br>
-It calls `write_latest_zoo_env_scripts`, which rewrites `latest.bash` and
-`latest.fish` in `~/.config/jazzoo` to source the activate scripts of `blog`.</br>
-`zoo` prints the line that sources the activate script of `blog`. The shell sources
-it, which deactivates the active venv and activates the venv of `blog`.</br>
+The developer runs `zoo env blog | source`.</br>
+`activate_zoo_env` tracks the latest use zoo env (so that we can activate it when opening a new shell).</br>
 
 #### It switches back
 
-The developer runs `eval "$(zoo env -)"`.</br>
+The developer runs `zoo env - | source`.</br>
 `get_recent_zoo_env` returns the previous env, which `activate_zoo_env` activates as
 before. Running `zoo env -` again goes back and forth between the two envs.</br>
 
 #### It starts a new terminal in the latest project
 
-The startup file of the shell sources `~/.config/jazzoo/latest.<shell>`. In fish, this
-is `conf.d/zoo.fish`, which `zoo env --install-fish` writes, and which only does this in
-an interactive shell. In bash, the developer adds the line to `.bashrc`.</br>
+The startup file of the shell sources `~/.config/jazzoo/latest.<shell>`.</br>
 This script sources the activate script of the latest env, so the new terminal starts
 with its venv active. No Python runs, and no `zoo` is needed on the `PATH`.</br>
+
+#### It switches with zz
+
+The developer runs `zoo env --install-fish` once, which installs the `zz` function and the
+completions of `zz`, `jaz` and `zoo` in the fish config directory.</br>
+`zz blog` runs `zoo env blog` and sources the line that it prints, so `zz -` and `zz --list`
+work as their `zoo env` counterparts. Pressing tab after `zz` completes the names of the envs.</br>
 
 ### Diagram
 
@@ -44,6 +44,7 @@ sequenceDiagram
     participant Act as ActivateZooEnv (action)
     participant WL as WriteLatestZooEnvScripts (action)
     participant GR as GetRecentZooEnv (rule)
+    participant Zz as zz (fish function)
 
     Note over Developer,WL: Switch to another project
     Developer->>Zoo: zoo env blog
@@ -63,5 +64,12 @@ sequenceDiagram
     Note over Shell: Start a new terminal
     Shell->>Shell: source ~/.config/jazzoo/latest.<shell>
     Shell->>Shell: source .../envs/shop/activate.<shell>
+
+    Note over Developer,Zz: Switch with zz
+    Developer->>Zoo: zoo env --install-fish
+    Developer->>Zz: zz blog
+    Zz->>Zoo: zoo env blog
+    Zoo-->>Zz: source .../envs/blog/activate.fish
+    Zz->>Shell: source the line
 ```
 

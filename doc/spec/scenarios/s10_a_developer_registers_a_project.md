@@ -14,7 +14,7 @@ run `jaz` relative to the project directory. Moreover, `zoo-<name>` will run jaz
 #### It registers the project
 
 In the project directory, the developer runs `zoo env --init --create-venv --venv-path=/path/to/venv`.</br>
-This command will link the existing jazzoo package into the indicated venv.
+This command makes a linked install of jazzoo in the indicated venv.
 The command prints which jazzoo it linked into the venv, because a developer
 may not expect it.</br>
 
@@ -23,44 +23,35 @@ may not expect it.</br>
 `zoo` takes the options of `jaz`, except `--file`: it always runs the root jazzoo
 file of the env.</br>
 
+#### It replaces the linked install with pip
+
+The developer runs `pip install jazzoo==0.2.0`.</br>
+pip uninstalls the linked install as an editable install, without touching the linked directory, and installs the
+release into the venv.</br>
+
 ### Diagram
 
 ```mermaid
 sequenceDiagram
     actor Developer
-    participant Shell
     participant Zoo as zoo (entrypoint)
     participant Init as InitZooEnv (action)
-    participant CV as CreateVenv (action)
-    participant Link as LinkJazzoo (action)
-    participant Act as ActivateZooEnv (action)
-    participant Run as RunInZooEnv (action)
     participant Jaz as jaz (entrypoint)
+    participant Pip as pip
 
-    Note over Developer,Act: Register the project
-    Developer->>Zoo: zoo env --init --create-venv
+    Note over Developer,Init: Register the project
+    Developer->>Zoo: zoo env --init --create-venv --venv-path=...
     Zoo->>Init: init_zoo_env(name, root_dir, venv_dir)
-    Init->>Init: check name and root jazzoo file
-    alt --create-venv
-        Init->>CV: create_venv(venv_dir)
-        CV->>CV: python -m venv
-        CV->>Link: link_jazzoo(venv_dir)
-    else existing venv without bin/zoo
-        Init->>Link: link_jazzoo(venv_dir)
-    end
-    Link->>Link: check python version, write linked install and scripts
+    Init->>Init: create the venv, link jazzoo into it
+    Init-->>Developer: print which jazzoo was linked
     Init->>Init: write env dir, link zoo-<name>
-    Zoo->>Act: activate_zoo_env(name)
-    Act->>Act: record latest env
-    Act-->>Zoo: source line
-    Zoo-->>Shell: source .../envs/<name>/activate.<shell>
-    Shell->>Shell: activate the venv
 
     Note over Developer,Jaz: Run a target from any directory
     Developer->>Zoo: zoo build
-    Zoo->>Run: run_in_zoo_env(["build"])
-    Run->>Run: find the env of sys.prefix
-    Run->>Run: record invocation dir, cd to root dir
-    Run->>Jaz: run(["build"], invocation_dir)
+    Zoo->>Jaz: jaz build (in the project directory)
+
+    Note over Developer,Pip: Replace the linked install with pip
+    Developer->>Pip: pip install jazzoo==0.2.0
+    Pip->>Pip: uninstall the linked install, install the release
 ```
 

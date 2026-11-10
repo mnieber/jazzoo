@@ -1,4 +1,5 @@
-output_dir: /opt/projects/jazzoo/browse
+output_dir_co: /opt/projects/jazzoo/browse
+output_dir: doc/spec
 component_name: jazzoo
 package_config_by_name:
   jazzoo:

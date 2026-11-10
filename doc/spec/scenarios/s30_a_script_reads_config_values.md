@@ -45,19 +45,20 @@ The script of the target inherits this variable.</br>
 #### It reads a value
 
 The script calls `get_config` with a path into the config, such as `/root/src`, and
-optionally a default for a path that does not exist.</br>
-`get_loaded_config` returns the cached `LoadedConfig`. When the value of
-`JAZZOO_CONFIG_FILES` differs from the one that the cache was built from, it builds a
-new one: it copies the environment, `read_config_layers` reads each file as plain
+optionally a default fallback path.</br>
+`get_loaded_config` returns the cached `LoadedConfig`. The cache is rebuilt automatically when needed.
+`read_config_layers` reads each file as plain
 YAML, together with the layers that the file includes, and `merge_config` merges them
 in list order (a later file overrides an earlier one, recursively for dicts).</br>
 `get_value` finds the value at the path in the merged tree, and expands it lazily:
 `${/a/b}` is replaced by another config value, `${NAME}` by a variable of the copied
-environment, and references may be nested and chained. Only the value at the path
-and what it references are expanded, and each expanded value is cached.</br>
+environment, and references may be nested and chained.</br>
 `get_config` returns the expanded value.</br>
+The jazzoo file itself calls `⚙️.get_config`, e.g. in a parameter default such as
+`build(local=⚙️.get_config(path="/build/local", default=false))`. It returns the same
+value, converted to a jazzoo value.</br>
 
-A script that changes its own environment first calls `prepare_config`, which builds
+A script that changes its own environment variables first calls `prepare_config`, which builds
 the `LoadedConfig` without expanding anything, so that every `get_config` sees the
 environment as it was when the script started.</br>
 
