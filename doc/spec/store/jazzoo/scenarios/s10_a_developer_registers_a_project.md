@@ -5,41 +5,23 @@
 ## A developer registers a project
 
 The developer registers a project directory with a root jazzoo file as a zoo
-environment, with a new venv. From then on, the `zoo` of that venv runs the targets
-of the project from any directory, and so does the link `zoo-<name>` in
-`~/.local/bin`, whether or not the env is active.
+environment, with a new venv or an existing one. When the venv is activated, then `zoo` will always
+run `jaz` relative to the project directory. Moreover, `zoo-<name>` will run jaz from the
+`<name>` project directory regardless of which venv is active.
 
 ### Steps
 
 #### It registers the project
 
-In the project directory, the developer runs
-`eval "$(zoo env --init --create-venv)"`.</br>
-`init_zoo_env` checks the name (by default the name of the directory) and that the
-directory has a root jazzoo file.</br>
-`create_venv` creates `.venv` in the project directory, and makes a linked install
-of the jazzoo package that runs `zoo`, as `pip install -e` does: an import hook that
-finds the package in its own directory, and package metadata that pip reads. The
-version in the metadata comes from `get_jazzoo_version`. `create_venv` also writes the
-`zoo`, `jaz`, `jazzoo` and `jaz-run` scripts into the `bin` directory of the venv.</br>
-`init_zoo_env` writes the env directory in `~/.config/jazzoo/envs/<name>`: links to the
-root directory and the venv, and an activate script per shell. It also links
-`~/.local/bin/zoo-<name>` to the `zoo` of the venv.</br>
-`activate_zoo_env` records the env as the latest one, and returns the line that sources
-its activate script. `zoo` prints this line, and the shell sources it, which activates
-the venv.</br>
+In the project directory, the developer runs `zoo env --init --create-venv --venv-path=/path/to/venv`.</br>
+This command will link the existing jazzoo package into the indicated venv.
+The command prints which jazzoo it linked into the venv, because a developer
+may not expect it.</br>
 
 #### It runs a target from any directory
 
-The developer runs `zoo <target>` in any directory. With the venv active, this is the
-`zoo` of the venv.</br>
-`run_in_zoo_env` finds the env whose venv is the venv that `zoo` runs in
-(`sys.prefix`).</br>
-It records the current directory as `⚙️.invocation_dir`, changes to the root
-directory of the env, and runs `jaz` in-process with the same arguments.</br>
 `zoo` takes the options of `jaz`, except `--file`: it always runs the root jazzoo
-file of the env. A second jazzoo file of the project is imported into the root jazzoo
-file as a layer.</br>
+file of the env.</br>
 
 ### Diagram
 
@@ -50,6 +32,7 @@ sequenceDiagram
     participant Zoo as zoo (entrypoint)
     participant Init as InitZooEnv (action)
     participant CV as CreateVenv (action)
+    participant Link as LinkJazzoo (action)
     participant Act as ActivateZooEnv (action)
     participant Run as RunInZooEnv (action)
     participant Jaz as jaz (entrypoint)
@@ -58,8 +41,14 @@ sequenceDiagram
     Developer->>Zoo: zoo env --init --create-venv
     Zoo->>Init: init_zoo_env(name, root_dir, venv_dir)
     Init->>Init: check name and root jazzoo file
-    Init->>CV: create_venv(venv_dir)
-    CV->>CV: python -m venv, write linked install and scripts
+    alt --create-venv
+        Init->>CV: create_venv(venv_dir)
+        CV->>CV: python -m venv
+        CV->>Link: link_jazzoo(venv_dir)
+    else existing venv without bin/zoo
+        Init->>Link: link_jazzoo(venv_dir)
+    end
+    Link->>Link: check python version, write linked install and scripts
     Init->>Init: write env dir, link zoo-<name>
     Zoo->>Act: activate_zoo_env(name)
     Act->>Act: record latest env

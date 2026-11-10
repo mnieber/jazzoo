@@ -1,4 +1,4 @@
-output_dir: doc/spec
+output_dir: /opt/projects/jazzoo/browse
 component_name: jazzoo
 package_config_by_name:
   jazzoo:
