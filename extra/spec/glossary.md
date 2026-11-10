@@ -25,3 +25,8 @@ is active, `zoo` runs `jaz` in the project directory, using the root jazzoo file
 
 The link `~/.local/bin/zoo-<name>` to the `zoo` script of the venv of a zoo environment. It runs `jaz` in the
 project directory of that zoo environment, regardless of which venv is active.
+
+### zz
+
+A shell function that runs `zoo env` with its arguments, and sources the line that it prints, so that it activates
+a zoo environment in the current shell. `zoo env --install-fish` installs it for fish.

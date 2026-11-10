@@ -72,7 +72,7 @@ run `jaz` relative to the project directory. Moreover, `zoo-<name>` will run jaz
 #### It registers the project
 
 In the project directory, the developer runs `zoo env --init --create-venv --venv-path=/path/to/venv`.</br>
-This command will link the existing jazzoo package into the indicated venv.
+This command makes a linked install of jazzoo in the indicated venv.
 The command prints which jazzoo it linked into the venv, because a developer
 may not expect it.</br>
 
